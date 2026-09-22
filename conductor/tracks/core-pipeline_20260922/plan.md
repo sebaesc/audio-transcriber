@@ -82,12 +82,22 @@ lives inside the backend module.
 - [x] Task 3.3: Implement its requirement check — model availability and device selection — reporting what is missing and how to install it
 - [x] Task 3.4: Report model version and effective config back to the manifest
 - [x] Task 3.5: Register the backend and confirm it passes the shared conformance suite against a short fixture audio file
-- [~] Task 3.6: Write `docs/backends/faster-whisper.md` — usage, dependencies, credentials (none), hardware, known limits
+- [x] Task 3.6: Write `docs/backends/faster-whisper.md` — usage, dependencies, credentials (none), hardware, known limits
 
 ### Verification
 
-- [ ] `pytest -k conformance` passes with the backend registered
-- [ ] Backend doc page exists and covers usage, dependencies, hardware, and limits (Gate 6 in `workflow.md`)
+- [x] `pytest -k conformance` passes with the backend registered
+- [x] Backend doc page exists and covers usage, dependencies, hardware, and limits (Gate 6 in `workflow.md`)
+
+### Deviations
+
+**2026-09-22 — device selection.** Task 3.3 was specified as "model availability and device
+selection". Implementation found that CTranslate2 reports a CUDA device whenever the driver is
+visible, so `device: auto` selected a device that then failed lazily on the first segment, which
+would abort a batch part-way through. `check_requirements()` therefore runs a real inference over
+a silent buffer on each candidate device, falls back to CPU under `auto`, and records the
+resolved device in the effective config. Task 3.1 was already satisfied by Task 1.1, which
+declared the extra.
 
 ## Phase 4: Run Orchestration
 
