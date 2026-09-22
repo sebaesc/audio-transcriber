@@ -99,7 +99,25 @@ _DEFAULTS: dict[str, Any] = {
     "language": None,
     "beam_size": 5,
     "vad_filter": True,
+    # faster-whisper defaults temperature to [0.0, 0.2, ..., 1.0] and falls back
+    # up that ladder when a decode trips its quality thresholds. Above 0.0 it
+    # samples, so the same audio produces different text on different runs —
+    # measured at 689 vs 642 segments and WER 0.409 vs 0.441 for one recording.
+    # A single 0.0 is greedy and reproducible, which the project requires. The
+    # ladder is still available by passing a list.
+    "temperature": 0.0,
+    # Conditioning on previous text helps context, but it also carries any
+    # divergence into every later segment. Exposed because it is the lever to
+    # reach for when a recording falls into a repetition loop.
+    "condition_on_previous_text": True,
+    # Deterministic alternatives to temperature sampling for breaking repetition
+    # loops. faster-whisper's own defaults, exposed so they can be tuned.
+    "repetition_penalty": 1.0,
+    "no_repeat_ngram_size": 0,
 }
+
+#: Options consumed when the model is loaded rather than passed to each decode.
+_LOAD_TIME_OPTIONS = frozenset({"model", "device", "compute_type"})
 
 
 @register
@@ -117,6 +135,17 @@ class FasterWhisperBackend(TranscriptionBackend):
     - `beam_size`: beam search width. Defaults to 5.
     - `vad_filter`: drop non-speech with Silero VAD before decoding.
       Defaults to True.
+    - `temperature`: decoding temperature. Defaults to 0.0, which is greedy and
+      reproducible. Pass a list to restore faster-whisper's fallback ladder,
+      accepting that the output is then not reproducible.
+    - `condition_on_previous_text`: feed each segment the previous one as
+      context. Defaults to True. Turning it off can break repetition loops.
+    - `repetition_penalty`: penalize repeated tokens. Defaults to 1.0, no penalty.
+    - `no_repeat_ngram_size`: forbid repeating an n-gram of this size. Defaults
+      to 0, no restriction.
+
+    An option this backend does not recognize is rejected rather than ignored,
+    so the manifest cannot record a setting that was never applied.
     """
 
     name = "faster-whisper"
@@ -128,6 +157,13 @@ class FasterWhisperBackend(TranscriptionBackend):
     )
 
     def __init__(self, **config: Any) -> None:
+        unknown = sorted(set(config) - set(_DEFAULTS))
+        if unknown:
+            raise BackendRequirementError(
+                self.name,
+                f"unknown option(s): {', '.join(unknown)}.",
+                f"Valid options are: {', '.join(sorted(_DEFAULTS))}.",
+            )
         super().__init__(**{**_DEFAULTS, **config})
         self._model: WhisperModel | None = None
         self._resolved_device: str | None = None
@@ -253,10 +289,7 @@ class FasterWhisperBackend(TranscriptionBackend):
         model = self._load_model()
         try:
             native_segments, info = model.transcribe(
-                str(audio_path),
-                language=self.config["language"],
-                beam_size=self.config["beam_size"],
-                vad_filter=self.config["vad_filter"],
+                str(audio_path), **self._decode_options()
             )
             segments = self._normalize(native_segments, info.language, info.duration)
         except Exception as error:  # noqa: BLE001 - one file failing is not fatal
@@ -270,6 +303,20 @@ class FasterWhisperBackend(TranscriptionBackend):
             backend=self.name,
             model_version=self.model_version(),
         )
+
+    def _decode_options(self) -> dict[str, Any]:
+        """Return every config option that is passed to a decode.
+
+        Built from the config rather than listed inline, so an option cannot be
+        recorded in the manifest while never reaching the decoder. That happened:
+        `no_repeat_ngram_size` was accepted, recorded, and silently dropped, and
+        two runs configured differently produced byte-identical output.
+        """
+        return {
+            key: value
+            for key, value in self.config.items()
+            if key not in _LOAD_TIME_OPTIONS
+        }
 
     def _normalize(
         self,

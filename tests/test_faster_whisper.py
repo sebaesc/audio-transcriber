@@ -291,3 +291,128 @@ def test_normalize_without_a_duration_keeps_everything(backend):
     )
 
     assert len(segments) == 2
+
+
+# --- Reproducibility ---
+#
+# "The same input plus the same config produces the same output" is a product
+# principle, and it did not hold: transcribing one recording twice produced 689
+# vs 642 segments and a WER of 0.409 vs 0.441. faster-whisper defaults
+# temperature to [0.0, 0.2, ..., 1.0] and falls back up that ladder when a decode
+# trips its quality thresholds. Above 0.0 it samples, so the output is not
+# reproducible — and condition_on_previous_text then carries the divergence into
+# every later segment.
+
+
+def test_temperature_defaults_to_deterministic_decoding():
+    """A single temperature of 0.0 means greedy decoding, not sampling."""
+    config = FasterWhisperBackend().effective_config()
+
+    assert config["temperature"] == 0.0
+
+
+def test_decoding_options_are_recorded_in_the_effective_config():
+    """A run is only reproducible if the manifest says what produced it."""
+    config = FasterWhisperBackend().effective_config()
+
+    for key in ("temperature", "condition_on_previous_text", "beam_size"):
+        assert key in config
+
+
+def test_temperature_is_forwarded_to_the_engine(backend, monkeypatch, tmp_path):
+    """Recording the value is not enough; it has to reach the decoder."""
+    seen = {}
+
+    class _Model:
+        def transcribe(self, audio, **kwargs):
+            seen.update(kwargs)
+
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    monkeypatch.setattr(backend, "_model", _Model())
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert seen["temperature"] == 0.0
+    assert seen["condition_on_previous_text"] is True
+
+
+def test_the_fallback_ladder_can_be_restored_by_config():
+    """Determinism is the default, not a cage: the ladder stays available."""
+    ladder = [0.0, 0.2, 0.4]
+    backend = FasterWhisperBackend(temperature=ladder)
+
+    assert backend.effective_config()["temperature"] == ladder
+
+
+# --- Config that reaches the decoder ---
+#
+# The backend accepted any keyword, stored it, and recorded it in the manifest,
+# while transcribe() forwarded only the handful it knew about. A run configured
+# with no_repeat_ngram_size=3 produced byte-identical output to one without it,
+# and the manifest claimed the option had been used. A manifest that records
+# options which were never applied is worse than one that records nothing.
+
+
+def test_an_unknown_option_is_rejected():
+    """Silently ignoring it would put a false claim in the manifest."""
+    with pytest.raises(BackendRequirementError, match="unknown option"):
+        FasterWhisperBackend(no_such_option=1)
+
+
+def test_the_rejection_lists_the_options_that_do_exist():
+    with pytest.raises(BackendRequirementError) as caught:
+        FasterWhisperBackend(beem_size=5)
+
+    assert "beam_size" in str(caught.value)
+
+
+def test_every_recorded_option_reaches_the_decoder(monkeypatch, tmp_path):
+    """Whatever the manifest records must actually have been applied."""
+    seen = {}
+
+    class _Model:
+        def transcribe(self, audio, **kwargs):
+            seen.update(kwargs)
+
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    backend = FasterWhisperBackend(model="tiny")
+    monkeypatch.setattr(backend, "_model", _Model())
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    recorded = set(backend.effective_config())
+    # Options describing how the model is loaded rather than how it decodes.
+    load_time = {"model", "device", "compute_type"}
+    assert (recorded - load_time) <= set(seen), (
+        f"recorded but never forwarded: {sorted((recorded - load_time) - set(seen))}"
+    )
+
+
+def test_repetition_controls_are_forwarded(monkeypatch, tmp_path):
+    """These are the deterministic alternative to temperature sampling."""
+    seen = {}
+
+    class _Model:
+        def transcribe(self, audio, **kwargs):
+            seen.update(kwargs)
+
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    backend = FasterWhisperBackend(repetition_penalty=1.1, no_repeat_ngram_size=3)
+    monkeypatch.setattr(backend, "_model", _Model())
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert seen["repetition_penalty"] == 1.1
+    assert seen["no_repeat_ngram_size"] == 3
