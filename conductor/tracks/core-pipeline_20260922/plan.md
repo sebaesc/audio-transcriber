@@ -49,11 +49,11 @@ cannot change without sign-off, so they are reviewed before anything is built on
 - [x] Task 2.4: Define the backend interface (abstract base class): `transcribe()`, capability flags, requirement checks, and the error types a backend may raise
 - [x] Task 2.5: Implement the backend registry — an explicit name-to-class dict with `register()` and `get(name)`, raising a clear error listing known names on an unknown backend
 - [x] Task 2.6: Write the shared conformance test suite that any backend must pass — parameterized over registered backends, asserting schema validity, timestamp ordering, and error behavior
-- [~] Task 2.7: Write `docs/backend-interface.md` — the contract a new backend implements, and what normalization it owns
+- [x] Task 2.7: Write `docs/backend-interface.md` — the contract a new backend implements, and what normalization it owns
 
 ### Verification
 
-- [ ] `pytest` passes; conformance suite runs (and is trivially green with no backends registered)
+- [x] `pytest` passes; conformance suite runs (and is trivially green with no backends registered)
 - [ ] **Approval gate:** interface, transcript schema, and manifest format reviewed and signed off before Phase 3 begins
 
 ## Phase 3: Reference Backend (faster-whisper)
