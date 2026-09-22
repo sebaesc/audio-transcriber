@@ -36,7 +36,7 @@ A modular audio transcription pipeline with swappable model backends.
 | Track | Status | Priority | Spec | Plan |
 | ----- | ------ | -------- | ---- | ---- |
 | [Core Pipeline and Backend Interface](./tracks/core-pipeline_20260922/index.md) | Complete | Critical | [spec](./tracks/core-pipeline_20260922/spec.md) | [plan](./tracks/core-pipeline_20260922/plan.md) |
-| [Code-Switching Language Detection and Speaker Diarization](./tracks/codeswitch-diarization_20260922/index.md) | Pending | High | [spec](./tracks/codeswitch-diarization_20260922/spec.md) | [plan](./tracks/codeswitch-diarization_20260922/plan.md) |
+| [Code-Switching Language Detection and Speaker Diarization](./tracks/codeswitch-diarization_20260922/index.md) | In Progress | High | [spec](./tracks/codeswitch-diarization_20260922/spec.md) | [plan](./tracks/codeswitch-diarization_20260922/plan.md) |
 
 ## Recent Activity
 

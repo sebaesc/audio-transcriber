@@ -2,10 +2,12 @@
   "id": "codeswitch-diarization_20260922",
   "title": "Code-Switching Language Detection and Speaker Diarization",
   "type": "feature",
-  "status": "pending",
+  "status": "in_progress",
   "created": "2026-09-22T00:00:00Z",
   "updated": "2026-09-22T00:00:00Z",
-  "depends_on": ["core-pipeline_20260922"],
+  "depends_on": [
+    "core-pipeline_20260922"
+  ],
   "phases": {
     "total": 5,
     "completed": 0
@@ -13,5 +15,8 @@
   "tasks": {
     "total": 31,
     "completed": 0
-  }
+  },
+  "current_phase": 1,
+  "current_task": "1.1",
+  "commits": []
 }

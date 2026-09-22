@@ -25,8 +25,8 @@ reproducible; this phase makes them so.
 
 ### Tasks
 
-- [ ] Task 1.1: Add an `eval` optional extra (`jiwer`, `pyarrow`) — never a core or backend dependency
-- [ ] Task 1.2: Write the dataset fetcher: download the `mixed` config on demand into a gitignored cache, verify it, and never commit audio
+- [x] Task 1.1: Add an `eval` optional extra (`jiwer`, `pyarrow`) — never a core or backend dependency
+- [~] Task 1.2: Write the dataset fetcher: download the `mixed` config on demand into a gitignored cache, verify it, and never commit audio
 - [ ] Task 1.3: Implement reference cleaning for CHAT markup — `(.)` pauses, `<>` retracing, `+` continuations, `mani(cure)` partials — with tests over hand-written examples
 - [ ] Task 1.4: Implement scoring: WER via `jiwer`, plus a language-mix measure reporting transcribed Spanish share against the reference share
 - [ ] Task 1.5: Write the eval runner — takes a backend name and config, runs the `mixed` subset, writes a JSON report
