@@ -158,7 +158,9 @@ class FasterWhisperBackend(TranscriptionBackend):
       Defaults to the full ladder, which re-decodes segments that fail Whisper's
       quality thresholds. Reproducible because `seed` is pinned.
     - `seed`: seeds CTranslate2's RNG, making sampled decoding reproducible.
-      Defaults to 0.
+      Defaults to 0. The model is rebuilt per file to apply it, costing about
+      1.7 s per file for `large-v3`. `None` skips that and reuses the loaded
+      model: faster for many short files, and not reproducible.
     - `condition_on_previous_text`: feed each segment the previous one as
       context. Defaults to True. Turning it off can break repetition loops.
     - `repetition_penalty`: penalize repeated tokens. Defaults to 1.0, no penalty.
@@ -239,11 +241,7 @@ class FasterWhisperBackend(TranscriptionBackend):
             _preload_cuda_libraries()
         for device in candidates:
             try:
-                model = WhisperModel(
-                    model_name,
-                    device=device,
-                    compute_type=self.config["compute_type"],
-                )
+                model = self._build_model(device)
                 self._smoke_test(model)
             except Exception as error:  # noqa: BLE001 - collected and reported below
                 failures.append(f"{device}: {error}")
@@ -258,6 +256,22 @@ class FasterWhisperBackend(TranscriptionBackend):
             "Weights download on first use and need network access. For a CUDA "
             "failure, install the runtime libraries "
             "(pip install nvidia-cublas-cu12 nvidia-cudnn-cu12) or set device=cpu.",
+        )
+
+    def _build_model(self, device: str) -> WhisperModel:
+        """Construct a model on `device`, seeding the RNG first.
+
+        CTranslate2's seed binds when the model is constructed, not when it
+        decodes: calling `set_random_seed` between two decodes on one model has
+        no effect, which was measured. Seeding here is therefore the only point
+        at which it does anything.
+        """
+        if self.config["seed"] is not None:
+            ctranslate2.set_random_seed(self.config["seed"])
+        return WhisperModel(
+            self.config["model"],
+            device=device,
+            compute_type=self.config["compute_type"],
         )
 
     def _candidate_devices(self) -> tuple[str, ...]:
@@ -294,6 +308,29 @@ class FasterWhisperBackend(TranscriptionBackend):
             )
         return self._model
 
+    def _model_for_file(self) -> WhisperModel:
+        """Return a model to transcribe one file with.
+
+        With a seed configured the model is rebuilt per file, because that is
+        what re-seeds the RNG. It makes a file's transcript independent of how
+        many files preceded it in the batch — without it, the same recording
+        scored WER 0.375 alone and 0.476 as the fifth file of a run.
+
+        Rebuilding `large-v3` from cache costs about 1.7 s against minutes of
+        transcription. `seed: None` skips it and reuses the loaded model, which
+        is faster for many short files and not reproducible.
+        """
+        if self._model is None:
+            self.check_requirements()
+        if self.config["seed"] is None:
+            assert self._model is not None
+            return self._model
+        # Replacing the reference frees the previous model rather than holding
+        # two copies of the weights on the device.
+        self._model = None
+        self._model = self._build_model(self._resolved_device or "cpu")
+        return self._model
+
     def transcribe(self, audio_path: Path, source: str) -> Transcript:
         """Transcribe one decoded file and normalize the result.
 
@@ -307,10 +344,7 @@ class FasterWhisperBackend(TranscriptionBackend):
         Raises:
             TranscriptionError: If this file cannot be transcribed.
         """
-        model = self._load_model()
-        # Seeded per file, not once per run: seeding per run would make a
-        # transcript depend on how many files preceded it in the batch.
-        ctranslate2.set_random_seed(self.config["seed"])
+        model = self._model_for_file()
         try:
             native_segments, info = model.transcribe(
                 str(audio_path), **self._decode_options()

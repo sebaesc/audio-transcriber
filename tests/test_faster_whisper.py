@@ -326,11 +326,10 @@ def test_temperature_is_forwarded_to_the_engine(backend, monkeypatch, tmp_path):
 
             return iter(()), _Info()
 
-    monkeypatch.setattr(
-        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
-        lambda value: None,
-    )
-    monkeypatch.setattr(backend, "_model", _Model())
+    stub = _Model()
+    monkeypatch.setattr(backend, "_model", stub)
+    monkeypatch.setattr(backend, "_build_model", lambda device: stub)
+    backend._resolved_device = "cpu"
     backend.transcribe(tmp_path / "a.wav", "a.wav")
 
     assert (
@@ -386,7 +385,7 @@ def test_every_recorded_option_reaches_the_decoder(monkeypatch, tmp_path):
         "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
         lambda value: None,
     )
-    backend = FasterWhisperBackend(model="tiny")
+    backend = FasterWhisperBackend(model="tiny", seed=None)
     monkeypatch.setattr(backend, "_model", _Model())
     backend.transcribe(tmp_path / "a.wav", "a.wav")
 
@@ -417,7 +416,9 @@ def test_repetition_controls_are_forwarded(monkeypatch, tmp_path):
         "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
         lambda value: None,
     )
-    backend = FasterWhisperBackend(repetition_penalty=1.1, no_repeat_ngram_size=3)
+    backend = FasterWhisperBackend(
+        repetition_penalty=1.1, no_repeat_ngram_size=3, seed=None
+    )
     monkeypatch.setattr(backend, "_model", _Model())
     backend.transcribe(tmp_path / "a.wav", "a.wav")
 
@@ -449,18 +450,14 @@ def test_seed_is_recorded_in_the_effective_config():
     assert FasterWhisperBackend().effective_config()["seed"] == 0
 
 
-def test_seed_is_applied_before_every_file(monkeypatch, tmp_path):
-    """Per file, not per run.
+def test_a_seed_rebuilds_the_model_for_every_file(monkeypatch, tmp_path):
+    """The seed binds when the model is built, so applying it means rebuilding.
 
-    Seeding once per process would make a file's transcript depend on how many
-    files preceded it, so transcribing a directory would not match transcribing
-    one file from it.
+    An earlier version called `set_random_seed` between decodes on one model and
+    asserted only that the call happened. It happened, and it did nothing: the
+    same recording still scored 0.375 alone and 0.476 as the fifth file of a run.
     """
-    seeds = []
-    monkeypatch.setattr(
-        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
-        seeds.append,
-    )
+    builds = []
 
     class _Model:
         def transcribe(self, audio, **kwargs):
@@ -470,12 +467,57 @@ def test_seed_is_applied_before_every_file(monkeypatch, tmp_path):
 
             return iter(()), _Info()
 
-    backend = FasterWhisperBackend(seed=1234)
+    backend = FasterWhisperBackend(seed=7)
+    backend._resolved_device = "cpu"
     monkeypatch.setattr(backend, "_model", _Model())
+    monkeypatch.setattr(
+        backend, "_build_model", lambda device: builds.append(device) or _Model()
+    )
+
     backend.transcribe(tmp_path / "a.wav", "a.wav")
     backend.transcribe(tmp_path / "b.wav", "b.wav")
 
-    assert seeds == [1234, 1234]
+    assert builds == ["cpu", "cpu"]
+
+
+def test_no_seed_reuses_the_loaded_model(monkeypatch, tmp_path):
+    """Opting out of reproducibility should also opt out of its cost."""
+    builds = []
+
+    class _Model:
+        def transcribe(self, audio, **kwargs):
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    backend = FasterWhisperBackend(seed=None)
+    monkeypatch.setattr(backend, "_model", _Model())
+    monkeypatch.setattr(
+        backend, "_build_model", lambda device: builds.append(device) or _Model()
+    )
+
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert builds == []
+
+
+def test_build_model_seeds_before_construction(monkeypatch):
+    """Seeding after construction is too late, which is the whole bug."""
+    order = []
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        lambda value: order.append(f"seed:{value}"),
+    )
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.WhisperModel",
+        lambda *args, **kwargs: order.append("build"),
+    )
+
+    FasterWhisperBackend(seed=99, model="tiny")._build_model("cpu")
+
+    assert order == ["seed:99", "build"]
 
 
 def test_the_seed_is_not_passed_to_the_decoder(monkeypatch, tmp_path):
@@ -496,7 +538,7 @@ def test_the_seed_is_not_passed_to_the_decoder(monkeypatch, tmp_path):
 
             return iter(()), _Info()
 
-    backend = FasterWhisperBackend()
+    backend = FasterWhisperBackend(seed=None)
     monkeypatch.setattr(backend, "_model", _Model())
     backend.transcribe(tmp_path / "a.wav", "a.wav")
 
