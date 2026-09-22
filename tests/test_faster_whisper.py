@@ -209,3 +209,30 @@ def test_resolved_device_is_recorded_for_reproducibility(backend, monkeypatch):
     backend.check_requirements()
 
     assert backend.effective_config()["device"] == "cpu"
+
+
+def test_cuda_preload_is_idempotent_and_never_raises(monkeypatch):
+    """Preloading runs before every CUDA attempt, and a missing library is not fatal.
+
+    The device smoke test decides whether CUDA works; preloading only makes the
+    pip-installed libraries findable.
+    """
+    from audio_transcriber.backends import faster_whisper as module
+
+    monkeypatch.setattr(module, "_cuda_preloaded", False)
+    monkeypatch.setattr(module.site, "getsitepackages", lambda: ["/nonexistent"])
+
+    module._preload_cuda_libraries()
+    module._preload_cuda_libraries()
+
+
+def test_cuda_preload_skips_work_once_done(monkeypatch):
+    from audio_transcriber.backends import faster_whisper as module
+
+    calls = []
+    monkeypatch.setattr(module, "_cuda_preloaded", True)
+    monkeypatch.setattr(module.site, "getsitepackages", lambda: calls.append(1) or [])
+
+    module._preload_cuda_libraries()
+
+    assert calls == []

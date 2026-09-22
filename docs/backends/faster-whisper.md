@@ -93,6 +93,38 @@ counterparts at the same size.
 enough. A missing `libcublas` is the usual symptom, reported at validation time by the device
 check above. `float16` is the usual compute type on GPU.
 
+Install the libraries into the venv:
+
+```bash
+.venv/bin/pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
+```
+
+No `LD_LIBRARY_PATH` is needed. CTranslate2 loads cuBLAS and cuDNN by name through the dynamic
+linker, which does not search site-packages, and `LD_LIBRARY_PATH` is read at process start so
+setting it from inside Python is too late. The backend instead preloads those objects with
+`RTLD_GLOBAL` before trying CUDA, which puts them where CTranslate2's own `dlopen` finds them. A
+system-wide CUDA install needs none of this and is unaffected.
+
+### Measured VRAM
+
+On an RTX 3060 (8 GB, WSL2), CUDA 12 libraries from the wheels above, measured with
+`nvidia-smi` while transcribing:
+
+| Model | `float16` | `int8_float16` |
+| ----- | --------- | -------------- |
+| `tiny` | 245 MB | |
+| `base` | 373 MB | |
+| `small` | 790 MB | |
+| `medium` | 2.0 GB | |
+| `large-v3` | 3.8 GB | 1.9 GB |
+
+An 8 GB card runs `large-v3` at `float16` with room to spare. Use `int8_float16` to halve the
+memory when sharing the GPU with something else.
+
+Throughput is not tabulated here on purpose: a meaningful figure needs real speech, and the
+project has no licensed audio fixture yet. Expect roughly an order of magnitude over CPU for the
+same model.
+
 **Memory** scales with model size. Plan for roughly the download size in RAM with `int8`, more
 with `float32`.
 
@@ -111,6 +143,8 @@ magnitude, not a benchmark — it scales down substantially with larger models.
 - **Hallucination on silence and noise.** Whisper can emit plausible text for audio containing no
   speech. `vad_filter` is on by default because it removes most of this; turning it off makes the
   problem noticeably worse.
+- **First load of a large model is slow.** `large-v3` took about 70 s to download and load on
+  first use; subsequent loads come from cache in a few seconds.
 - **First run is slow and needs network.** Weights download on first use. In an offline or
   air-gapped environment, pre-populate the Hugging Face cache or pass a path to converted weights
   as `model`.

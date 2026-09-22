@@ -15,6 +15,11 @@ installed rather than failing at import time.
 
 from __future__ import annotations
 
+import ctypes
+import glob
+import logging
+import os
+import site
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +50,47 @@ KNOWN_MODELS = (
 
 #: Length of the silent buffer the device smoke test decodes, in samples.
 _SMOKE_TEST_SAMPLES = 16_000
+
+#: CUDA libraries CTranslate2 loads by name, in dependency order. Installed by
+#: the `nvidia-cublas-cu12` and `nvidia-cudnn-cu12` wheels.
+_CUDA_LIBRARIES = (
+    "cublas/lib/libcublas.so*",
+    "cublas/lib/libcublasLt.so*",
+    "cudnn/lib/libcudnn.so*",
+)
+
+_logger = logging.getLogger(__name__)
+_cuda_preloaded = False
+
+
+def _preload_cuda_libraries() -> None:
+    """Load pip-installed CUDA libraries into the process.
+
+    CTranslate2 loads cuBLAS and cuDNN by name through the dynamic linker, which
+    does not search site-packages. The usual fix is to export `LD_LIBRARY_PATH`
+    before starting Python, but glibc reads that at process start, so setting it
+    from inside the process is too late. Loading the objects here with
+    `RTLD_GLOBAL` puts them in the global symbol namespace, where CTranslate2's
+    own `dlopen` finds them already resident.
+
+    A system-wide CUDA install needs none of this: the linker finds those
+    libraries on its own and the loads below simply find nothing to do. Failures
+    are logged and ignored, because the device smoke test is what decides whether
+    CUDA actually works.
+    """
+    global _cuda_preloaded
+    if _cuda_preloaded:
+        return
+    _cuda_preloaded = True
+
+    for directory in site.getsitepackages():
+        for pattern in _CUDA_LIBRARIES:
+            for path in sorted(glob.glob(os.path.join(directory, "nvidia", pattern))):
+                try:
+                    ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)
+                except OSError as error:
+                    _logger.debug("could not preload %s: %s", path, error)
+
 
 _DEFAULTS: dict[str, Any] = {
     "model": "base",
@@ -131,7 +177,10 @@ class FasterWhisperBackend(TranscriptionBackend):
             )
 
         failures: list[str] = []
-        for device in self._candidate_devices():
+        candidates = self._candidate_devices()
+        if "cuda" in candidates:
+            _preload_cuda_libraries()
+        for device in candidates:
             try:
                 model = WhisperModel(
                     model_name,
@@ -150,7 +199,8 @@ class FasterWhisperBackend(TranscriptionBackend):
             self.name,
             f"could not run model {model_name!r} on any device. " + "; ".join(failures),
             "Weights download on first use and need network access. For a CUDA "
-            "failure, install the CUDA runtime libraries or set device=cpu.",
+            "failure, install the runtime libraries "
+            "(pip install nvidia-cublas-cu12 nvidia-cudnn-cu12) or set device=cpu.",
         )
 
     def _candidate_devices(self) -> tuple[str, ...]:
