@@ -25,10 +25,15 @@ from typing import Any
 
 import ctranslate2
 import numpy as np
-from faster_whisper import WhisperModel
+from faster_whisper import WhisperModel, decode_audio
 from faster_whisper.version import __version__ as _FASTER_WHISPER_VERSION
 
 from audio_transcriber.backend import Capabilities, TranscriptionBackend
+from audio_transcriber.backends.chunking import (
+    DEFAULT_TARGET_SECONDS,
+    SAMPLE_RATE,
+    speech_chunks,
+)
 from audio_transcriber.errors import BackendRequirementError, TranscriptionError
 from audio_transcriber.registry import register
 from audio_transcriber.schema import Segment, Transcript
@@ -114,6 +119,19 @@ _DEFAULTS: dict[str, Any] = {
     # them — so choosing a seed by its score fits noise rather than improving
     # anything. Treat that spread as the measurement's noise floor.
     "seed": 0,
+    # How language is decided. `file` detects once for the whole recording, which
+    # is what Whisper does natively. `chunked` detects per speech chunk, so a
+    # recording that switches language mid-way can say so.
+    "language_detection": "file",
+    # Languages detection may choose between. Restricting it removes the long
+    # tail of false positives: a Spanish-English corpus has no business being
+    # identified as Welsh. None allows every language the model knows.
+    "languages": None,
+    # Below this probability a chunk keeps the file-level language rather than
+    # trusting its own detection.
+    "language_threshold": 0.5,
+    # Target chunk length for `chunked` detection, in seconds.
+    "chunk_seconds": DEFAULT_TARGET_SECONDS,
     # Conditioning on previous text helps context, but it also carries any
     # divergence into every later segment. Exposed because it is the lever to
     # reach for when a recording falls into a repetition loop.
@@ -133,10 +151,17 @@ _DEFAULTS: dict[str, Any] = {
     "no_speech_threshold": 0.6,
 }
 
+#: Options this backend consumes itself rather than passing to the decoder.
+_PIPELINE_OPTIONS = frozenset(
+    {"language_detection", "languages", "language_threshold", "chunk_seconds"}
+)
+
 #: Options that are not decode keywords: they configure how the model is loaded,
 #: or are applied some other way. `seed` goes to CTranslate2's RNG rather than to
 #: `transcribe()`, which would reject it.
-_NON_DECODE_OPTIONS = frozenset({"model", "device", "compute_type", "seed"})
+_NON_DECODE_OPTIONS = (
+    frozenset({"model", "device", "compute_type", "seed"}) | _PIPELINE_OPTIONS
+)
 
 
 @register
@@ -157,6 +182,14 @@ class FasterWhisperBackend(TranscriptionBackend):
     - `temperature`: decoding temperature, or a list forming a fallback ladder.
       Defaults to the full ladder, which re-decodes segments that fail Whisper's
       quality thresholds. Reproducible because `seed` is pinned.
+    - `language_detection`: `file` (default) detects one language for the whole
+      recording, as Whisper does natively. `chunked` detects per speech chunk, so
+      a bilingual recording can report both.
+    - `languages`: the languages detection may choose between, e.g. `["en","es"]`.
+      None allows all of them.
+    - `language_threshold`: below this probability a chunk falls back to the
+      file-level language. Defaults to 0.5.
+    - `chunk_seconds`: target chunk length for `chunked` detection.
     - `seed`: seeds CTranslate2's RNG, making sampled decoding reproducible.
       Defaults to 0. The model is rebuilt per file to apply it, costing about
       1.7 s per file for `large-v3`. `None` skips that and reuses the loaded
@@ -331,6 +364,97 @@ class FasterWhisperBackend(TranscriptionBackend):
         self._model = self._build_model(self._resolved_device or "cpu")
         return self._model
 
+    def _allowed_languages(self) -> tuple[str, ...] | None:
+        """Return the languages detection may choose between, or None for all."""
+        languages = self.config["languages"]
+        if not languages:
+            return None
+        if isinstance(languages, str):
+            languages = [item.strip() for item in languages.split(",") if item.strip()]
+        return tuple(languages)
+
+    def _detect_language(
+        self, model: WhisperModel, samples
+    ) -> tuple[str | None, float]:
+        """Detect the language of one chunk, within the allowed set.
+
+        Taking the best allowed language rather than the global argmax matters:
+        on a Spanish-English corpus the model will occasionally rank Portuguese
+        or Galician first, and acting on that helps nobody.
+
+        Returns:
+            The language code and its probability, or (None, 0.0) if nothing in
+            the allowed set was ranked.
+        """
+        _, _, probabilities = model.detect_language(audio=samples)
+        allowed = self._allowed_languages()
+        ranked = [
+            (language, probability)
+            for language, probability in probabilities
+            if allowed is None or language in allowed
+        ]
+        if not ranked:
+            return None, 0.0
+        return max(ranked, key=lambda item: item[1])
+
+    def _transcribe_chunked(
+        self, model: WhisperModel, audio_path: Path, source: str
+    ) -> Transcript:
+        """Transcribe by detecting the language of each speech chunk.
+
+        Whisper decides one language per file and decodes everything under it,
+        which for bilingual audio means the other language is mislabelled and
+        transcribed in the wrong orthography. Detecting per chunk lets a
+        recording say what it actually contains.
+
+        Chunk-relative timings are shifted back onto the recording's own
+        timeline, so segment times mean the same thing in either mode.
+        """
+        samples = decode_audio(str(audio_path), sampling_rate=SAMPLE_RATE)
+        duration = len(samples) / SAMPLE_RATE
+        chunks = speech_chunks(samples, float(self.config["chunk_seconds"]))
+
+        file_language, _ = self._detect_language(model, samples)
+        threshold = float(self.config["language_threshold"])
+        options = self._decode_options()
+        # The chunks are already speech; running VAD again inside each one only
+        # risks trimming its edges.
+        options["vad_filter"] = False
+
+        segments: list[Segment] = []
+        previous_end = 0.0
+        for chunk in chunks:
+            piece = samples[chunk.start : chunk.end]
+            language, probability = self._detect_language(model, piece)
+            if language is None or probability < threshold:
+                language = file_language
+            native, _ = model.transcribe(piece, **{**options, "language": language})
+
+            for segment in self._normalize(native, language, duration=chunk.duration):
+                start = max(segment.start_time + chunk.start_time, previous_end)
+                end = max(segment.end_time + chunk.start_time, start)
+                if start >= duration:
+                    continue
+                segments.append(
+                    Segment(
+                        start_time=start,
+                        end_time=min(end, duration),
+                        text=segment.text,
+                        speaker=None,
+                        spoken_language=segment.spoken_language,
+                    )
+                )
+                previous_end = segments[-1].end_time
+
+        return Transcript(
+            source=source,
+            segments=tuple(segments),
+            language=file_language,
+            duration=duration,
+            backend=self.name,
+            model_version=self.model_version(),
+        )
+
     def transcribe(self, audio_path: Path, source: str) -> Transcript:
         """Transcribe one decoded file and normalize the result.
 
@@ -345,6 +469,11 @@ class FasterWhisperBackend(TranscriptionBackend):
             TranscriptionError: If this file cannot be transcribed.
         """
         model = self._model_for_file()
+        if self.config["language_detection"] == "chunked":
+            try:
+                return self._transcribe_chunked(model, audio_path, source)
+            except Exception as error:  # noqa: BLE001 - one file failing is not fatal
+                raise TranscriptionError(source, self.name, str(error)) from error
         try:
             native_segments, info = model.transcribe(
                 str(audio_path), **self._decode_options()
