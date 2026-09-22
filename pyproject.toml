@@ -48,3 +48,10 @@ ignore = ["E501"] # line length is handled by the formatter
 
 [tool.ruff.lint.isort]
 known-first-party = ["audio_transcriber"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "conformance: shared contract tests every backend must pass",
+]
