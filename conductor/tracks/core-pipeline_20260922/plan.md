@@ -25,7 +25,7 @@ Create the Python package, build config, and lint setup. No pipeline logic yet.
 
 ### Tasks
 
-- [ ] Task 1.1: Create `pyproject.toml` — package metadata, Python 3.12 requirement, `[project.optional-dependencies]` with `dev` and a placeholder for backend extras
+- [x] Task 1.1: Create `pyproject.toml` — package metadata, Python 3.12 requirement, `[project.optional-dependencies]` with `dev` and a placeholder for backend extras
 - [ ] Task 1.2: Configure `[tool.ruff]` in `pyproject.toml` (lint + format), per `conductor/code_styleguides/python.md`
 - [ ] Task 1.3: Create the package layout: `src/audio_transcriber/` with `__init__.py`, `__main__.py`, and empty `backends/` package; `tests/` alongside
 - [ ] Task 1.4: Add `pytest` config and confirm `.venv/bin/pip install -e ".[dev]"` succeeds
