@@ -99,6 +99,12 @@ a silent buffer on each candidate device, falls back to CPU under `auto`, and re
 resolved device in the effective config. Task 3.1 was already satisfied by Task 1.1, which
 declared the extra.
 
+**2026-09-22 — GPU support.** Follow-up to the above, after confirming the development machine has
+an RTX 3060. The CUDA runtime libraries are installed as wheels rather than system-wide, and the
+backend preloads them with `RTLD_GLOBAL` because `LD_LIBRARY_PATH` is read too early to be set
+from inside Python. `device: auto` now resolves to `cuda`. Measured VRAM per model size is in the
+backend doc page.
+
 ## Phase 4: Run Orchestration
 
 Assemble the pipeline: discover inputs, decode audio, run the backend per file, and write outputs.
