@@ -1,0 +1,168 @@
+{
+  "label": "chunked",
+  "created_at": "2026-09-22T20:12:21.676104+00:00",
+  "tool_version": "0.1.0",
+  "backend": "faster-whisper",
+  "model_version": "faster-whisper-1.2.1/large-v3",
+  "config": {
+    "model": "large-v3",
+    "device": "cuda",
+    "compute_type": "default",
+    "language": null,
+    "beam_size": 5,
+    "vad_filter": true,
+    "temperature": "[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]",
+    "seed": 0,
+    "language_detection": "chunked",
+    "languages": "['en', 'es']",
+    "language_threshold": 0.5,
+    "chunk_seconds": 25.0,
+    "condition_on_previous_text": true,
+    "repetition_penalty": 1.0,
+    "no_repeat_ngram_size": 0,
+    "best_of": 5,
+    "patience": 1.0,
+    "length_penalty": 1.0,
+    "compression_ratio_threshold": 2.4,
+    "log_prob_threshold": -1.0,
+    "no_speech_threshold": 0.6
+  },
+  "corpus": {
+    "dataset": "BrunoHays/Bangor-Miami-Spanish-English-Corpus",
+    "license": "CC BY-SA 3.0"
+  },
+  "summary": {
+    "recordings": 5,
+    "scored": 5,
+    "mean_wer": 0.3509,
+    "mean_coverage": 0.8496,
+    "mean_language_mix_error": 0.0396
+  },
+  "recordings": [
+    {
+      "name": "herring17",
+      "duration_s": 1801.3,
+      "elapsed_s": 245.1,
+      "realtime_factor": 7.3,
+      "segments": 536,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.4633,
+        "coverage": 0.7426,
+        "language_mix_error": 0.0836,
+        "reference_spanish_share": 0.5751,
+        "hypothesis_spanish_share": 0.4916,
+        "substitutions": 1110,
+        "deletions": 1622,
+        "insertions": 67,
+        "hits": 3310,
+        "reference_words": 6042,
+        "hypothesis_words": 4487
+      },
+      "error": null
+    },
+    {
+      "name": "maria20",
+      "duration_s": 1914.6,
+      "elapsed_s": 92.1,
+      "realtime_factor": 20.8,
+      "segments": 183,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.3375,
+        "coverage": 0.8743,
+        "language_mix_error": 0.0352,
+        "reference_spanish_share": 0.5523,
+        "hypothesis_spanish_share": 0.5172,
+        "substitutions": 244,
+        "deletions": 252,
+        "insertions": 49,
+        "hits": 1119,
+        "reference_words": 1615,
+        "hypothesis_words": 1412
+      },
+      "error": null
+    },
+    {
+      "name": "sastre8",
+      "duration_s": 2003.1,
+      "elapsed_s": 261.3,
+      "realtime_factor": 7.7,
+      "segments": 769,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.2842,
+        "coverage": 0.9076,
+        "language_mix_error": 0.0196,
+        "reference_spanish_share": 0.5659,
+        "hypothesis_spanish_share": 0.5464,
+        "substitutions": 823,
+        "deletions": 679,
+        "insertions": 144,
+        "hits": 4289,
+        "reference_words": 5791,
+        "hypothesis_words": 5256
+      },
+      "error": null
+    },
+    {
+      "name": "zeledon14",
+      "duration_s": 1984.9,
+      "elapsed_s": 275.0,
+      "realtime_factor": 7.2,
+      "segments": 621,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.2877,
+        "coverage": 0.913,
+        "language_mix_error": 0.0253,
+        "reference_spanish_share": 0.9063,
+        "hypothesis_spanish_share": 0.9317,
+        "substitutions": 986,
+        "deletions": 773,
+        "insertions": 185,
+        "hits": 4999,
+        "reference_words": 6758,
+        "hypothesis_words": 6170
+      },
+      "error": null
+    },
+    {
+      "name": "zeledon4",
+      "duration_s": 1310.9,
+      "elapsed_s": 182.9,
+      "realtime_factor": 7.2,
+      "segments": 492,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.3818,
+        "coverage": 0.8104,
+        "language_mix_error": 0.0342,
+        "reference_spanish_share": 0.6055,
+        "hypothesis_spanish_share": 0.5713,
+        "substitutions": 698,
+        "deletions": 858,
+        "insertions": 57,
+        "hits": 2669,
+        "reference_words": 4225,
+        "hypothesis_words": 3424
+      },
+      "error": null
+    }
+  ]
+}

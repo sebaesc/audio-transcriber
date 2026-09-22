@@ -397,6 +397,33 @@ class FasterWhisperBackend(TranscriptionBackend):
             return None, 0.0
         return max(ranked, key=lambda item: item[1])
 
+    def _language_spans(
+        self,
+        model: WhisperModel,
+        samples,
+        chunks: list,
+        file_language: str | None,
+        threshold: float,
+    ) -> list[tuple[int, int, str | None]]:
+        """Detect a language per chunk, then merge neighbours that agree.
+
+        Returns:
+            (start_sample, end_sample, language) spans covering the chunks, each
+            a contiguous run of audio sharing one detected language.
+        """
+        spans: list[tuple[int, int, str | None]] = []
+        for chunk in chunks:
+            language, probability = self._detect_language(
+                model, samples[chunk.start : chunk.end]
+            )
+            if language is None or probability < threshold:
+                language = file_language
+            if spans and spans[-1][2] == language:
+                spans[-1] = (spans[-1][0], chunk.end, language)
+            else:
+                spans.append((chunk.start, chunk.end, language))
+        return spans
+
     def _transcribe_chunked(
         self, model: WhisperModel, audio_path: Path, source: str
     ) -> Transcript:
@@ -421,18 +448,24 @@ class FasterWhisperBackend(TranscriptionBackend):
         # risks trimming its edges.
         options["vad_filter"] = False
 
+        # Detect per chunk, then transcribe consecutive chunks that agree as one
+        # span. Every boundary costs content — a word cut across two decodes is
+        # transcribed badly in both — so the fewer boundaries the better, and
+        # neighbouring chunks usually share a language. Detection stays
+        # fine-grained; only decoding is coarsened.
+        spans = self._language_spans(model, samples, chunks, file_language, threshold)
+
         segments: list[Segment] = []
         previous_end = 0.0
-        for chunk in chunks:
-            piece = samples[chunk.start : chunk.end]
-            language, probability = self._detect_language(model, piece)
-            if language is None or probability < threshold:
-                language = file_language
+        for start_sample, end_sample, language in spans:
+            piece = samples[start_sample:end_sample]
+            span_start = start_sample / SAMPLE_RATE
+            span_duration = len(piece) / SAMPLE_RATE
             native, _ = model.transcribe(piece, **{**options, "language": language})
 
-            for segment in self._normalize(native, language, duration=chunk.duration):
-                start = max(segment.start_time + chunk.start_time, previous_end)
-                end = max(segment.end_time + chunk.start_time, start)
+            for segment in self._normalize(native, language, duration=span_duration):
+                start = max(segment.start_time + span_start, previous_end)
+                end = max(segment.end_time + span_start, start)
                 if start >= duration:
                     continue
                 segments.append(

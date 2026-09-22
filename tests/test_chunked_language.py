@@ -60,6 +60,23 @@ def _backend(**config) -> FasterWhisperBackend:
     return backend
 
 
+class _Chunk:
+    def __init__(self, start, end):
+        self.start, self.end = int(start * SAMPLE_RATE), int(end * SAMPLE_RATE)
+
+    @property
+    def start_time(self):
+        return self.start / SAMPLE_RATE
+
+    @property
+    def duration(self):
+        return (self.end - self.start) / SAMPLE_RATE
+
+
+def _chunks(bounds):
+    return [_Chunk(a, b) for a, b in bounds]
+
+
 def _patch_audio(monkeypatch, seconds: float, chunk_bounds):
     """Give the backend fixed audio and fixed chunk boundaries."""
     samples = np.zeros(int(seconds * SAMPLE_RATE), dtype=np.float32)
@@ -68,21 +85,9 @@ def _patch_audio(monkeypatch, seconds: float, chunk_bounds):
         lambda *a, **k: samples,
     )
 
-    class _Chunk:
-        def __init__(self, start, end):
-            self.start, self.end = int(start * SAMPLE_RATE), int(end * SAMPLE_RATE)
-
-        @property
-        def start_time(self):
-            return self.start / SAMPLE_RATE
-
-        @property
-        def duration(self):
-            return (self.end - self.start) / SAMPLE_RATE
-
     monkeypatch.setattr(
         "audio_transcriber.backends.faster_whisper.speech_chunks",
-        lambda *a, **k: [_Chunk(a, b) for a, b in chunk_bounds],
+        lambda *a, **k: _chunks(chunk_bounds),
     )
     return samples
 
@@ -119,19 +124,38 @@ def test_no_allowed_language_ranked_reports_nothing():
     assert backend._detect_language(model, None) == (None, 0.0)
 
 
-def test_chunk_times_are_shifted_onto_the_recording_timeline(monkeypatch):
-    """A segment 1s into the third chunk is not 1s into the recording."""
+def test_span_times_are_shifted_onto_the_recording_timeline(monkeypatch):
+    """A segment 1s into the third span is not 1s into the recording.
+
+    Spans are used rather than chunks because same-language chunks are merged;
+    alternating the detected language keeps them separate so the shift is
+    observable.
+    """
     backend = _backend()
     _patch_audio(monkeypatch, 90.0, [(0, 25), (25, 50), (50, 75)])
-    model = _Model(
-        [("en", 0.9), ("es", 0.1)],
-        {"en": [_NativeSegment(0.0, 2.0, "hello")]},
-    )
 
-    transcript = backend._transcribe_chunked(model, Path("a.wav"), "a.wav")
+    class _Alternating(_Model):
+        def __init__(self):
+            super().__init__([], {None: [_NativeSegment(0.0, 2.0, "hello")]})
+            self.calls = 0
 
-    starts = [s.start_time for s in transcript.segments]
-    assert starts == [0.0, 25.0, 50.0]
+        def detect_language(self, audio=None):
+            self.calls += 1
+            code = "en" if self.calls % 2 else "es"
+            probs = [(code, 0.95)]
+            return code, 0.95, probs
+
+        def transcribe(self, audio, **kwargs):
+            self.transcribe_calls.append(kwargs)
+
+            class _Info:
+                pass
+
+            return iter([_NativeSegment(0.0, 2.0, "hello")]), _Info()
+
+    transcript = backend._transcribe_chunked(_Alternating(), Path("a.wav"), "a.wav")
+
+    assert [s.start_time for s in transcript.segments] == [0.0, 25.0, 50.0]
 
 
 def test_segments_stay_ordered_and_non_overlapping(monkeypatch):
@@ -244,3 +268,53 @@ def test_pipeline_options_are_not_passed_to_the_decoder(monkeypatch):
 def test_an_unknown_option_is_still_rejected():
     with pytest.raises(BackendRequirementError, match="unknown option"):
         FasterWhisperBackend(langauges=["en"])
+
+
+def test_adjacent_chunks_of_one_language_become_a_single_span(monkeypatch):
+    """Every decode boundary costs content, so agreeing neighbours are merged."""
+    backend = _backend()
+    samples = _patch_audio(monkeypatch, 75.0, [(0, 25), (25, 50), (50, 75)])
+    model = _Model([("en", 0.9), ("es", 0.1)])
+
+    spans = backend._language_spans(
+        model, samples, _chunks([(0, 25), (25, 50), (50, 75)]), "en", 0.5
+    )
+
+    assert spans == [(0, 75 * SAMPLE_RATE, "en")]
+
+
+def test_a_language_change_starts_a_new_span(monkeypatch):
+    backend = _backend()
+    samples = np.zeros(75 * SAMPLE_RATE, dtype=np.float32)
+
+    class _Switching(_Model):
+        def __init__(self):
+            super().__init__([])
+            self.calls = 0
+
+        def detect_language(self, audio=None):
+            self.calls += 1
+            probs = (
+                [("en", 0.9), ("es", 0.1)]
+                if self.calls == 1
+                else [("es", 0.9), ("en", 0.1)]
+            )
+            return probs[0][0], probs[0][1], probs
+
+    spans = backend._language_spans(
+        _Switching(), samples, _chunks([(0, 25), (25, 50)]), "en", 0.5
+    )
+
+    assert len(spans) == 2
+    assert [s[2] for s in spans] == ["en", "es"]
+
+
+def test_merging_reduces_the_number_of_decodes(monkeypatch):
+    """Fewer decodes is the point: it is why coverage recovers."""
+    backend = _backend()
+    _patch_audio(monkeypatch, 75.0, [(0, 25), (25, 50), (50, 75)])
+    model = _Model([("en", 0.9), ("es", 0.1)])
+
+    backend._transcribe_chunked(model, Path("a.wav"), "a.wav")
+
+    assert len(model.transcribe_calls) == 1
