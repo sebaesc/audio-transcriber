@@ -1,0 +1,148 @@
+{
+  "label": "baseline",
+  "created_at": "2026-09-22T16:40:58.422423+00:00",
+  "tool_version": "0.1.0",
+  "backend": "faster-whisper",
+  "model_version": "faster-whisper-1.2.1/large-v3",
+  "config": {
+    "model": "large-v3",
+    "device": "cuda",
+    "compute_type": "default",
+    "language": null,
+    "beam_size": 5,
+    "vad_filter": true
+  },
+  "corpus": {
+    "dataset": "BrunoHays/Bangor-Miami-Spanish-English-Corpus",
+    "license": "CC BY-SA 3.0"
+  },
+  "summary": {
+    "recordings": 5,
+    "scored": 5,
+    "mean_wer": 0.3855,
+    "mean_coverage": 0.9051,
+    "mean_language_mix_error": 0.1365
+  },
+  "recordings": [
+    {
+      "name": "herring17",
+      "duration_s": 1801.3,
+      "elapsed_s": 358.7,
+      "realtime_factor": 5.0,
+      "segments": 820,
+      "detected_languages": [
+        "en"
+      ],
+      "score": {
+        "wer": 0.4129,
+        "coverage": 0.8547,
+        "language_mix_error": 0.1908,
+        "reference_spanish_share": 0.5751,
+        "hypothesis_spanish_share": 0.3843,
+        "substitutions": 1123,
+        "deletions": 1125,
+        "insertions": 247,
+        "hits": 3794,
+        "reference_words": 6042,
+        "hypothesis_words": 5164
+      },
+      "error": null
+    },
+    {
+      "name": "maria20",
+      "duration_s": 1914.6,
+      "elapsed_s": 116.6,
+      "realtime_factor": 16.4,
+      "segments": 224,
+      "detected_languages": [
+        "en"
+      ],
+      "score": {
+        "wer": 0.4625,
+        "coverage": 0.9294,
+        "language_mix_error": 0.2341,
+        "reference_spanish_share": 0.5523,
+        "hypothesis_spanish_share": 0.3182,
+        "substitutions": 409,
+        "deletions": 226,
+        "insertions": 112,
+        "hits": 980,
+        "reference_words": 1615,
+        "hypothesis_words": 1501
+      },
+      "error": null
+    },
+    {
+      "name": "sastre8",
+      "duration_s": 2003.1,
+      "elapsed_s": 392.7,
+      "realtime_factor": 5.1,
+      "segments": 563,
+      "detected_languages": [
+        "en"
+      ],
+      "score": {
+        "wer": 0.2727,
+        "coverage": 0.991,
+        "language_mix_error": 0.0108,
+        "reference_spanish_share": 0.5659,
+        "hypothesis_spanish_share": 0.5552,
+        "substitutions": 597,
+        "deletions": 517,
+        "insertions": 465,
+        "hits": 4677,
+        "reference_words": 5791,
+        "hypothesis_words": 5739
+      },
+      "error": null
+    },
+    {
+      "name": "zeledon14",
+      "duration_s": 1984.9,
+      "elapsed_s": 346.2,
+      "realtime_factor": 5.7,
+      "segments": 1027,
+      "detected_languages": [
+        "es"
+      ],
+      "score": {
+        "wer": 0.2687,
+        "coverage": 0.972,
+        "language_mix_error": 0.0044,
+        "reference_spanish_share": 0.9063,
+        "hypothesis_spanish_share": 0.9107,
+        "substitutions": 801,
+        "deletions": 602,
+        "insertions": 413,
+        "hits": 5355,
+        "reference_words": 6758,
+        "hypothesis_words": 6569
+      },
+      "error": null
+    },
+    {
+      "name": "zeledon4",
+      "duration_s": 1310.9,
+      "elapsed_s": 235.2,
+      "realtime_factor": 5.6,
+      "segments": 667,
+      "detected_languages": [
+        "es"
+      ],
+      "score": {
+        "wer": 0.5105,
+        "coverage": 0.7782,
+        "language_mix_error": 0.2425,
+        "reference_spanish_share": 0.6055,
+        "hypothesis_spanish_share": 0.848,
+        "substitutions": 1104,
+        "deletions": 995,
+        "insertions": 58,
+        "hits": 2126,
+        "reference_words": 4225,
+        "hypothesis_words": 3288
+      },
+      "error": null
+    }
+  ]
+}
