@@ -45,8 +45,8 @@ cannot change without sign-off, so they are reviewed before anything is built on
 
 - [x] Task 2.1: Define the transcript schema — `Transcript`, `Segment`, and metadata types, with JSON serialization. Segments carry start, end, text; speaker fields present but unpopulated
 - [x] Task 2.2: Write tests for schema serialization and round-tripping, including the unpopulated speaker fields
-- [ ] Task 2.3: Define the run manifest schema — backend name, model version, effective config, input checksums, timestamps — with tests
-- [ ] Task 2.4: Define the backend interface (abstract base class): `transcribe()`, capability flags, requirement checks, and the error types a backend may raise
+- [x] Task 2.3: Define the run manifest schema — backend name, model version, effective config, input checksums, timestamps — with tests
+- [~] Task 2.4: Define the backend interface (abstract base class): `transcribe()`, capability flags, requirement checks, and the error types a backend may raise
 - [ ] Task 2.5: Implement the backend registry — an explicit name-to-class dict with `register()` and `get(name)`, raising a clear error listing known names on an unknown backend
 - [ ] Task 2.6: Write the shared conformance test suite that any backend must pass — parameterized over registered backends, asserting schema validity, timestamp ordering, and error behavior
 - [ ] Task 2.7: Write `docs/backend-interface.md` — the contract a new backend implements, and what normalization it owns
