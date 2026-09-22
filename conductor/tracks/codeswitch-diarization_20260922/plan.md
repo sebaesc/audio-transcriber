@@ -31,13 +31,38 @@ reproducible; this phase makes them so.
 - [x] Task 1.4: Implement scoring: WER via `jiwer`, plus a language-mix measure reporting transcribed Spanish share against the reference share
 - [x] Task 1.5: Write the eval runner — takes a backend name and config, runs the `mixed` subset, writes a JSON report
 - [~] Task 1.6: Record the per-file baseline for all 5 recordings and commit the report as the number to beat
-- [ ] Task 1.7: **Settle the diarization ground-truth question** (see Risks in the spec): TalkBank credentials, another labelled corpus, or qualitative-only. Record the decision here before Phase 4 is planned in detail
+- [x] Task 1.7: **Settle the diarization ground-truth question** (see Risks in the spec): TalkBank credentials, another labelled corpus, or qualitative-only. Record the decision here before Phase 4 is planned in detail
 
 ### Verification
 
 - [ ] `pytest` passes; reference cleaning is covered by tests
 - [ ] The eval runs end to end and reproduces a WER near 0.44 for `zeledon4` under the current default
 - [ ] The baseline report is committed, and Task 1.7's decision is written into this plan
+
+### Task 1.7 decision — diarization ground truth
+
+**Decided 2026-09-22: two corpora, two questions.**
+
+What was checked:
+
+| Source | Speaker labels | Code-switched | Reachable |
+| ------ | -------------- | ------------- | --------- |
+| `BrunoHays/Bangor-Miami-…` (this track's corpus) | No — CHAT speaker tiers stripped | Yes | Yes |
+| TalkBank (original Bangor source) | Yes, plus word-level language IDs | Yes | **No — authentication modal** |
+| `ksheth2/miamibangor` | — | — | Empty stub, README only |
+| `diarizers-community/voxconverse`, `/ami` | Yes | No — English only | Yes, ungated |
+
+**Decision:** use `diarizers-community/voxconverse` to measure DER and prove the diarizer works at
+all, which unblocks Phase 4 without an external dependency. Pursue TalkBank credentials in
+parallel for the integrated bilingual evaluation.
+
+**Consequence for Phase 4:** diarization quality is measured on English conversation, not on this
+project's actual audio. Until TalkBank lands, no claim is made about diarization accuracy on
+code-switched speech, and the backend doc page must say so.
+
+**Bonus if TalkBank arrives:** its word-level language annotations would replace the aggregate
+`spanish_share` this track currently scores against, turning the language-mix measure into true
+per-segment language accuracy.
 
 ## Phase 2: Chunking
 
