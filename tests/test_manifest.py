@@ -12,6 +12,7 @@ from audio_transcriber.manifest import (
     Manifest,
     checksum_file,
 )
+from audio_transcriber.schema import SCHEMA_VERSION, Segment, Transcript
 
 
 def test_checksum_is_stable_for_identical_content(tmp_path):
@@ -118,3 +119,47 @@ def test_manifest_preserves_input_order():
     paths = [item["path"] for item in manifest.to_dict()["inputs"]]
 
     assert paths == ["c.wav", "a.wav", "b.wav"]
+
+
+def test_input_record_carries_the_optional_per_file_sidecar(tmp_path):
+    """Transcript files are bare arrays, so their metadata is recorded here."""
+    path = tmp_path / "a.wav"
+    path.write_bytes(b"audio bytes")
+    transcript = Transcript(
+        source=str(path),
+        segments=(Segment(start_time=0.0, end_time=1.0, text="hello"),),
+        language="en",
+        duration=1.0,
+    )
+
+    record = InputRecord.from_path(path).with_result("a.json", transcript.metadata())
+
+    assert record.transcript == "a.json"
+    assert record.language == "en"
+    assert record.duration == 1.0
+    assert record.segment_count == 1
+
+
+def test_input_record_sidecar_is_empty_until_the_file_is_transcribed():
+    """A failed input keeps its checksum and leaves the result fields null."""
+    record = InputRecord(path="a.wav", checksum="sha256:x", size_bytes=1)
+
+    data = record.to_dict()
+
+    assert data["transcript"] is None
+    assert data["segment_count"] is None
+
+
+def test_with_result_does_not_mutate_the_original_record():
+    original = InputRecord(path="a.wav", checksum="sha256:x", size_bytes=1)
+
+    original.with_result("a.json", {"segment_count": 3})
+
+    assert original.transcript is None
+
+
+def test_manifest_records_the_transcript_schema_version():
+    """The array files have no room for a version, so the manifest holds it."""
+    manifest = Manifest(run_id="run-1", backend="reference")
+
+    assert manifest.to_dict()["schema_version"] == SCHEMA_VERSION

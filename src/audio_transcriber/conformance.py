@@ -10,10 +10,11 @@ this repo can run the same suite.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from audio_transcriber.backend import TranscriptionBackend
-from audio_transcriber.schema import SCHEMA_VERSION, Segment, Transcript
+from audio_transcriber.schema import SEGMENT_KEYS, Segment, Transcript
 
 
 class ConformanceError(AssertionError):
@@ -38,14 +39,15 @@ def assert_segment_conforms(segment: Segment, backend: str, index: int) -> None:
     where = f"segment {index}"
     if not isinstance(segment, Segment):
         _fail(backend, f"{where} is {type(segment).__name__}, not a Segment")
-    if segment.start < 0:
-        _fail(backend, f"{where} starts at {segment.start}, before zero")
-    if segment.end < segment.start:
-        _fail(backend, f"{where} ends at {segment.end}, before its start")
+    if segment.start_time < 0:
+        _fail(backend, f"{where} starts at {segment.start_time}, before zero")
+    if segment.end_time < segment.start_time:
+        _fail(backend, f"{where} ends at {segment.end_time}, before its start")
     if segment.text != segment.text.strip():
         _fail(backend, f"{where} text is not stripped: {segment.text!r}")
-    if segment.confidence is not None and not 0.0 <= segment.confidence <= 1.0:
-        _fail(backend, f"{where} confidence {segment.confidence} is outside 0.0-1.0")
+    keys = tuple(segment.to_dict())
+    if keys != SEGMENT_KEYS:
+        _fail(backend, f"{where} serializes as {keys}, expected {SEGMENT_KEYS}")
 
 
 def assert_transcript_conforms(
@@ -80,23 +82,16 @@ def assert_transcript_conforms(
         )
     if not transcript.model_version:
         _fail(backend, "transcript has no model_version; the manifest needs it")
-    if transcript.schema_version != SCHEMA_VERSION:
-        _fail(
-            backend,
-            f"transcript schema_version is {transcript.schema_version!r}, "
-            f"expected {SCHEMA_VERSION!r}",
-        )
-
     previous_end = 0.0
     for index, segment in enumerate(transcript.segments):
         assert_segment_conforms(segment, backend, index)
-        if segment.start < previous_end:
+        if segment.start_time < previous_end:
             _fail(
                 backend,
-                f"segment {index} starts at {segment.start}, overlapping the "
+                f"segment {index} starts at {segment.start_time}, overlapping the "
                 f"previous segment which ended at {previous_end}",
             )
-        previous_end = segment.end
+        previous_end = segment.end_time
 
     if transcript.duration is not None and previous_end > transcript.duration + 0.5:
         _fail(
@@ -107,12 +102,22 @@ def assert_transcript_conforms(
 
 
 def assert_serializable(transcript: Transcript, backend: str) -> None:
-    """Check a transcript survives a round trip through JSON data.
+    """Check a transcript survives a round trip through its file format.
+
+    A transcript file is a bare array, so the metadata is supplied separately on
+    the way back in, exactly as a consumer reading the manifest would.
 
     Raises:
-        ConformanceError: If the transcript does not round-trip unchanged.
+        ConformanceError: If the segments do not round-trip unchanged.
     """
-    restored = Transcript.from_dict(transcript.to_dict())
+    restored = Transcript.from_json_data(
+        json.loads(json.dumps(transcript.to_json_data())),
+        source=transcript.source,
+        language=transcript.language,
+        duration=transcript.duration,
+        backend=transcript.backend,
+        model_version=transcript.model_version,
+    )
     if restored != transcript:
         _fail(backend, "transcript does not survive a round trip through JSON")
 

@@ -75,7 +75,7 @@ class _ConformingBackend(TranscriptionBackend):
     def transcribe(self, audio_path: Path, source: str) -> Transcript:
         return Transcript(
             source=source,
-            segments=(Segment(start=0.0, end=1.0, text="hello"),),
+            segments=(Segment(start_time=0.0, end_time=1.0, text="hello"),),
             backend=self.name,
             model_version=self.model_version(),
             duration=1.0,
@@ -108,7 +108,7 @@ def test_suite_rejects_a_backend_without_a_model_version():
 def test_suite_rejects_unstripped_segment_text():
     transcript = Transcript(
         source="audio/a.wav",
-        segments=(Segment(start=0.0, end=1.0, text="  hello  "),),
+        segments=(Segment(start_time=0.0, end_time=1.0, text="  hello  "),),
         backend="broken",
         model_version="1.0",
     )
@@ -120,7 +120,7 @@ def test_suite_rejects_unstripped_segment_text():
 def test_suite_rejects_segments_running_past_the_reported_duration():
     transcript = Transcript(
         source="audio/a.wav",
-        segments=(Segment(start=0.0, end=30.0, text="hello"),),
+        segments=(Segment(start_time=0.0, end_time=30.0, text="hello"),),
         backend="broken",
         model_version="1.0",
         duration=5.0,
@@ -132,4 +132,20 @@ def test_suite_rejects_segments_running_past_the_reported_duration():
 
 def test_suite_rejects_a_backend_returning_the_wrong_type():
     with pytest.raises(ConformanceError, match="not a Transcript"):
-        assert_transcript_conforms({"source": "a.wav"}, "broken", "a.wav")
+        assert_transcript_conforms([], "broken", "a.wav")
+
+
+def test_suite_rejects_a_segment_with_the_wrong_keys(monkeypatch):
+    """The five-key output contract is enforced, not just the field values."""
+    from audio_transcriber import conformance
+
+    monkeypatch.setattr(conformance, "SEGMENT_KEYS", ("start", "end", "text"))
+    transcript = Transcript(
+        source="audio/a.wav",
+        segments=(Segment(start_time=0.0, end_time=1.0, text="hello"),),
+        backend="broken",
+        model_version="1.0",
+    )
+
+    with pytest.raises(ConformanceError, match="serializes as"):
+        assert_transcript_conforms(transcript, "broken", "audio/a.wav")

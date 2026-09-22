@@ -36,6 +36,23 @@ A run writes one transcript JSON per input file to `out/<run-id>/`, alongside a 
 recording the backend, model version, effective config, and input checksums, and an `errors.json`
 listing any files that failed.
 
+A transcript file is a bare JSON array of segments:
+
+```json
+[
+  {
+    "start_time": 0.0,
+    "end_time": 3.2,
+    "speaker": null,
+    "spoken_language": "en",
+    "text": "Good morning everyone."
+  }
+]
+```
+
+Per-file metadata (duration, language, segment count) is recorded against that file's entry in
+`manifest.json`, so a consumer that only wants the segments can ignore it.
+
 > The CLI lands in Phase 5 of the `core-pipeline_20260922` track. Until then this command reports
 > that it is not implemented.
 

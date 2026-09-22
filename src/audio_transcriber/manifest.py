@@ -11,10 +11,12 @@ requires approval.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Self
+
+from audio_transcriber.schema import SCHEMA_VERSION
 
 MANIFEST_VERSION = "1.0"
 
@@ -46,25 +48,58 @@ def utc_now() -> str:
 
 @dataclass(frozen=True, slots=True)
 class InputRecord:
-    """One input file as the run saw it.
+    """One input file as the run saw it, and what it produced.
+
+    A transcript file is a bare array of segments and carries no metadata of its
+    own. The per-file metadata lives here instead: it is available for tracing a
+    transcript back to its input, and ignorable by a consumer that only wants the
+    segments.
 
     Attributes:
         path: Path of the input file, as given to the run.
         checksum: Checksum of the file's bytes, `sha256:<hex>`.
         size_bytes: Size of the file in bytes.
+        transcript: Path of the transcript written for this input, relative to the
+            run directory, or None if the file failed.
+        duration: Audio duration in seconds, or None if unreported.
+        language: Language code for the file as a whole, or None if unreported.
+        segment_count: Number of segments in the transcript, or None if it failed.
     """
 
     path: str
     checksum: str
     size_bytes: int
+    transcript: str | None = None
+    duration: float | None = None
+    language: str | None = None
+    segment_count: int | None = None
 
     @classmethod
     def from_path(cls, path: Path) -> Self:
-        """Build a record by reading the file at `path`."""
+        """Build a record by reading the file at `path`.
+
+        The result describes the input only. The fields describing what it produced
+        are filled in with `with_result` once the file has been transcribed.
+        """
         return cls(
             path=str(path),
             checksum=checksum_file(path),
             size_bytes=path.stat().st_size,
+        )
+
+    def with_result(self, transcript_path: str, metadata: dict[str, Any]) -> Self:
+        """Return a copy carrying what this input produced.
+
+        Args:
+            transcript_path: Path of the transcript file, relative to the run directory.
+            metadata: The transcript's optional sidecar, from `Transcript.metadata()`.
+        """
+        return replace(
+            self,
+            transcript=transcript_path,
+            duration=metadata.get("duration"),
+            language=metadata.get("language"),
+            segment_count=metadata.get("segment_count"),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -73,6 +108,10 @@ class InputRecord:
             "path": self.path,
             "checksum": self.checksum,
             "size_bytes": self.size_bytes,
+            "transcript": self.transcript,
+            "duration": self.duration,
+            "language": self.language,
+            "segment_count": self.segment_count,
         }
 
     @classmethod
@@ -82,6 +121,10 @@ class InputRecord:
             path=str(data["path"]),
             checksum=str(data["checksum"]),
             size_bytes=int(data["size_bytes"]),
+            transcript=data.get("transcript"),
+            duration=data.get("duration"),
+            language=data.get("language"),
+            segment_count=data.get("segment_count"),
         )
 
 
@@ -103,6 +146,9 @@ class Manifest:
         failed: Count of files that failed.
         tool_version: Version of audio-transcriber that produced the run.
         manifest_version: Version of this manifest format.
+        schema_version: Version of the transcript schema the run's transcript files
+            follow. Recorded here because those files are bare arrays with no room
+            for a version of their own.
     """
 
     run_id: str
@@ -116,11 +162,13 @@ class Manifest:
     failed: int = 0
     tool_version: str = ""
     manifest_version: str = MANIFEST_VERSION
+    schema_version: str = SCHEMA_VERSION
 
     def to_dict(self) -> dict[str, Any]:
         """Return the manifest as JSON-serializable data."""
         return {
             "manifest_version": self.manifest_version,
+            "schema_version": self.schema_version,
             "run_id": self.run_id,
             "tool_version": self.tool_version,
             "backend": self.backend,
@@ -148,4 +196,5 @@ class Manifest:
             failed=int(data.get("failed", 0)),
             tool_version=data.get("tool_version", ""),
             manifest_version=data.get("manifest_version", MANIFEST_VERSION),
+            schema_version=data.get("schema_version", SCHEMA_VERSION),
         )

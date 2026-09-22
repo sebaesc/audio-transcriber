@@ -49,7 +49,12 @@ class ExampleBackend(TranscriptionBackend):
         return Transcript(
             source=source,
             segments=tuple(
-                Segment(start=item.start, end=item.end, text=item.text.strip())
+                Segment(
+                    start_time=item.start,
+                    end_time=item.end,
+                    text=item.text.strip(),
+                    spoken_language=native.language,
+                )
                 for item in native.segments
             ),
             language=native.language,
@@ -105,18 +110,39 @@ Override when the backend applies its own defaults, so the manifest records the 
 used rather than only those the user passed. The base implementation returns a copy of the
 config given to `__init__`.
 
+## The output contract
+
+A transcript **file** is a bare JSON array of segment objects. There is no wrapper: a consumer
+reads the file and iterates it.
+
+```json
+[
+  {
+    "start_time": 0.0,
+    "end_time": 3.2,
+    "speaker": null,
+    "spoken_language": "en",
+    "text": "Good morning everyone."
+  }
+]
+```
+
+Every object has exactly these five keys, in this order. Per-file metadata — duration, language,
+segment count, schema version — is **not** in the array; it is recorded as an optional sidecar on
+the run manifest's input record, so a consumer that only wants segments can ignore it.
+
 ## Normalization is the backend's job
 
 The backend owns the mapping from its engine's native output to the shared schema. Nothing
 engine-shaped may reach the pipeline. In practice:
 
-- Segment times are **seconds as floats**, measured from the start of the audio
+- `start_time` and `end_time` are **seconds as floats**, measured from the start of the audio
 - Segments are ordered and non-overlapping; a segment may not start before the previous ended
-- Segment text is stripped of leading and trailing whitespace
-- `confidence` is normalized to 0.0–1.0, or left `None` when the engine reports nothing usable
-- `speaker` stays `None` unless the engine diarizes
-- Audio with no detected speech yields a transcript with **no segments** — that is a success,
-  not an error
+- `text` is stripped of leading and trailing whitespace
+- `speaker` stays `null` unless the engine diarizes
+- `spoken_language` is per segment, so an engine that detects a language switch mid-audio can
+  express it. An engine reporting one language for the file repeats it on every segment.
+- Audio with no detected speech yields an **empty array** — that is a success, not an error
 
 ## Registration
 

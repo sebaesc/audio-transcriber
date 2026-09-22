@@ -68,9 +68,16 @@ External requirements (not track dependencies):
   of the core package.
 - **Audio I/O:** ffmpeg via subprocess. Presence is checked once at validation time, before the
   run starts, and failure gives an install hint.
-- **Transcript schema:** JSON, defined with dataclasses or Pydantic. Segments carry start, end,
-  and text; top-level metadata carries the source file and language. Speaker fields exist in the
-  schema but are unpopulated in this track.
+- **Transcript schema:** JSON, defined with stdlib dataclasses (chosen over Pydantic to keep
+  Typer the only core dependency). A transcript file is a **bare JSON array** of segment objects,
+  each with exactly five keys in this order: `start_time`, `end_time`, `speaker`,
+  `spoken_language`, `text`. Times are seconds as floats. `speaker` stays null until a backend
+  diarizes. Per-file metadata (duration, language, segment count, transcript path) is recorded as
+  an **optional sidecar** on the run manifest's input records, so a consumer that only wants the
+  segments can ignore it entirely.
+
+  > Revised 2026-09-22, after Phase 2, at the schema approval gate in `workflow.md`. The original
+  > draft wrapped the segments in a metadata object; the array is the agreed output contract.
 - **Output layout:** `out/<run-id>/` containing one `<name>.json` per input, plus `manifest.json`
   and `errors.json`.
 - **Backend registry:** an explicit name-to-class registry dict. Entry-point discovery can come
