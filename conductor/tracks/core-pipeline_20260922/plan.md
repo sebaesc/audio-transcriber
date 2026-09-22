@@ -77,12 +77,12 @@ lives inside the backend module.
 
 ### Tasks
 
-- [ ] Task 3.1: Add `faster-whisper` as an optional extra in `pyproject.toml` (`[faster-whisper]`), never a core dependency
-- [ ] Task 3.2: Implement `backends/faster_whisper.py` — load the model, transcribe, and normalize native output to the transcript schema inside the module
-- [ ] Task 3.3: Implement its requirement check — model availability and device selection — reporting what is missing and how to install it
-- [ ] Task 3.4: Report model version and effective config back to the manifest
-- [ ] Task 3.5: Register the backend and confirm it passes the shared conformance suite against a short fixture audio file
-- [ ] Task 3.6: Write `docs/backends/faster-whisper.md` — usage, dependencies, credentials (none), hardware, known limits
+- [x] Task 3.1: Add `faster-whisper` as an optional extra in `pyproject.toml` (`[faster-whisper]`), never a core dependency
+- [x] Task 3.2: Implement `backends/faster_whisper.py` — load the model, transcribe, and normalize native output to the transcript schema inside the module
+- [x] Task 3.3: Implement its requirement check — model availability and device selection — reporting what is missing and how to install it
+- [x] Task 3.4: Report model version and effective config back to the manifest
+- [x] Task 3.5: Register the backend and confirm it passes the shared conformance suite against a short fixture audio file
+- [~] Task 3.6: Write `docs/backends/faster-whisper.md` — usage, dependencies, credentials (none), hardware, known limits
 
 ### Verification
 
