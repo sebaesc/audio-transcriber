@@ -6,6 +6,7 @@ build-backend = "hatchling.build"
 name = "audio-transcriber"
 version = "0.1.0"
 description = "A modular audio transcription pipeline with swappable model backends."
+readme = "README.md"
 requires-python = ">=3.12,<3.13"
 license = { text = "Proprietary" }
 
