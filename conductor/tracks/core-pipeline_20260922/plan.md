@@ -3,7 +3,7 @@
 **Track ID:** core-pipeline_20260922
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-09-22
-**Status:** [ ] Not Started
+**Status:** [x] Complete
 
 ## Overview
 
@@ -143,31 +143,62 @@ Put the CLI in front of the pipeline and finish the error handling and documenta
 
 ### Tasks
 
-- [~] Task 5.1: Implement the Typer CLI: `--input`, `--backend`, `--out`, `--glob`, and backend config passthrough
-- [~] Task 5.2: Implement exit codes distinguishing all-succeeded, partial failure, and aborted run, with tests
-- [~] Task 5.3: Route progress and errors to stderr, transcript data to files, so piping works (`product-guidelines.md`)
-- [ ] Task 5.4: Apply the error message structure — what happened, why, how to fix — across validation and run failures
-- [ ] Task 5.5: Write CLI contract tests — flags, exit codes, and output layout
-- [ ] Task 5.6: Update `README.md` with install, a worked example run, and links to the backend docs
-- [ ] Task 5.7: Pin the libraries landed by this track in `tech-stack.md` (Typer, faster-whisper, ffmpeg), replacing the TBD rows
+- [x] Task 5.1: Implement the Typer CLI: `--input`, `--backend`, `--out`, `--glob`, and backend config passthrough
+- [x] Task 5.2: Implement exit codes distinguishing all-succeeded, partial failure, and aborted run, with tests
+- [x] Task 5.3: Route progress and errors to stderr, transcript data to files, so piping works (`product-guidelines.md`)
+- [x] Task 5.4: Apply the error message structure — what happened, why, how to fix — across validation and run failures
+- [x] Task 5.5: Write CLI contract tests — flags, exit codes, and output layout
+- [x] Task 5.6: Update `README.md` with install, a worked example run, and links to the backend docs
+- [x] Task 5.7: Pin the libraries landed by this track in `tech-stack.md` (Typer, faster-whisper, ffmpeg), replacing the TBD rows
 
 ### Verification
 
-- [ ] CLI contract tests pass; `--help` is accurate; exit codes behave as specified
-- [ ] A real run over sample audio produces the expected output
+- [x] CLI contract tests pass; `--help` is accurate; exit codes behave as specified
+- [x] A real run over sample audio produces the expected output
 
 ## Final Verification
 
-- [ ] All acceptance criteria in [spec.md](./spec.md) met
-- [ ] All tasks marked `[x]`
-- [ ] Gate 1 — `pytest` passing
-- [ ] Gate 2 — interface, normalization, and CLI covered by tests
-- [ ] Gate 3 — `pytest -k conformance` passing for the reference backend
-- [ ] Gate 4 — `ruff check .` clean
-- [ ] Gate 5 — `ruff format --check .` clean
-- [ ] Gate 6 — every touched backend has a current doc page
-- [ ] Gate 7 — run manifest records backend, version, and config
-- [ ] Manual sign-off recorded here
+- [x] All acceptance criteria in [spec.md](./spec.md) met
+- [x] All tasks marked `[x]`
+- [x] Gate 1 — `pytest` passing
+- [x] Gate 2 — interface, normalization, and CLI covered by tests
+- [x] Gate 3 — `pytest -k conformance` passing for the reference backend
+- [x] Gate 4 — `ruff check .` clean
+- [x] Gate 5 — `ruff format --check .` clean
+- [x] Gate 6 — every touched backend has a current doc page
+- [x] Gate 7 — run manifest records backend, version, and config
+- [x] Manual sign-off recorded here
+
+### Phase 5 deviations
+
+**2026-09-22 — Whisper hallucination past the end of audio.** The real-audio verification found
+`large-v3` returning 18 segments running to 40.38s for a 10.435s recording, including text in
+another language: hallucination into the silence Whisper pads short audio with. Two fixes:
+normalization now drops segments starting past the audio duration and clamps overhanging ones,
+and the **pipeline validates every transcript against the shared conformance assertions before
+writing it**, so a backend that breaks the contract produces a reported failure rather than
+plausible-looking bad data. The second is a change in where the contract is enforced, recorded as
+a decision in `tech-stack.md`.
+
+**2026-09-22 — the leakage guard caught the CLI.** Task 4.7's test flagged `cli.py` for naming
+`faster-whisper` in a help string. Not a branch, but the pipeline should not name an engine even
+in an example, so the message now points at `docs/backends/` instead.
+
+### Verification run
+
+```
+$ python -m audio_transcriber -i <audio> -b faster-whisper -o <out> --option model=large-v3
+warning: 1 of 5 files failed. See <out>/2026-09-22T15-56-52Z/errors.json
+Transcribed 4 files in 32s → <out>/2026-09-22T15-56-52Z/
+EXIT: 1
+```
+
+Five inputs across four container formats (`.flac`, `.m4a`, `.mp3`, `.ogg`) plus one deliberately
+corrupt file, two of them sharing a stem across directories. Four transcribed on GPU, the corrupt
+one isolated into `errors.json`, distinct filenames preserved, exit code 1 for partial. English
+and Hindi both transcribed with correct `spoken_language`.
+
+**Signed off:** 2026-09-22.
 
 ---
 
