@@ -121,13 +121,13 @@ The measured win. Opt-in, restricted to `{en, es}`.
 
 ### Tasks
 
-- [~] Task 3.1: Implement per-chunk detection taking the best of `{en, es}` from `all_language_probs`, not the global argmax
-- [ ] Task 3.2: Implement the confidence threshold and its fallback to the file-level language; choose the value from the eval rather than by intuition
-- [ ] Task 3.3: Add `language_detection` backend config (`file` default, `chunked` opt-in) and the allowed-language set as config
-- [ ] Task 3.4: Populate `spoken_language` per segment from its chunk's detected language
-- [ ] Task 3.5: Record the detection mode, threshold, and allowed languages in the effective config, so a run's manifest explains its own output
-- [ ] Task 3.6: Write tests — detection restricted to the allowed set, threshold fallback, and `spoken_language` varying within one transcript
-- [ ] Task 3.7: Run the eval and compare against the Phase 1 baseline
+- [x] Task 3.1: Implement per-chunk detection taking the best of `{en, es}` from `all_language_probs`, not the global argmax
+- [x] Task 3.2: Implement the confidence threshold and its fallback to the file-level language; choose the value from the eval rather than by intuition
+- [x] Task 3.3: Add `language_detection` backend config (`file` default, `chunked` opt-in) and the allowed-language set as config
+- [x] Task 3.4: Populate `spoken_language` per segment from its chunk's detected language
+- [x] Task 3.5: Record the detection mode, threshold, and allowed languages in the effective config, so a run's manifest explains its own output
+- [x] Task 3.6: Write tests — detection restricted to the allowed set, threshold fallback, and `spoken_language` varying within one transcript
+- [~] Task 3.7: Run the eval and compare against the Phase 1 baseline
 
 ### Verification
 
