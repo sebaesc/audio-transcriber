@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "audio-transcriber"
+version = "0.1.0"
+description = "A modular audio transcription pipeline with swappable model backends."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+
+# Core dependencies are the pipeline and its CLI only. Transcription engines are
+# optional extras below: installing the pipeline must never pull in every engine.
+dependencies = [
+    "typer>=0.12,<0.20",
+]
+
+[project.scripts]
+audio-transcriber = "audio_transcriber.cli:run"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0,<9.0",
+    "ruff>=0.6,<0.15",
+]
+
+# One extra per backend. Adding a backend adds an entry here and nothing else.
+faster-whisper = [
+    "faster-whisper>=1.0,<2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/audio_transcriber"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = ["E501"] # line length is handled by the formatter
+
+[tool.ruff.lint.isort]
+known-first-party = ["audio_transcriber"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "conformance: shared contract tests every backend must pass",
+]
+filterwarnings = [
+    "error",
+    # Typer 0.19 imports click helpers that Click 8.5 deprecates. Not ours to fix,
+    # and ignoring it narrowly keeps real warnings visible as errors.
+    "ignore:'click.utils.get_binary_stream' is deprecated:DeprecationWarning",
+    "ignore:'click.utils.get_text_stream' is deprecated:DeprecationWarning",
+]

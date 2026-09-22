@@ -13,13 +13,18 @@ represents a distinct body of work with its own spec and implementation plan.
 
 ## Active Tracks
 
-_No tracks yet. Run `/conductor:new-track` to create the first one._
+| Status | Track ID | Title | Created | Updated |
+| ------ | -------- | ----- | ------- | ------- |
 
 <!-- Tracks registered by /conductor:new-track -->
 
 ---
 
 ## Completed Tracks
+
+| Status | Track ID | Title | Created | Completed |
+| ------ | -------- | ----- | ------- | --------- |
+| `[x]` | [core-pipeline_20260922](./tracks/core-pipeline_20260922/index.md) | Core Pipeline and Backend Interface | 2026-09-22 | 2026-09-22 |
 
 <!-- Move completed tracks here -->
 

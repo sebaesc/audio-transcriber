@@ -46,16 +46,37 @@ consumers need to query results.
 
 ### Additional Backend Libraries
 
-To be pinned as tracks land. Expected shape:
+Pinned by the `core-pipeline_20260922` track.
 
-| Library          | Purpose                                      | Version   |
-| ---------------- | -------------------------------------------- | --------- |
-| (CLI framework)  | CLI entry point (e.g. Typer or argparse)      | TBD       |
-| (audio I/O)      | Decode/resample audio (ffmpeg via subprocess) | TBD       |
-| (backend deps)   | Per-backend, installed as optional extras     | TBD       |
+**Core dependencies** — the pipeline and its CLI, nothing else:
+
+| Library | Purpose                       | Version          |
+| ------- | ----------------------------- | ---------------- |
+| Typer   | CLI entry point               | `>=0.12,<0.20`   |
+
+**Development dependencies:**
+
+| Library | Purpose            | Version         |
+| ------- | ------------------ | --------------- |
+| pytest  | Test runner        | `>=8.0,<9.0`    |
+| Ruff    | Lint and format    | `>=0.6,<0.15`   |
+
+**Backend extras** — one per backend, installed individually:
+
+| Extra            | Library          | Version        |
+| ---------------- | ---------------- | -------------- |
+| `faster-whisper` | faster-whisper   | `>=1.0,<2.0`   |
 
 Backend-specific dependencies are installed as **optional extras**, never as required
 dependencies of the core package — installing the pipeline must not pull in every engine.
+
+Audio decode and resample is **ffmpeg invoked as a subprocess**, not a Python binding: it is the
+same tool the docs tell users to install, and its absence is reported with the command that fixes
+it. Decoding happens once, in the pipeline, so no backend handles container formats.
+
+GPU inference needs the CUDA runtime libraries, installed as wheels
+(`nvidia-cublas-cu12`, `nvidia-cudnn-cu12`) rather than system-wide. They are not declared in
+`pyproject.toml`: they are optional, large, and only relevant to backends that use CUDA.
 
 ## Infrastructure
 
@@ -186,10 +207,57 @@ Use Ruff for both linting and formatting, configured in `pyproject.toml`.
 - Ruff format is Black-compatible, so migration stays open
 - Type checking is not covered; add mypy later if type errors become a real problem
 
+### Transcript files are bare JSON arrays
+
+**Date:** 2026-09-22
+**Status:** Accepted
+
+**Context:**
+Consumers need the segments; only reproducibility needs the metadata. Wrapping segments in a
+metadata object makes every consumer unwrap before doing anything.
+
+**Decision:**
+A transcript file is a bare JSON array of segment objects with exactly five keys: `start_time`,
+`end_time`, `speaker`, `spoken_language`, `text`. Per-file metadata moves to the run manifest's
+input record as an optional sidecar.
+
+**Consequences:**
+
+- A consumer reads the file and iterates it, with no wrapper and nothing to ignore
+- A transcript file cannot carry its own schema version, so the manifest records it
+- Tracing a transcript to its input requires the manifest, not the transcript alone
+
+---
+
+### Schema conformance is enforced at runtime, not only in tests
+
+**Date:** 2026-09-22
+**Status:** Accepted
+
+**Context:**
+The conformance suite proves a backend *can* honor the schema. It cannot prove every transcript
+does. Whisper hallucinates into the silence it pads short audio with, returning segments past the
+end of the recording — output the conformance suite would reject, written to disk as if valid.
+
+**Decision:**
+The pipeline validates every transcript against the shared assertions before writing it. A
+violation becomes a reported per-file failure.
+
+**Consequences:**
+
+- A backend bug produces a visible failure rather than plausible-looking bad data
+- Validation cost is paid on every file, though it is pure in-memory checks
+- A backend with a systematic bug fails every file, which is the intended signal
+
+---
+
 ## Version Compatibility Matrix
 
-| Component | Min Version | Max Version | Notes                                       |
-| --------- | ----------- | ----------- | ------------------------------------------- |
-| Python    | 3.12        | 3.12.x      | Matches `.venv` (3.12.3)                    |
-| ffmpeg    | 6.0         | —           | System dependency, baked into Docker image  |
-| Ruff      | latest      | —           | Pinned in dev dependencies once initialized |
+| Component      | Min Version | Max Version | Notes                                          |
+| -------------- | ----------- | ----------- | ---------------------------------------------- |
+| Python         | 3.12        | 3.12.x      | Matches `.venv` (3.12.3)                       |
+| ffmpeg         | 6.0         | —           | System dependency; verified with 6.1.1         |
+| Ruff           | 0.6         | <0.15       | Pinned in dev dependencies                     |
+| Typer          | 0.12        | <0.20       | Core dependency                                |
+| pytest         | 8.0         | <9.0        | Dev dependency                                 |
+| faster-whisper | 1.0         | <2.0        | Optional extra; verified with 1.2.1            |

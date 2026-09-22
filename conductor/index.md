@@ -31,12 +31,11 @@ A modular audio transcription pipeline with swappable model backends.
 
 ## Active Tracks
 
-_None yet._
-
 <!-- Auto-populated by /conductor:new-track -->
 
 | Track | Status | Priority | Spec | Plan |
 | ----- | ------ | -------- | ---- | ---- |
+| [Core Pipeline and Backend Interface](./tracks/core-pipeline_20260922/index.md) | Complete | Critical | [spec](./tracks/core-pipeline_20260922/spec.md) | [plan](./tracks/core-pipeline_20260922/plan.md) |
 
 ## Recent Activity
 
@@ -44,18 +43,20 @@ _None yet._
 | ---------- | ----- | -------------------------- |
 | 2026-09-22 | —     | Conductor setup completed  |
 | 2026-09-22 | —     | Git repository initialized |
+| 2026-09-22 | core-pipeline_20260922 | Track created (5 phases, 32 tasks) |
+| 2026-09-22 | core-pipeline_20260922 | Track complete (5 phases, 34 tasks, all gates passed) |
 
 ## Project Status
 
-**Current Phase:** Setup complete — no tracks started
-**Overall Progress:** 0%
+**Current Phase:** Core pipeline complete; ready for the next track
+**Overall Progress:** Core pipeline, backend interface, and one backend shipped
 
 ### Milestone Tracker
 
 | Milestone                         | Target Date | Status  |
 | --------------------------------- | ----------- | ------- |
-| Core pipeline + backend interface | TBD         | Pending |
-| First model backend + docs        | TBD         | Pending |
+| Core pipeline + backend interface | 2026-09-22  | Complete |
+| First model backend + docs        | 2026-09-22  | Complete |
 | Docker packaging                  | TBD         | Pending |
 
 ## Project Context at a Glance
