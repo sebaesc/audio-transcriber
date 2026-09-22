@@ -31,12 +31,11 @@ A modular audio transcription pipeline with swappable model backends.
 
 ## Active Tracks
 
-_None yet._
-
 <!-- Auto-populated by /conductor:new-track -->
 
 | Track | Status | Priority | Spec | Plan |
 | ----- | ------ | -------- | ---- | ---- |
+| [Core Pipeline and Backend Interface](./tracks/core-pipeline_20260922/index.md) | Pending | Critical | [spec](./tracks/core-pipeline_20260922/spec.md) | [plan](./tracks/core-pipeline_20260922/plan.md) |
 
 ## Recent Activity
 
@@ -44,10 +43,11 @@ _None yet._
 | ---------- | ----- | -------------------------- |
 | 2026-09-22 | —     | Conductor setup completed  |
 | 2026-09-22 | —     | Git repository initialized |
+| 2026-09-22 | core-pipeline_20260922 | Track created (5 phases, 32 tasks) |
 
 ## Project Status
 
-**Current Phase:** Setup complete — no tracks started
+**Current Phase:** Track `core-pipeline_20260922` created, not started
 **Overall Progress:** 0%
 
 ### Milestone Tracker
