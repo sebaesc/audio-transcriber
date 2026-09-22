@@ -29,11 +29,11 @@ Create the Python package, build config, and lint setup. No pipeline logic yet.
 - [x] Task 1.2: Configure `[tool.ruff]` in `pyproject.toml` (lint + format), per `conductor/code_styleguides/python.md`
 - [x] Task 1.3: Create the package layout: `src/audio_transcriber/` with `__init__.py`, `__main__.py`, and empty `backends/` package; `tests/` alongside
 - [x] Task 1.4: Add `pytest` config and confirm `.venv/bin/pip install -e ".[dev]"` succeeds
-- [ ] Task 1.5: Add a placeholder `README.md` describing the package and how to install it
+- [x] Task 1.5: Add a placeholder `README.md` describing the package and how to install it
 
 ### Verification
 
-- [ ] `.venv/bin/pip install -e ".[dev]"` installs cleanly; `ruff check .`, `ruff format --check .`, and `pytest` all run (zero tests is acceptable here)
+- [x] `.venv/bin/pip install -e ".[dev]"` installs cleanly; `ruff check .`, `ruff format --check .`, and `pytest` all run (zero tests is acceptable here)
 
 ## Phase 2: Contracts — Schema, Interface, Registry
 

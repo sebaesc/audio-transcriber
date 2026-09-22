@@ -2,15 +2,18 @@
   "id": "core-pipeline_20260922",
   "title": "Core Pipeline and Backend Interface",
   "type": "feature",
-  "status": "pending",
+  "status": "in_progress",
   "created": "2026-09-22T00:00:00Z",
   "updated": "2026-09-22T00:00:00Z",
   "phases": {
     "total": 5,
-    "completed": 0
+    "completed": 1
   },
   "tasks": {
     "total": 32,
-    "completed": 0
-  }
+    "completed": 5
+  },
+  "current_phase": 2,
+  "current_task": "2.1",
+  "commits": []
 }
