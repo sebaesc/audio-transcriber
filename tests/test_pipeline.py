@@ -288,3 +288,47 @@ def test_unserializable_config_values_do_not_break_the_manifest(audio_dir, tmp_p
     manifest = json.loads((result.run_directory / "manifest.json").read_text())
 
     assert manifest["config"]["model_path"] == "/models/x.bin"
+
+
+class _NonConformingBackend(_StubBackend):
+    """Returns segments past the end of the audio, as Whisper can."""
+
+    name = "stub"
+
+    def transcribe(self, audio_path: Path, source: str) -> Transcript:
+        return Transcript(
+            source=source,
+            segments=(Segment(start_time=0.0, end_time=40.0, text="hallucinated"),),
+            language="en",
+            duration=10.0,
+            backend=self.name,
+            model_version=self.model_version(),
+        )
+
+
+def test_a_non_conforming_transcript_is_a_failure_not_an_output(
+    audio_dir, tmp_path, monkeypatch
+):
+    """The contract is enforced at runtime, not only in the conformance suite.
+
+    A backend that breaks the schema must produce a reported failure rather than
+    a bad transcript that reads like a success.
+    """
+    monkeypatch.setattr(registry, "_REGISTRY", {"stub": _NonConformingBackend})
+
+    result = pipeline.run(audio_dir, "stub", tmp_path / "out", run_id="run-1")
+
+    assert result.status is RunStatus.ABORTED
+    assert not list(result.run_directory.glob("a.json"))
+
+    errors = json.loads((result.run_directory / "errors.json").read_text())
+    assert "violates the schema" in errors[0]["message"]
+    assert "past the reported" in errors[0]["message"]
+
+
+def test_a_conforming_transcript_is_written_unchanged(audio_dir, tmp_path):
+    """The runtime check must not reject valid output."""
+    result = pipeline.run(audio_dir, "stub", tmp_path / "out", run_id="run-1")
+
+    assert result.status is RunStatus.SUCCEEDED
+    assert len(result.transcripts) == 2

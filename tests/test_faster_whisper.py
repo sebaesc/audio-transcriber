@@ -236,3 +236,58 @@ def test_cuda_preload_skips_work_once_done(monkeypatch):
     module._preload_cuda_libraries()
 
     assert calls == []
+
+
+def test_normalize_drops_hallucinations_past_the_end_of_audio(backend):
+    """Whisper pads short audio to 30s and hallucinates into the silence.
+
+    Observed with large-v3 on a 10.4s recording: 18 segments running to 40.38s,
+    including text in another language. Anything starting past the end of the
+    audio is not a transcription of it.
+    """
+    segments = backend._normalize(
+        [
+            _NativeSegment(0.0, 10.4, "real speech"),
+            _NativeSegment(12.0, 14.0, "hallucinated"),
+            _NativeSegment(38.0, 40.4, "그리고 camembert cheese"),
+        ],
+        "en",
+        duration=10.44,
+    )
+
+    assert [s.text for s in segments] == ["real speech"]
+
+
+def test_normalize_clamps_a_segment_overhanging_the_end(backend):
+    segments = backend._normalize(
+        [_NativeSegment(9.0, 30.0, "trails off")], "en", duration=10.44
+    )
+
+    assert segments[0].end_time == 10.44
+
+
+def test_normalize_drops_a_segment_starting_at_or_after_the_end(backend):
+    segments = backend._normalize(
+        [_NativeSegment(10.44, 30.0, "noise")], "en", duration=10.435
+    )
+
+    assert segments == ()
+
+
+def test_normalize_keeps_a_segment_starting_just_inside_the_audio(backend):
+    """Clamped to the end rather than dropped: it began while audio remained."""
+    segments = backend._normalize(
+        [_NativeSegment(10.40, 30.0, "trailing word")], "en", duration=10.435
+    )
+
+    assert len(segments) == 1
+    assert segments[0].end_time == 10.435
+
+
+def test_normalize_without_a_duration_keeps_everything(backend):
+    """A backend that cannot report duration must not lose real segments."""
+    segments = backend._normalize(
+        [_NativeSegment(0.0, 1.0, "a"), _NativeSegment(40.0, 41.0, "b")], "en"
+    )
+
+    assert len(segments) == 2

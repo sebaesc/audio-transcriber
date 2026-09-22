@@ -258,7 +258,7 @@ class FasterWhisperBackend(TranscriptionBackend):
                 beam_size=self.config["beam_size"],
                 vad_filter=self.config["vad_filter"],
             )
-            segments = self._normalize(native_segments, info.language)
+            segments = self._normalize(native_segments, info.language, info.duration)
         except Exception as error:  # noqa: BLE001 - one file failing is not fatal
             raise TranscriptionError(source, self.name, str(error)) from error
 
@@ -272,21 +272,32 @@ class FasterWhisperBackend(TranscriptionBackend):
         )
 
     def _normalize(
-        self, native_segments: Any, language: str | None
+        self,
+        native_segments: Any,
+        language: str | None,
+        duration: float | None = None,
     ) -> tuple[Segment, ...]:
         """Map faster-whisper's segments onto the shared schema.
 
-        Whisper occasionally emits empty text, a segment ending before it starts,
-        or one overlapping its predecessor by a few milliseconds. The schema
-        forbids all three, so they are cleaned up here rather than reaching the
+        Whisper decodes in 30-second windows and pads short audio with silence.
+        It regularly hallucinates in that padding: a 10-second recording can come
+        back with segments running to 40 seconds, sometimes in another language.
+        Anything starting at or after the end of the audio is therefore dropped,
+        and a segment overhanging the end is clamped to it.
+
+        It also emits empty text, segments ending before they start, and segments
+        overlapping their predecessor by a few milliseconds. The schema forbids
+        all of those, so they are cleaned up here rather than reaching the
         pipeline.
 
         Args:
             native_segments: The generator faster-whisper returns.
             language: The language the model detected or was given.
+            duration: Length of the audio in seconds, used to discard
+                hallucinations past its end. None disables that check.
 
         Returns:
-            Segments in ascending, non-overlapping order.
+            Segments in ascending, non-overlapping order, within the audio.
         """
         segments: list[Segment] = []
         previous_end = 0.0
@@ -294,8 +305,17 @@ class FasterWhisperBackend(TranscriptionBackend):
             text = native.text.strip()
             if not text:
                 continue
+
             start = max(float(native.start), previous_end)
             end = max(float(native.end), start)
+
+            if duration is not None:
+                if start >= duration:
+                    continue
+                end = min(end, duration)
+                if end <= start:
+                    continue
+
             segments.append(
                 Segment(
                     start_time=start,

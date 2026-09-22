@@ -21,7 +21,12 @@ from typing import Any
 
 from audio_transcriber import audio, discovery
 from audio_transcriber.backend import TranscriptionBackend
-from audio_transcriber.errors import AudioTranscriberError, ConfigError
+from audio_transcriber.conformance import ConformanceError, assert_transcript_conforms
+from audio_transcriber.errors import (
+    AudioTranscriberError,
+    ConfigError,
+    TranscriptionError,
+)
 from audio_transcriber.manifest import InputRecord, Manifest, utc_now
 from audio_transcriber.registry import create
 from audio_transcriber.schema import Transcript
@@ -253,9 +258,31 @@ def run(
 
 
 def _transcribe_one(backend: TranscriptionBackend, source: Path) -> Transcript:
-    """Decode one file and hand it to the backend."""
+    """Decode one file, transcribe it, and check the result against the contract.
+
+    The conformance suite proves a backend *can* honor the schema; it cannot
+    prove every transcript does. Whisper, for one, hallucinates into the silence
+    it pads short audio with and returns segments past the end of the recording.
+    Checking here means a backend that breaks the contract produces a reported
+    failure rather than a bad transcript that looks like a success.
+
+    Raises:
+        AudioDecodeError: If the file cannot be decoded.
+        TranscriptionError: If the backend fails, or returns a transcript that
+            violates the shared schema.
+    """
     with audio.decoded(source) as decoded_path:
-        return backend.transcribe(decoded_path, str(source))
+        transcript = backend.transcribe(decoded_path, str(source))
+
+    try:
+        assert_transcript_conforms(transcript, backend.name, str(source))
+    except ConformanceError as error:
+        raise TranscriptionError(
+            str(source),
+            backend.name,
+            f"returned a transcript that violates the schema: {error}",
+        ) from error
+    return transcript
 
 
 def _write_json(path: Path, data: Any) -> None:

@@ -143,9 +143,9 @@ Put the CLI in front of the pipeline and finish the error handling and documenta
 
 ### Tasks
 
-- [ ] Task 5.1: Implement the Typer CLI: `--input`, `--backend`, `--out`, `--glob`, and backend config passthrough
-- [ ] Task 5.2: Implement exit codes distinguishing all-succeeded, partial failure, and aborted run, with tests
-- [ ] Task 5.3: Route progress and errors to stderr, transcript data to files, so piping works (`product-guidelines.md`)
+- [~] Task 5.1: Implement the Typer CLI: `--input`, `--backend`, `--out`, `--glob`, and backend config passthrough
+- [~] Task 5.2: Implement exit codes distinguishing all-succeeded, partial failure, and aborted run, with tests
+- [~] Task 5.3: Route progress and errors to stderr, transcript data to files, so piping works (`product-guidelines.md`)
 - [ ] Task 5.4: Apply the error message structure — what happened, why, how to fix — across validation and run failures
 - [ ] Task 5.5: Write CLI contract tests — flags, exit codes, and output layout
 - [ ] Task 5.6: Update `README.md` with install, a worked example run, and links to the backend docs
