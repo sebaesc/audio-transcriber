@@ -26,35 +26,84 @@ every engine:
 .venv/bin/pip install -e ".[dev,faster-whisper]"
 ```
 
+See [`docs/backends/`](docs/backends/) for what each backend needs.
+
 ## Usage
 
 ```bash
-.venv/bin/python -m audio_transcriber --input ./audio --backend <name> --out ./out
+.venv/bin/python -m audio_transcriber --input ./audio --backend faster-whisper --out ./out
 ```
 
-A run writes one transcript JSON per input file to `out/<run-id>/`, alongside a `manifest.json`
-recording the backend, model version, effective config, and input checksums, and an `errors.json`
-listing any files that failed.
+Or, once installed, as `audio-transcriber`.
 
-A transcript file is a bare JSON array of segments:
+| Flag | Default | Meaning |
+| ---- | ------- | ------- |
+| `--input`, `-i` | — | Directory of audio files, or a single file |
+| `--backend`, `-b` | — | Backend to transcribe with |
+| `--out`, `-o` | `out` | Directory to write the run into |
+| `--glob` | `**/*` | Pattern for finding inputs, relative to `--input` |
+| `--option KEY=VALUE` | — | Backend option; repeatable |
+| `--quiet`, `-q` | off | Report only the final summary |
+| `--list-backends` | — | List installed backends and exit |
+
+Backend options are passed through and recorded in the manifest. Values are read as JSON, so
+types are preserved:
+
+```bash
+.venv/bin/python -m audio_transcriber -i ./audio -b faster-whisper \
+  --option model=large-v3 --option beam_size=1
+```
+
+### Exit codes
+
+| Code | Meaning |
+| ---- | ------- |
+| `0` | Every file transcribed |
+| `1` | Partial failure — some files failed, the rest succeeded |
+| `2` | Nothing succeeded |
+| `3` | The run could not start (bad config, missing input, unmet requirements) |
+| `130` | Interrupted; partial results are kept |
+
+Progress and errors go to stderr, transcript data to files, so piping works.
+
+## Output
+
+A run writes to `out/<run-id>/`, where `run-id` is a UTC timestamp. A prior run is never
+overwritten.
+
+```
+out/2026-09-22T15-53-21Z/
+├── interview.json      # one per input
+├── standup.json
+├── standup-2.json      # inputs sharing a stem stay distinct
+├── manifest.json
+└── errors.json
+```
+
+A **transcript file** is a bare JSON array of segments. There is no wrapper: read it and iterate.
 
 ```json
 [
   {
-    "start_time": 0.0,
-    "end_time": 3.2,
+    "start_time": 0.18,
+    "end_time": 10.42,
     "speaker": null,
     "spoken_language": "en",
-    "text": "Good morning everyone."
+    "text": "he hoped there would be stew for dinner"
   }
 ]
 ```
 
-Per-file metadata (duration, language, segment count) is recorded against that file's entry in
-`manifest.json`, so a consumer that only wants the segments can ignore it.
+Every object has exactly those five keys. `speaker` stays `null` until a backend diarizes.
 
-> The CLI lands in Phase 5 of the `core-pipeline_20260922` track. Until then this command reports
-> that it is not implemented.
+**`manifest.json`** records what produced the run — backend, model version, resolved config, and
+a checksum per input — so any transcript traces back to what made it. Per-file metadata
+(duration, language, segment count) lives on each input's entry, and a consumer that only wants
+segments can ignore all of it.
+
+**`errors.json`** lists files that failed. It is written even when nothing failed, so consumers
+never have to handle a missing file. A per-file failure never aborts the batch, and partial
+results are kept.
 
 ## Development
 
@@ -70,8 +119,20 @@ Full validation, matching the quality gates in `conductor/workflow.md`:
 .venv/bin/ruff check . && .venv/bin/ruff format --check . && .venv/bin/pytest
 ```
 
+Every backend must pass the shared contract suite:
+
+```bash
+.venv/bin/pytest -k conformance
+```
+
+## Adding a backend
+
+Implement one interface, register it by name, and write its doc page. See
+[`docs/backend-interface.md`](docs/backend-interface.md) for the contract, and
+[`docs/backends/faster-whisper.md`](docs/backends/faster-whisper.md) for a worked example.
+
 ## Documentation
 
-- Backend interface contract: `docs/backend-interface.md` _(Phase 2)_
-- Per-backend documentation: `docs/backends/` _(Phase 3)_
-- Project context, tracks, and workflow: `conductor/`
+- [Backend interface contract](docs/backend-interface.md)
+- [Per-backend documentation](docs/backends/)
+- Project context, tracks, and workflow: [`conductor/`](conductor/)

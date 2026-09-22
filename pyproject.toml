@@ -59,3 +59,10 @@ addopts = "-q --strict-markers"
 markers = [
     "conformance: shared contract tests every backend must pass",
 ]
+filterwarnings = [
+    "error",
+    # Typer 0.19 imports click helpers that Click 8.5 deprecates. Not ours to fix,
+    # and ignoring it narrowly keeps real warnings visible as errors.
+    "ignore:'click.utils.get_binary_stream' is deprecated:DeprecationWarning",
+    "ignore:'click.utils.get_text_stream' is deprecated:DeprecationWarning",
+]
