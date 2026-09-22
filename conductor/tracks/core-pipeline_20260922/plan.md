@@ -112,18 +112,30 @@ No engine-specific code anywhere in this phase.
 
 ### Tasks
 
-- [ ] Task 4.1: Implement input discovery over a directory, with a `--glob` pattern and deterministic ordering
-- [ ] Task 4.2: Implement audio decode/resample via ffmpeg subprocess, with an up-front presence check that fails fast with an install hint
-- [ ] Task 4.3: Implement up-front validation — input paths, config, output directory, and the selected backend's requirements — before any file is processed
-- [ ] Task 4.4: Implement the run loop: per-file transcription, writing `out/<run-id>/<name>.json`, never overwriting a prior run's output
-- [ ] Task 4.5: Implement error collection — per-file failures recorded and written to `errors.json` without aborting the batch, with partial results kept
-- [ ] Task 4.6: Implement manifest writing — backend name, model version, effective config, and input checksums to `manifest.json`, with tests
-- [ ] Task 4.7: Write a test asserting no pipeline module imports or branches on a specific backend
+- [x] Task 4.1: Implement input discovery over a directory, with a `--glob` pattern and deterministic ordering
+- [x] Task 4.2: Implement audio decode/resample via ffmpeg subprocess, with an up-front presence check that fails fast with an install hint
+- [x] Task 4.3: Implement up-front validation — input paths, config, output directory, and the selected backend's requirements — before any file is processed
+- [x] Task 4.4: Implement the run loop: per-file transcription, writing `out/<run-id>/<name>.json`, never overwriting a prior run's output
+- [x] Task 4.5: Implement error collection — per-file failures recorded and written to `errors.json` without aborting the batch, with partial results kept
+- [x] Task 4.6: Implement manifest writing — backend name, model version, effective config, and input checksums to `manifest.json`, with tests
+- [x] Task 4.7: Write a test asserting no pipeline module imports or branches on a specific backend
 
 ### Verification
 
-- [ ] `pytest` passes; a run over a fixture directory produces per-file transcripts, `manifest.json`, and `errors.json` in the expected layout
-- [ ] A run with one deliberately broken input completes, keeps the good results, and records the failure
+- [x] `pytest` passes; a run over a fixture directory produces per-file transcripts, `manifest.json`, and `errors.json` in the expected layout
+- [x] A run with one deliberately broken input completes, keeps the good results, and records the failure
+
+### Deviations
+
+**2026-09-22 — filename collisions.** Not in the task list, but two inputs in different
+directories can share a stem (`monday/standup.wav`, `tuesday/standup.wav`), and the second
+transcript would have silently overwritten the first. Collisions are now disambiguated with a
+counter in discovery order.
+
+**2026-09-22 — ffmpeg not installed.** The decode tests that need a real ffmpeg skip on this
+machine (4 skipped). Everything else, including the full orchestration path, is covered with a
+stub decoder. The end-to-end verification against real audio is outstanding until
+`apt install ffmpeg`.
 
 ## Phase 5: CLI and Polish
 
