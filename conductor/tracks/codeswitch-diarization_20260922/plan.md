@@ -71,8 +71,8 @@ correct chunk boundaries and proves they lose nothing.
 
 ### Tasks
 
-- [ ] Task 2.1: Implement VAD-based chunk grouping with a configurable target length, replacing the prototype's logic which produced ~68 s chunks against a 28 s target
-- [ ] Task 2.2: Write tests asserting chunk lengths stay within the target and boundaries land on speech gaps
+- [x] Task 2.1: Implement VAD-based chunk grouping with a configurable target length, replacing the prototype's logic which produced ~68 s chunks against a 28 s target
+- [x] Task 2.2: Write tests asserting chunk lengths stay within the target and boundaries land on speech gaps
 - [ ] Task 2.3: **Fix the content-loss regression.** The prototype produced 3683 words against a 4269-word reference, with 666 deletions; measure what VAD discards and close the gap
 - [ ] Task 2.4: Add a coverage assertion to the eval — transcribed audio duration against total speech duration — so a future change cannot buy WER by dropping speech
 
