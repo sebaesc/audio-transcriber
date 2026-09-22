@@ -28,3 +28,23 @@ faster-whisper = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/audio_transcriber"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = ["E501"] # line length is handled by the formatter
+
+[tool.ruff.lint.isort]
+known-first-party = ["audio_transcriber"]
