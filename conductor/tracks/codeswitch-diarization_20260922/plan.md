@@ -73,14 +73,47 @@ correct chunk boundaries and proves they lose nothing.
 
 - [x] Task 2.1: Implement VAD-based chunk grouping with a configurable target length, replacing the prototype's logic which produced ~68 s chunks against a 28 s target
 - [x] Task 2.2: Write tests asserting chunk lengths stay within the target and boundaries land on speech gaps
-- [ ] Task 2.3: **Fix the content-loss regression.** The prototype produced 3683 words against a 4269-word reference, with 666 deletions; measure what VAD discards and close the gap
-- [ ] Task 2.4: Add a coverage assertion to the eval — transcribed audio duration against total speech duration — so a future change cannot buy WER by dropping speech
+- [x] Task 2.3: **Fix the content-loss regression.** The prototype produced 3683 words against a 4269-word reference, with 666 deletions; measure what VAD discards and close the gap
+- [x] Task 2.4: Add a coverage assertion to the eval — transcribed audio duration against total speech duration — so a future change cannot buy WER by dropping speech
+- [x] Task 2.5: Fix decoding reproducibility (unplanned; see deviations)
+- [x] Task 2.6: Fix silently dropped backend config (unplanned; see deviations)
 
 ### Verification
 
 - [ ] Chunk lengths respect the configured target
 - [ ] Transcribing chunk-by-chunk under the file-level language scores no worse than the baseline; this isolates chunking from detection
 - [ ] Coverage assertion in place and passing
+
+### Deviations
+
+**2026-09-22 — content loss was the chunking bug, not VAD.** Task 2.3 assumed VAD was discarding
+speech. With chunk length bounded, speech coverage measured 0.97 and 0.99 on the two recordings
+checked, so VAD discards very little. The prototype's deletions came from single language
+decisions spanning minutes of bilingual audio. Task 2.4's guard is satisfied by the `coverage`
+field added to `Score` in Phase 1, which is asserted per recording in `Comparison`.
+
+**2026-09-22 — two unplanned fixes to the shipped backend (Tasks 2.5, 2.6).** Phase 1's harness
+found both; neither was visible to the existing test suite.
+
+*Reproducibility.* faster-whisper samples above temperature 0.0 and the backend never pinned a
+seed, so the same recording gave WER 0.409 vs 0.441 across runs — a 0.127 spread, larger than any
+improvement this track could plausibly show. A first attempt defaulted to greedy decoding; it was
+measured and reverted, because removing the ladder cost 0.185 WER and 15 points of coverage, and
+no configuration between the two extremes beat either. The ladder earns its place: 14.5% of
+segments fall back and some need temperature 1.0 to escape repetition loops. Seeding CTranslate2's
+RNG gives accuracy and reproducibility together, verified byte-identical through the full pipeline.
+
+The default seed of 0 is deliberately untuned. Seeds 42 and 7 scored 0.259 and 0.394 WER on the
+same recording; picking the better one would fit noise and inflate every subsequent measurement.
+
+*Silently dropped config.* The backend accepted any keyword, recorded it in the manifest, and
+forwarded only those `transcribe()` named inline. Two runs configured differently produced
+byte-identical output while the manifest claimed the option was applied. Decode options are now
+derived from the config so recording and forwarding cannot diverge, unknown options are rejected,
+and a test asserts every recorded option reaches the decoder.
+
+**Consequence:** the first committed baseline was invalid — unseeded, and taken at an unknown
+point in a 0.127 spread. It has been replaced.
 
 ## Phase 3: Per-Chunk Language Detection
 
