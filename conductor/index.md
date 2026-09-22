@@ -35,7 +35,7 @@ A modular audio transcription pipeline with swappable model backends.
 
 | Track | Status | Priority | Spec | Plan |
 | ----- | ------ | -------- | ---- | ---- |
-| [Core Pipeline and Backend Interface](./tracks/core-pipeline_20260922/index.md) | Pending | Critical | [spec](./tracks/core-pipeline_20260922/spec.md) | [plan](./tracks/core-pipeline_20260922/plan.md) |
+| [Core Pipeline and Backend Interface](./tracks/core-pipeline_20260922/index.md) | In Progress | Critical | [spec](./tracks/core-pipeline_20260922/spec.md) | [plan](./tracks/core-pipeline_20260922/plan.md) |
 
 ## Recent Activity
 
