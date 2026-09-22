@@ -304,13 +304,6 @@ def test_normalize_without_a_duration_keeps_everything(backend):
 # every later segment.
 
 
-def test_temperature_defaults_to_deterministic_decoding():
-    """A single temperature of 0.0 means greedy decoding, not sampling."""
-    config = FasterWhisperBackend().effective_config()
-
-    assert config["temperature"] == 0.0
-
-
 def test_decoding_options_are_recorded_in_the_effective_config():
     """A run is only reproducible if the manifest says what produced it."""
     config = FasterWhisperBackend().effective_config()
@@ -333,19 +326,24 @@ def test_temperature_is_forwarded_to_the_engine(backend, monkeypatch, tmp_path):
 
             return iter(()), _Info()
 
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        lambda value: None,
+    )
     monkeypatch.setattr(backend, "_model", _Model())
     backend.transcribe(tmp_path / "a.wav", "a.wav")
 
-    assert seen["temperature"] == 0.0
+    assert (
+        seen["temperature"] == FasterWhisperBackend().effective_config()["temperature"]
+    )
     assert seen["condition_on_previous_text"] is True
 
 
-def test_the_fallback_ladder_can_be_restored_by_config():
-    """Determinism is the default, not a cage: the ladder stays available."""
-    ladder = [0.0, 0.2, 0.4]
-    backend = FasterWhisperBackend(temperature=ladder)
-
-    assert backend.effective_config()["temperature"] == ladder
+def test_greedy_decoding_can_be_selected_by_config():
+    """The ladder is the default, not a cage: greedy stays available."""
+    assert (
+        FasterWhisperBackend(temperature=0.0).effective_config()["temperature"] == 0.0
+    )
 
 
 # --- Config that reaches the decoder ---
@@ -384,15 +382,20 @@ def test_every_recorded_option_reaches_the_decoder(monkeypatch, tmp_path):
 
             return iter(()), _Info()
 
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        lambda value: None,
+    )
     backend = FasterWhisperBackend(model="tiny")
     monkeypatch.setattr(backend, "_model", _Model())
     backend.transcribe(tmp_path / "a.wav", "a.wav")
 
+    from audio_transcriber.backends.faster_whisper import _NON_DECODE_OPTIONS
+
     recorded = set(backend.effective_config())
-    # Options describing how the model is loaded rather than how it decodes.
-    load_time = {"model", "device", "compute_type"}
-    assert (recorded - load_time) <= set(seen), (
-        f"recorded but never forwarded: {sorted((recorded - load_time) - set(seen))}"
+    assert (recorded - _NON_DECODE_OPTIONS) <= set(seen), (
+        "recorded but never forwarded: "
+        f"{sorted((recorded - _NON_DECODE_OPTIONS) - set(seen))}"
     )
 
 
@@ -410,9 +413,91 @@ def test_repetition_controls_are_forwarded(monkeypatch, tmp_path):
 
             return iter(()), _Info()
 
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        lambda value: None,
+    )
     backend = FasterWhisperBackend(repetition_penalty=1.1, no_repeat_ngram_size=3)
     monkeypatch.setattr(backend, "_model", _Model())
     backend.transcribe(tmp_path / "a.wav", "a.wav")
 
     assert seen["repetition_penalty"] == 1.1
     assert seen["no_repeat_ngram_size"] == 3
+
+
+# --- Seeded decoding ---
+#
+# The temperature ladder re-decodes segments that trip Whisper's quality
+# thresholds, and it is worth keeping: on one recording it scored WER 0.434
+# against 0.619 for the best deterministic configuration. Its sampling is what
+# made runs unreproducible — but CTranslate2's RNG takes a seed, so seeding it
+# gives both. Verified: the same seed produced byte-identical transcripts, and a
+# different seed produced different ones.
+
+
+def test_temperature_defaults_to_the_fallback_ladder():
+    """Quality needs it: 14.5% of segments fall back, and some need 1.0."""
+    temperature = FasterWhisperBackend().effective_config()["temperature"]
+
+    assert isinstance(temperature, list)
+    assert temperature[0] == 0.0
+    assert max(temperature) > 0.0
+
+
+def test_seed_is_recorded_in_the_effective_config():
+    """The seed is part of what reproduces a run, so the manifest needs it."""
+    assert FasterWhisperBackend().effective_config()["seed"] == 0
+
+
+def test_seed_is_applied_before_every_file(monkeypatch, tmp_path):
+    """Per file, not per run.
+
+    Seeding once per process would make a file's transcript depend on how many
+    files preceded it, so transcribing a directory would not match transcribing
+    one file from it.
+    """
+    seeds = []
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        seeds.append,
+    )
+
+    class _Model:
+        def transcribe(self, audio, **kwargs):
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    backend = FasterWhisperBackend(seed=1234)
+    monkeypatch.setattr(backend, "_model", _Model())
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+    backend.transcribe(tmp_path / "b.wav", "b.wav")
+
+    assert seeds == [1234, 1234]
+
+
+def test_the_seed_is_not_passed_to_the_decoder(monkeypatch, tmp_path):
+    """It is applied to the RNG; transcribe() would reject it as a keyword."""
+    seen = {}
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        lambda value: None,
+    )
+
+    class _Model:
+        def transcribe(self, audio, **kwargs):
+            seen.update(kwargs)
+
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    backend = FasterWhisperBackend()
+    monkeypatch.setattr(backend, "_model", _Model())
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert "seed" not in seen

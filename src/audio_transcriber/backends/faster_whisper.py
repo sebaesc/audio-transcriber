@@ -99,13 +99,21 @@ _DEFAULTS: dict[str, Any] = {
     "language": None,
     "beam_size": 5,
     "vad_filter": True,
-    # faster-whisper defaults temperature to [0.0, 0.2, ..., 1.0] and falls back
-    # up that ladder when a decode trips its quality thresholds. Above 0.0 it
-    # samples, so the same audio produces different text on different runs —
-    # measured at 689 vs 642 segments and WER 0.409 vs 0.441 for one recording.
-    # A single 0.0 is greedy and reproducible, which the project requires. The
-    # ladder is still available by passing a list.
-    "temperature": 0.0,
+    # The fallback ladder. When a decode trips Whisper's quality thresholds it is
+    # re-decoded at the next temperature up. This is worth keeping: 14.5% of
+    # segments on one recording fell back, 46 of them all the way to 1.0, and
+    # removing the ladder cost 0.185 WER and 15 points of coverage.
+    #
+    # Sampling above 0.0 made runs unreproducible until `seed` was pinned below.
+    "temperature": [0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+    # Seeds CTranslate2's RNG, which is what makes the ladder reproducible: the
+    # same seed yields byte-identical transcripts, a different one does not.
+    #
+    # The value is arbitrary and deliberately untuned. Different seeds score
+    # differently on any given recording — 0.259 against 0.394 WER on one of
+    # them — so choosing a seed by its score fits noise rather than improving
+    # anything. Treat that spread as the measurement's noise floor.
+    "seed": 0,
     # Conditioning on previous text helps context, but it also carries any
     # divergence into every later segment. Exposed because it is the lever to
     # reach for when a recording falls into a repetition loop.
@@ -114,10 +122,21 @@ _DEFAULTS: dict[str, Any] = {
     # loops. faster-whisper's own defaults, exposed so they can be tuned.
     "repetition_penalty": 1.0,
     "no_repeat_ngram_size": 0,
+    # Beam search shape. Deterministic quality levers, as opposed to sampling.
+    "best_of": 5,
+    "patience": 1.0,
+    "length_penalty": 1.0,
+    # The thresholds that decide a decode was bad. With a temperature ladder,
+    # tripping one triggers a re-decode; without it, the bad decode is kept.
+    "compression_ratio_threshold": 2.4,
+    "log_prob_threshold": -1.0,
+    "no_speech_threshold": 0.6,
 }
 
-#: Options consumed when the model is loaded rather than passed to each decode.
-_LOAD_TIME_OPTIONS = frozenset({"model", "device", "compute_type"})
+#: Options that are not decode keywords: they configure how the model is loaded,
+#: or are applied some other way. `seed` goes to CTranslate2's RNG rather than to
+#: `transcribe()`, which would reject it.
+_NON_DECODE_OPTIONS = frozenset({"model", "device", "compute_type", "seed"})
 
 
 @register
@@ -135,9 +154,11 @@ class FasterWhisperBackend(TranscriptionBackend):
     - `beam_size`: beam search width. Defaults to 5.
     - `vad_filter`: drop non-speech with Silero VAD before decoding.
       Defaults to True.
-    - `temperature`: decoding temperature. Defaults to 0.0, which is greedy and
-      reproducible. Pass a list to restore faster-whisper's fallback ladder,
-      accepting that the output is then not reproducible.
+    - `temperature`: decoding temperature, or a list forming a fallback ladder.
+      Defaults to the full ladder, which re-decodes segments that fail Whisper's
+      quality thresholds. Reproducible because `seed` is pinned.
+    - `seed`: seeds CTranslate2's RNG, making sampled decoding reproducible.
+      Defaults to 0.
     - `condition_on_previous_text`: feed each segment the previous one as
       context. Defaults to True. Turning it off can break repetition loops.
     - `repetition_penalty`: penalize repeated tokens. Defaults to 1.0, no penalty.
@@ -287,6 +308,9 @@ class FasterWhisperBackend(TranscriptionBackend):
             TranscriptionError: If this file cannot be transcribed.
         """
         model = self._load_model()
+        # Seeded per file, not once per run: seeding per run would make a
+        # transcript depend on how many files preceded it in the batch.
+        ctranslate2.set_random_seed(self.config["seed"])
         try:
             native_segments, info = model.transcribe(
                 str(audio_path), **self._decode_options()
@@ -315,7 +339,7 @@ class FasterWhisperBackend(TranscriptionBackend):
         return {
             key: value
             for key, value in self.config.items()
-            if key not in _LOAD_TIME_OPTIONS
+            if key not in _NON_DECODE_OPTIONS
         }
 
     def _normalize(
