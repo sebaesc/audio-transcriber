@@ -15,6 +15,7 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
+| `[ ]` | [codeswitch-diarization_20260922](./tracks/codeswitch-diarization_20260922/index.md) | Code-Switching Language Detection and Speaker Diarization | 2026-09-22 | 2026-09-22 |
 
 <!-- Tracks registered by /conductor:new-track -->
 

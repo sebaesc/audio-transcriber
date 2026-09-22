@@ -36,6 +36,7 @@ A modular audio transcription pipeline with swappable model backends.
 | Track | Status | Priority | Spec | Plan |
 | ----- | ------ | -------- | ---- | ---- |
 | [Core Pipeline and Backend Interface](./tracks/core-pipeline_20260922/index.md) | Complete | Critical | [spec](./tracks/core-pipeline_20260922/spec.md) | [plan](./tracks/core-pipeline_20260922/plan.md) |
+| [Code-Switching Language Detection and Speaker Diarization](./tracks/codeswitch-diarization_20260922/index.md) | Pending | High | [spec](./tracks/codeswitch-diarization_20260922/spec.md) | [plan](./tracks/codeswitch-diarization_20260922/plan.md) |
 
 ## Recent Activity
 
@@ -45,10 +46,12 @@ A modular audio transcription pipeline with swappable model backends.
 | 2026-09-22 | —     | Git repository initialized |
 | 2026-09-22 | core-pipeline_20260922 | Track created (5 phases, 32 tasks) |
 | 2026-09-22 | core-pipeline_20260922 | Track complete (5 phases, 34 tasks, all gates passed) |
+| 2026-09-22 | core-pipeline_20260922 | Merged into `main` |
+| 2026-09-22 | codeswitch-diarization_20260922 | Track created (5 phases, 31 tasks) |
 
 ## Project Status
 
-**Current Phase:** Core pipeline complete; ready for the next track
+**Current Phase:** Core pipeline merged; `codeswitch-diarization_20260922` ready to start
 **Overall Progress:** Core pipeline, backend interface, and one backend shipped
 
 ### Milestone Tracker
@@ -57,6 +60,7 @@ A modular audio transcription pipeline with swappable model backends.
 | --------------------------------- | ----------- | ------- |
 | Core pipeline + backend interface | 2026-09-22  | Complete |
 | First model backend + docs        | 2026-09-22  | Complete |
+| Spanish/English code-switching    | TBD         | Pending |
 | Docker packaging                  | TBD         | Pending |
 
 ## Project Context at a Glance
