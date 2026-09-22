@@ -1,0 +1,55 @@
+{
+  "status": "complete",
+  "project_type": "greenfield",
+  "current_section": null,
+  "current_question": null,
+  "completed_sections": [
+    "product",
+    "guidelines",
+    "tech_stack",
+    "workflow",
+    "styleguides"
+  ],
+  "answers": {
+    "project_name": "Audio Transcriber",
+    "description": "A pipeline that transcribes audio files, built modularly so different transcription models can be swapped in.",
+    "problem": "Model lock-in: transcription tools hard-wire a single engine, so switching models means rewriting the pipeline. Audio Transcriber makes the transcription model a swappable component.",
+    "users": "Internal team / self \u2014 running transcription jobs as part of internal workflows.",
+    "goals": [
+      "Pluggable model backends \u2014 any transcription model (local or API) can be added without touching pipeline code.",
+      "Accurate, structured output \u2014 transcripts with timestamps, speaker labels, and a consistent format across models.",
+      "Per-model documentation \u2014 for each supported transcription model, document how it is used and what it requires (deps, credentials, hardware)."
+    ],
+    "voice": "Concise and direct \u2014 short, plain sentences.",
+    "principles": [
+      "Modularity / clean interfaces \u2014 model backends behind a stable interface; pipeline code never depends on a specific engine.",
+      "Reproducibility \u2014 same input plus same config produces the same output; configs and model versions are recorded with results."
+    ],
+    "languages": "Python 3.12 (3.12.3 virtualenv at .venv)",
+    "frontend": "None / CLI only",
+    "backend": "None \u2014 Python library with a CLI entry point",
+    "database": "None \u2014 transcripts and run metadata written as files on disk (JSON/text)",
+    "infrastructure": "Self-hosted / Docker \u2014 containerized so it runs identically anywhere, including a GPU host",
+    "tdd": "Flexible \u2014 tests recommended for complex logic (backend interface, output normalization); not required everywhere.",
+    "commits": "Conventional Commits (feat:, fix:, docs:, refactor:, test:, chore:)",
+    "review": "Optional / self-review OK",
+    "verification": "Only at track completion",
+    "styleguides": [
+      "python",
+      "general"
+    ],
+    "lint_tooling": "Ruff (lint + format); mypy optional, not gated"
+  },
+  "files_created": [
+    "conductor/index.md",
+    "conductor/product.md",
+    "conductor/product-guidelines.md",
+    "conductor/tech-stack.md",
+    "conductor/workflow.md",
+    "conductor/tracks.md",
+    "conductor/code_styleguides/general.md",
+    "conductor/code_styleguides/python.md"
+  ],
+  "started_at": "2026-09-22T00:00:00Z",
+  "last_updated": "2026-09-22T00:00:00Z"
+}
