@@ -51,10 +51,24 @@ cannot change without sign-off, so they are reviewed before anything is built on
 - [x] Task 2.6: Write the shared conformance test suite that any backend must pass — parameterized over registered backends, asserting schema validity, timestamp ordering, and error behavior
 - [x] Task 2.7: Write `docs/backend-interface.md` — the contract a new backend implements, and what normalization it owns
 
+### Tasks (added at the approval gate)
+
+- [x] Task 2.8: Reshape the transcript file to a bare array of five-key segment objects (`start_time`, `end_time`, `speaker`, `spoken_language`, `text`)
+- [x] Task 2.9: Move per-file metadata to the manifest's input record as an optional sidecar
+
 ### Verification
 
 - [x] `pytest` passes; conformance suite runs (and is trivially green with no backends registered)
-- [ ] **Approval gate:** interface, transcript schema, and manifest format reviewed and signed off before Phase 3 begins
+- [x] **Approval gate:** interface, transcript schema, and manifest format reviewed and signed off before Phase 3 begins
+
+### Deviations
+
+**2026-09-22 — transcript file shape.** The spec's original draft wrapped segments in a metadata
+object. At the approval gate the output contract was changed to a bare JSON array of segment
+objects with exactly five keys, and per-file metadata moved to the manifest's input record as an
+optional sidecar. `spoken_language` became a per-segment field; `confidence` was dropped from the
+contract. Caught before any backend, writer, or CLI was built on the old shape. `spec.md` records
+the revision.
 
 ## Phase 3: Reference Backend (faster-whisper)
 

@@ -1,7 +1,7 @@
 # Track: Core Pipeline and Backend Interface
 
 **ID:** core-pipeline_20260922
-**Status:** Pending
+**Status:** In Progress
 
 ## Documents
 
@@ -10,8 +10,8 @@
 
 ## Progress
 
-- Phases: 0/5 complete
-- Tasks: 0/32 complete
+- Phases: 2/5 complete
+- Tasks: 14/34 complete
 
 ## Quick Links
 
