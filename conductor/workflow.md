@@ -105,7 +105,7 @@ chore(plan): mark task 2.3 complete [core-pipeline]
 
 Scope is the module or area (`backends`, `cli`, `normalize`, `manifest`, `docker`, `plan`).
 
-> **Note:** this project is not yet a git repository. Run `git init` before the first commit.
+> **Repo:** git repository initialized on branch `main`. Track work branches off `main`.
 
 ## Code Review
 
