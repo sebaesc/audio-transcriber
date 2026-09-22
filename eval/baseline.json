@@ -1,6 +1,6 @@
 {
   "label": "baseline",
-  "created_at": "2026-09-22T19:19:57.990622+00:00",
+  "created_at": "2026-09-22T19:49:53.719335+00:00",
   "tool_version": "0.1.0",
   "backend": "faster-whisper",
   "model_version": "faster-whisper-1.2.1/large-v3",
@@ -30,15 +30,15 @@
   "summary": {
     "recordings": 5,
     "scored": 5,
-    "mean_wer": 0.3889,
-    "mean_coverage": 0.9128,
-    "mean_language_mix_error": 0.1702
+    "mean_wer": 0.3773,
+    "mean_coverage": 0.8899,
+    "mean_language_mix_error": 0.1639
   },
   "recordings": [
     {
       "name": "herring17",
       "duration_s": 1801.3,
-      "elapsed_s": 300.1,
+      "elapsed_s": 302.7,
       "realtime_factor": 6.0,
       "segments": 877,
       "detected_languages": [
@@ -62,96 +62,96 @@
     {
       "name": "maria20",
       "duration_s": 1914.6,
-      "elapsed_s": 107.0,
-      "realtime_factor": 17.9,
-      "segments": 227,
+      "elapsed_s": 95.1,
+      "realtime_factor": 20.1,
+      "segments": 124,
       "detected_languages": [
         "en"
       ],
       "score": {
-        "wer": 0.4409,
-        "coverage": 0.9071,
-        "language_mix_error": 0.2327,
+        "wer": 0.5189,
+        "coverage": 0.8607,
+        "language_mix_error": 0.3477,
         "reference_spanish_share": 0.5523,
-        "hypothesis_spanish_share": 0.3196,
-        "substitutions": 398,
-        "deletions": 232,
-        "insertions": 82,
-        "hits": 985,
+        "hypothesis_spanish_share": 0.2047,
+        "substitutions": 435,
+        "deletions": 314,
+        "insertions": 89,
+        "hits": 866,
         "reference_words": 1615,
-        "hypothesis_words": 1465
+        "hypothesis_words": 1390
       },
       "error": null
     },
     {
       "name": "sastre8",
       "duration_s": 2003.1,
-      "elapsed_s": 391.4,
-      "realtime_factor": 5.1,
-      "segments": 1074,
+      "elapsed_s": 337.8,
+      "realtime_factor": 5.9,
+      "segments": 1008,
       "detected_languages": [
         "en"
       ],
       "score": {
-        "wer": 0.2785,
-        "coverage": 1.0192,
-        "language_mix_error": 0.0323,
+        "wer": 0.2461,
+        "coverage": 0.9865,
+        "language_mix_error": 0.0126,
         "reference_spanish_share": 0.5659,
-        "hypothesis_spanish_share": 0.5336,
-        "substitutions": 662,
-        "deletions": 420,
-        "insertions": 531,
-        "hits": 4709,
+        "hypothesis_spanish_share": 0.5534,
+        "substitutions": 623,
+        "deletions": 440,
+        "insertions": 362,
+        "hits": 4728,
         "reference_words": 5791,
-        "hypothesis_words": 5902
+        "hypothesis_words": 5713
       },
       "error": null
     },
     {
       "name": "zeledon14",
       "duration_s": 1984.9,
-      "elapsed_s": 355.9,
-      "realtime_factor": 5.6,
-      "segments": 963,
+      "elapsed_s": 345.5,
+      "realtime_factor": 5.7,
+      "segments": 943,
       "detected_languages": [
         "es"
       ],
       "score": {
-        "wer": 0.257,
-        "coverage": 0.9731,
-        "language_mix_error": 0.0005,
+        "wer": 0.255,
+        "coverage": 0.979,
+        "language_mix_error": 0.0009,
         "reference_spanish_share": 0.9063,
-        "hypothesis_spanish_share": 0.9069,
-        "substitutions": 841,
-        "deletions": 539,
-        "insertions": 357,
-        "hits": 5378,
+        "hypothesis_spanish_share": 0.9072,
+        "substitutions": 817,
+        "deletions": 524,
+        "insertions": 382,
+        "hits": 5417,
         "reference_words": 6758,
-        "hypothesis_words": 6576
+        "hypothesis_words": 6616
       },
       "error": null
     },
     {
       "name": "zeledon4",
       "duration_s": 1310.9,
-      "elapsed_s": 253.3,
-      "realtime_factor": 5.2,
-      "segments": 706,
+      "elapsed_s": 257.8,
+      "realtime_factor": 5.1,
+      "segments": 600,
       "detected_languages": [
         "es"
       ],
       "score": {
-        "wer": 0.4762,
-        "coverage": 0.9034,
-        "language_mix_error": 0.2446,
+        "wer": 0.3747,
+        "coverage": 0.862,
+        "language_mix_error": 0.1177,
         "reference_spanish_share": 0.6055,
-        "hypothesis_spanish_share": 0.8501,
-        "substitutions": 1378,
-        "deletions": 521,
-        "insertions": 113,
-        "hits": 2326,
+        "hypothesis_spanish_share": 0.7233,
+        "substitutions": 756,
+        "deletions": 705,
+        "insertions": 122,
+        "hits": 2764,
         "reference_words": 4225,
-        "hypothesis_words": 3817
+        "hypothesis_words": 3642
       },
       "error": null
     }
