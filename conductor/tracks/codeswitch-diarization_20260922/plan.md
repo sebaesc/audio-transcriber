@@ -127,14 +127,46 @@ The measured win. Opt-in, restricted to `{en, es}`.
 - [x] Task 3.4: Populate `spoken_language` per segment from its chunk's detected language
 - [x] Task 3.5: Record the detection mode, threshold, and allowed languages in the effective config, so a run's manifest explains its own output
 - [x] Task 3.6: Write tests — detection restricted to the allowed set, threshold fallback, and `spoken_language` varying within one transcript
-- [~] Task 3.7: Run the eval and compare against the Phase 1 baseline
+- [x] Task 3.7: Run the eval and compare against the Phase 1 baseline
 
 ### Verification
 
-- [ ] `pytest -k conformance` still passes in both modes
-- [ ] WER improves on the baseline and Spanish share lands within 0.05 of the reference
-- [ ] Coverage assertion still passing — the win is not bought with deletions
-- [ ] The default path is byte-for-byte unchanged when `language_detection=file`
+- [x] `pytest -k conformance` still passes in both modes
+- [ ] **Not met:** WER improves on the baseline and Spanish share lands within 0.05 of the reference
+- [x] Coverage assertion still passing — the win is not bought with deletions
+- [x] The default path is byte-for-byte unchanged when `language_detection=file`
+
+### Phase 3 result
+
+Measured against the reproducible baseline, span-merged:
+
+| recording | ΔWER | Δcoverage | mix error base → chunked |
+| --------- | ---- | --------- | ------------------------ |
+| herring17 | −0.052 | +0.019 | 0.341 → 0.083 |
+| maria20   | −0.156 | +0.076 | 0.348 → 0.092 |
+| sastre8   | +0.081 | −0.055 | 0.013 → 0.037 |
+| zeledon14 | +0.009 | −0.011 | 0.001 → 0.006 |
+| zeledon4  | +0.030 | −0.059 | 0.118 → 0.034 |
+
+Mean: WER −0.018, coverage −0.006, language-mix error −0.114.
+
+**All five recordings now report both languages**, where the baseline reported one for each.
+Language-mix error improved on every recording. WER improved on two.
+
+**The acceptance criterion "WER improves across all five" is not met, and will not be.** Chunked
+detection helps where file-level detection guessed wrong (`herring17`, `maria20`: mix errors of
+0.34) and costs where it guessed right (`sastre8`, `zeledon14`: mix errors of 0.013 and 0.001 —
+nothing to fix, only overhead to add). That shape is inherent, not a tuning failure.
+
+Two variants were measured. Decoding each chunk separately scored mean ΔWER −0.027 but regressed
+coverage by 0.040, because a word split across two decodes is transcribed badly in both. Merging
+consecutive chunks that agree on a language into one decode fixed coverage (−0.006) and gave back
+some WER (−0.018). Neither dominates; span merging was kept because a coverage regression is the
+failure mode the eval exists to catch.
+
+**Consequence for Task 5.6:** `chunked` stays opt-in. It is the right setting for genuinely
+bilingual audio and a net loss for monolingual audio, and the backend cannot know which it has
+before transcribing.
 
 ## Phase 4: Speaker Diarization
 
