@@ -124,8 +124,10 @@ improved one recording by 23% and worsened another by 36%. A mean would have cal
 **Know the noise floor.** Decoding samples above temperature 0.0, and the backend pins
 CTranslate2's seed so a configuration gives byte-identical output run to run. But that makes the
 result reproducible, not representative: a different seed gives a different, equally valid
-transcript. On one recording seeds 42 and 7 scored WER 0.259 and 0.394. A per-recording
-difference smaller than that is not evidence on its own. Look for changes that move most
+transcript. Measured on the committed chunked configuration, changing only the seed moved WER by
+up to 0.022 per recording and 0.007 on the mean. A per-recording difference smaller than that is
+not evidence on its own. (An older configuration showed a far wider spread — 0.259 against 0.394
+on one recording — so re-measure the floor when the configuration changes.) Look for changes that move most
 recordings the same way, and never tune the seed.
 
 **Compare like with like.** The model, device and every backend option are in the report's

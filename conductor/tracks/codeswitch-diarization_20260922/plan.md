@@ -83,9 +83,14 @@ correct chunk boundaries and proves they lose nothing.
 ### Verification
 
 - [x] Chunk lengths respect the configured target (`tests/test_chunking.py`)
-- [ ] Transcribing chunk-by-chunk under the file-level language scores no worse than the baseline; this isolates chunking from detection
-  — **never measured.** Phase 3's comparison mixes chunking and detection; this isolating run was
-  not done
+- [x] Transcribing chunk-by-chunk under the file-level language scores no worse than the baseline; this isolates chunking from detection
+  — measured 2026-09-23 as chunked mode with `language_threshold=1.01`, so every chunk keeps the
+  file-level language. With span merging that tests the current design's chunking — VAD
+  grouping, no VAD inside a span — rather than per-chunk decoding, which no longer exists. Mean
+  WER −0.010, retained +0.017. On the four recordings whose file-level language matched the
+  baseline's: −0.035, −0.020, +0.002, +0.020, all better or within the 0.022 seed noise floor
+  (Task 5.1). `zeledon4` is excluded: restricting detection to `{en, es}` flipped its file-level
+  language from `es` to `en`, so it does not isolate chunking
 - [x] Coverage assertion in place and passing — now `retained`, per Task 5.8
 
 ### Deviations
@@ -329,6 +334,25 @@ WER is not one to ship; the doc page tells users with bilingual audio to opt in.
 **Throughput (Task 5.2),** same runs: `file` 20.5 min for 150 min of audio (7.3x), `chunked`
 23.0 min (6.5x), about 12% more. Diarization 22.9x on CUDA, 1.8x on CPU, on one 21.8-min
 recording. Documented in the doc page.
+
+**Measured after all (2026-09-23).** The full runs above were then made. Each compares against the
+committed `eval/chunked.json` (threshold 0.5, 25 s, seed 0):
+
+| run | ΔWER per recording (herring17, maria20, sastre8, zeledon14, zeledon4) | mean ΔWER | mean mix error |
+| --- | ---------------------------------------------------------------------- | --------- | -------------- |
+| `seed=1` — noise floor | +0.000, −0.001, −0.022, −0.012, +0.000 | −0.007 | 0.050 → 0.048 |
+| `language_threshold=0.7` | −0.012, +0.030, +0.009, −0.006, +0.046 | +0.014 | 0.050 → 0.122 |
+| `chunk_seconds=15` | −0.024, **+0.048**, −0.036, −0.017, −0.053 | −0.016 | 0.050 → 0.044 |
+
+- **Noise floor: 0.022 WER per recording, 0.007 on the mean.** Far tighter than the 0.259 vs 0.394
+  seed spread quoted elsewhere, which was measured on an older configuration.
+- **Threshold 0.7 is worse**, as argued above: mix error doubles to quintuples on four
+  recordings, WER rises beyond noise on two. 0.5 stays, now measured.
+- **15 s chunks are better on 4 of 5** — three beyond noise — at the same wall-clock (23.3 vs
+  23.0 min). Against the file-mode baseline they improve WER on 4 of 5 recordings (mean −0.034)
+  where 25 s improves 2 (mean −0.018). The exception is `maria20`: +0.048 WER and −0.026
+  retained, which trips the comparison guard. It is the recording with the sparsest,
+  least trustworthy reference. **Whether to change the default is pending a decision.**
 
 ### Task 5.7 result — density filter
 
