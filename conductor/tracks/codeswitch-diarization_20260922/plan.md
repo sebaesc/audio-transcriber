@@ -287,8 +287,7 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 
 **Final: `language_threshold=0.5` kept, `chunk_seconds` changed 25 → 15** — both by full
 evaluation, below. The section starts with the detection-only probe that came first, when only the
-required evaluations were being run.
-measured instead is detection alone: every chunk's best-allowed language and probability, for
+required evaluations were being run. That probe measured detection alone: every chunk's best-allowed language and probability, for
 chunk lengths 10–30 s across all five recordings, with thresholds replayed offline.
 
 At 25 s chunks (flipped = chunks whose language changes to the file-level fallback):
