@@ -13,8 +13,8 @@
     "completed": 4
   },
   "tasks": {
-    "total": 36,
-    "completed": 31
+    "total": 38,
+    "completed": 33
   },
   "current_phase": 5,
   "current_task": "5.1",
@@ -24,7 +24,9 @@
     "27fc6ed: feat(eval): keep each hypothesis as segments, not only as text",
     "4a35e01: fix(eval): guard against dropped content with deletions, not length",
     "446233c: docs(eval): document the evaluation harness",
-    "1beb1c1: fix(normalize): drop segments too dense to have been spoken"
+    "1beb1c1: fix(normalize): drop segments too dense to have been spoken",
+    "d65c010: fix(backends): run diarization on the device transcription resolved to",
+    "4e7e35e: fix(backends): unload the previous model before rebuilding for a seed"
   ],
   "deferred": {
     "4.7": "Diarization DER evaluation. VoxConverse measures English-only conversation, not this project's bilingual audio; the Bangor corpus has no speaker labels. Diarization accuracy is therefore unmeasured."

@@ -268,6 +268,8 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 - [x] Task 5.7: **Drop implausibly dense segments.** Whisper emitted "For more info, see the links in the description." — eight words — into a 15 ms segment, after the duration clamp squashed a hallucination past the end of speech rather than discarding it. No real segment fits eight words into 15 ms, so words-per-second is a reliable discriminator. Filter in normalization, with the threshold chosen from the corpus rather than guessed, and a test built from the observed case
 - [x] Task 5.8: **Investigate over-generation.** `sastre8` scored coverage 1.019 at baseline: the transcript is longer than the reference. Establish whether that is hallucinated content, reference gaps, or normalization, since coverage is the metric guarding every other measurement in this track and a systematic bias in it would matter
 - [x] Task 5.9: Reject options the detection mode would silently ignore (unplanned; see deviations)
+- [x] Task 5.10: Run diarization on the resolved device, not always the CPU (unplanned; see deviations)
+- [x] Task 5.11: Stop seeded runs holding two copies of the model on the device (unplanned; see deviations)
 
 ### Task 5.7 result — density filter
 
@@ -348,6 +350,20 @@ that a forced `language` overrides chunked detection. It did not — chunked mod
 and overwrote it. The mirror case held too: file mode never read `languages`,
 `language_threshold` or `chunk_seconds`. All four were recorded in the manifest as if applied,
 the defect Task 2.6 fixed for decode options. Contradictions are now rejected at construction.
+
+**2026-09-23 — unplanned fix (Task 5.10).** Measuring throughput for 5.2 found that the pyannote
+pipeline was never moved off the CPU. On `zeledon4` (21.8 min) it ran 724 s on CPU against 57 s
+on CUDA, with identical speaker turns — so on CPU, diarization took longer than transcription.
+It now runs on the device transcription resolved to.
+
+**2026-09-23 — unplanned fix (Task 5.11).** The first end-to-end run with both models on the GPU
+took 22 minutes for a 22-minute recording and was stopped. VRAM read 7.9 GB within 30 s. Cause:
+the per-file model rebuild that applies the seed (Task 2.5) dropped its reference to the old
+model and assumed that freed it. It did not — one copy survived even an explicit `gc.collect()` —
+so every seeded run held two copies of `large-v3`. That fitted on 8 GB for transcription alone;
+adding diarization overflowed it, WSL2 paged GPU memory to system RAM, and a 5-minute excerpt
+transcribed at 2.3x realtime instead of 6–8x. The old model is now unloaded explicitly before the
+next is built.
 
 ## Final Verification
 
