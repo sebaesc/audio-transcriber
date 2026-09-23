@@ -310,3 +310,62 @@ def test_an_exported_variable_beats_the_dotenv_file(tmp_path, monkeypatch):
     monkeypatch.setattr(diarization, "_dotenv_loaded", False)
 
     assert diarization.find_token(None) == "hf_exported"
+
+
+# --- Device ---
+#
+# pyannote pipelines load onto the CPU and stay there unless moved. The backend
+# never moved it, so diarization ran on CPU beside a CUDA transcription: 57 s on
+# CUDA against more than ten minutes on CPU, for the same 21.8-minute recording.
+
+
+class _StubPipeline:
+    def __init__(self):
+        self.moved_to = None
+
+    def to(self, device):
+        self.moved_to = device
+        return self
+
+
+def test_the_pipeline_is_moved_to_the_requested_device(monkeypatch):
+    torch = pytest.importorskip("torch")
+    pyannote_audio = pytest.importorskip("pyannote.audio")
+    stub = _StubPipeline()
+    monkeypatch.setattr(
+        pyannote_audio.Pipeline, "from_pretrained", lambda *a, **k: stub
+    )
+
+    diarization.load_pipeline(diarization.DEFAULT_MODEL, "hf_x", device="cuda")
+
+    assert stub.moved_to == torch.device("cuda")
+
+
+def test_without_a_device_the_pipeline_is_left_where_it_loaded(monkeypatch):
+    pyannote_audio = pytest.importorskip("pyannote.audio")
+    stub = _StubPipeline()
+    monkeypatch.setattr(
+        pyannote_audio.Pipeline, "from_pretrained", lambda *a, **k: stub
+    )
+
+    diarization.load_pipeline(diarization.DEFAULT_MODEL, "hf_x")
+
+    assert stub.moved_to is None
+
+
+def test_diarization_runs_on_the_device_transcription_resolved(monkeypatch):
+    """`device: auto` resolves once, and both models should use the answer."""
+    seen = {}
+
+    def _load(model, token, device=None):
+        seen["device"] = device
+        return object()
+
+    monkeypatch.setattr(diarization, "load_pipeline", _load)
+    monkeypatch.setattr(diarization, "diarize", lambda *a, **k: [])
+    backend = FasterWhisperBackend(diarization=True, hf_token="hf_x")
+    backend._resolved_device = "cuda"
+
+    backend._diarize(Path("a.wav"))
+
+    assert seen["device"] == "cuda"

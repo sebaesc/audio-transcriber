@@ -157,12 +157,18 @@ def check_requirements(model: str, token: str | None, backend: str) -> None:
         ) from error
 
 
-def load_pipeline(model: str, token: str | None):
+def load_pipeline(model: str, token: str | None, device: str | None = None):
     """Load a pyannote pipeline.
+
+    pyannote loads onto the CPU and stays there unless moved. On CPU it runs
+    under 2x realtime, slower than transcribing the same audio on a GPU; on CUDA
+    it ran 23x realtime on a 21.8-minute recording.
 
     Args:
         model: Pipeline identifier on the Hub.
         token: Hugging Face token.
+        device: `cpu` or `cuda` to move the pipeline to. None leaves it where
+            it loaded.
 
     Returns:
         The loaded pipeline.
@@ -183,6 +189,10 @@ def load_pipeline(model: str, token: str | None):
             "has not been accepted for this token.",
             _gate_instructions(model),
         )
+    if device is not None:
+        import torch
+
+        pipeline.to(torch.device(device))
     return pipeline
 
 

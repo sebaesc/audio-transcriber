@@ -603,11 +603,16 @@ class FasterWhisperBackend(TranscriptionBackend):
         )
 
     def _diarize(self, audio_path: Path) -> list[diarization.SpeakerTurn]:
-        """Return the speaker turns for one file, loading the pipeline once."""
+        """Return the speaker turns for one file, loading the pipeline once.
+
+        The pipeline runs on the device transcription resolved to, so
+        `device: auto` is decided once and a CPU fallback applies to both.
+        """
         if self._diarizer is None:
             self._diarizer = diarization.load_pipeline(
                 self.config["diarization_model"],
                 diarization.find_token(self.config["hf_token"]),
+                device=self._resolved_device,
             )
         return diarization.diarize(
             self._diarizer,
