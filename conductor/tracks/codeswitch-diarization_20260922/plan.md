@@ -267,12 +267,25 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 - [ ] Task 5.6: Decide whether `chunked` should become the default, with the eval as the argument either way
 - [~] Task 5.7: **Drop implausibly dense segments.** Whisper emitted "For more info, see the links in the description." — eight words — into a 15 ms segment, after the duration clamp squashed a hallucination past the end of speech rather than discarding it. No real segment fits eight words into 15 ms, so words-per-second is a reliable discriminator. Filter in normalization, with the threshold chosen from the corpus rather than guessed, and a test built from the observed case
 - [ ] Task 5.8: **Investigate over-generation.** `sastre8` scored coverage 1.019 at baseline: the transcript is longer than the reference. Establish whether that is hallucinated content, reference gaps, or normalization, since coverage is the metric guarding every other measurement in this track and a systematic bias in it would matter
+- [x] Task 5.9: Reject options the detection mode would silently ignore (unplanned; see deviations)
 
 ### Verification
 
 - [ ] Doc page current, per gate 6
 - [ ] A real run over bilingual audio produces varying `spoken_language` and populated `speaker`
 - [ ] No segment in the eval output exceeds the words-per-second threshold from Task 5.7
+
+### Deviations
+
+**2026-09-23 — order.** Tasks 5.7 and 5.8 run before 5.1. The density filter changes what
+normalization emits in both modes, so tuning measured before it would be tuning a pipeline that
+no longer exists.
+
+**2026-09-23 — unplanned fix (Task 5.9).** Writing the doc page for 5.3 surfaced a false claim:
+that a forced `language` overrides chunked detection. It did not — chunked mode detected anyway
+and overwrote it. The mirror case held too: file mode never read `languages`,
+`language_threshold` or `chunk_seconds`. All four were recorded in the manifest as if applied,
+the defect Task 2.6 fixed for decode options. Contradictions are now rejected at construction.
 
 ## Final Verification
 
