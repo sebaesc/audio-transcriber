@@ -11,6 +11,7 @@ check here reports exactly which pages to visit rather than surfacing a bare 401
 from __future__ import annotations
 
 import os
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -234,7 +235,13 @@ def diarize(
         )
         if value is not None
     }
-    output = pipeline(str(audio_path), **constraints)
+    # On audio with little or no speech, pyannote's clustering averages empty
+    # embedding sets and numpy warns about it — "Mean of empty slice", "invalid
+    # value encountered in divide". The result is simply no turns, which the
+    # caller already handles; the warnings are noise, so they stop here.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        output = pipeline(str(audio_path), **constraints)
     # pyannote 4.x returns a DiarizeOutput whose serialize() is the documented
     # shape; 3.x returned an Annotation iterated with itertracks(). Both are
     # supported so the version pin is not the only thing holding this together.

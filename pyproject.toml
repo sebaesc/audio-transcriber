@@ -81,4 +81,8 @@ filterwarnings = [
     # and ignoring it narrowly keeps real warnings visible as errors.
     "ignore:'click.utils.get_binary_stream' is deprecated:DeprecationWarning",
     "ignore:'click.utils.get_text_stream' is deprecated:DeprecationWarning",
+    # pyannote announces on every run that it disabled TF32 for reproducibility.
+    # Informational. Matched by message so a missing diarization extra cannot
+    # break collection.
+    "ignore:TensorFloat-32 \\(TF32\\) has been disabled",
 ]

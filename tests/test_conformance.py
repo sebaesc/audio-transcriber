@@ -25,10 +25,35 @@ from audio_transcriber.schema import Segment, Transcript
 pytestmark = pytest.mark.conformance
 
 
-@pytest.fixture(params=registry.available() or [])
+#: Configurations beyond the default that change what a backend emits, so each
+#: must meet the contract on its own. A mode that is only ever tested at its
+#: defaults is a mode the suite has not checked.
+_EXTRA_CONFIGS: dict[str, list[dict]] = {
+    "faster-whisper": [
+        {"language_detection": "chunked", "languages": ["en", "es"]},
+        {"diarization": True},
+        {
+            "language_detection": "chunked",
+            "languages": ["en", "es"],
+            "diarization": True,
+        },
+    ],
+}
+
+
+def _backend_configs() -> list:
+    return [
+        pytest.param((name, config), id=f"{name}-{index}")
+        for name in registry.available()
+        for index, config in enumerate([{}, *_EXTRA_CONFIGS.get(name, [])])
+    ]
+
+
+@pytest.fixture(params=_backend_configs())
 def registered_backend(request) -> TranscriptionBackend:
-    """Each registered backend in turn, skipped if its requirements are unmet."""
-    backend = registry.create(request.param)
+    """Each registered backend in each configuration, skipped if unrunnable."""
+    name, config = request.param
+    backend = registry.create(name, **config)
     try:
         backend.check_requirements()
     except BackendRequirementError as error:
