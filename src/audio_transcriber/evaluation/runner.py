@@ -201,6 +201,12 @@ def evaluate(
             (transcript_dir / f"{recording.name}.{label}.txt").write_text(
                 hypothesis, encoding="utf-8"
             )
+            # The segments too, not just the text: timing and density are what
+            # expose a hallucination, and the flattened text has neither.
+            (transcript_dir / f"{recording.name}.{label}.json").write_text(
+                json.dumps(transcript.to_json_data(), indent=1, ensure_ascii=False),
+                encoding="utf-8",
+            )
 
     return report
 
