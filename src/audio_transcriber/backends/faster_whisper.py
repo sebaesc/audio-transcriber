@@ -177,6 +177,9 @@ _PIPELINE_OPTIONS = frozenset(
     }
 )
 
+#: Options only `language_detection=chunked` reads.
+_CHUNKED_ONLY_OPTIONS = frozenset({"languages", "language_threshold", "chunk_seconds"})
+
 #: Options that are not decode keywords: they configure how the model is loaded,
 #: or are applied some other way. `seed` goes to CTranslate2's RNG rather than to
 #: `transcribe()`, which would reject it.
@@ -229,7 +232,9 @@ class FasterWhisperBackend(TranscriptionBackend):
       to 0, no restriction.
 
     An option this backend does not recognize is rejected rather than ignored,
-    so the manifest cannot record a setting that was never applied.
+    so the manifest cannot record a setting that was never applied. So is one
+    the chosen `language_detection` mode would ignore: a forced `language` in
+    chunked mode, or a chunked-only option in file mode.
     """
 
     name = "faster-whisper"
@@ -248,6 +253,7 @@ class FasterWhisperBackend(TranscriptionBackend):
                 f"unknown option(s): {', '.join(unknown)}.",
                 f"Valid options are: {', '.join(sorted(_DEFAULTS))}.",
             )
+        self._reject_contradictions(config)
         super().__init__(**{**_DEFAULTS, **config})
         self._model: WhisperModel | None = None
         self._resolved_device: str | None = None
@@ -257,6 +263,40 @@ class FasterWhisperBackend(TranscriptionBackend):
             # depends on how it was configured, and a consumer reading the
             # capability flag should see what is actually active.
             self.capabilities = replace(type(self).capabilities, diarization=True)
+
+    def _reject_contradictions(self, config: dict[str, Any]) -> None:
+        """Reject options the chosen detection mode would silently ignore.
+
+        Checked against the options as given, before defaults are applied: a
+        default is not a choice the caller made, so it cannot contradict one.
+
+        Raises:
+            BackendRequirementError: If `language` is forced in chunked mode,
+                where detection would overwrite it, or a chunked-only option is
+                given in file mode, which never reads it.
+        """
+        mode = config.get("language_detection", _DEFAULTS["language_detection"])
+        if mode == "chunked" and config.get("language"):
+            raise BackendRequirementError(
+                self.name,
+                "language is forced, but language_detection=chunked detects it "
+                "per chunk and would override it.",
+                "Drop language to detect per chunk, or drop "
+                "language_detection=chunked to force one language.",
+            )
+        if mode != "chunked":
+            ignored = sorted(
+                key
+                for key in set(config) & _CHUNKED_ONLY_OPTIONS
+                if config[key] != _DEFAULTS[key]
+            )
+            if ignored:
+                raise BackendRequirementError(
+                    self.name,
+                    f"{', '.join(ignored)} only apply with "
+                    "language_detection=chunked, and would be ignored.",
+                    "Add language_detection=chunked, or drop them.",
+                )
 
     def effective_config(self) -> dict[str, Any]:
         """Return the config with defaults applied and resolved values filled in.

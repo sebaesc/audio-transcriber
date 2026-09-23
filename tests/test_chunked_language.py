@@ -112,13 +112,17 @@ def test_detection_without_restriction_takes_the_best_overall():
 
 def test_languages_may_be_given_as_a_comma_separated_string():
     """The CLI passes --option languages=en,es as text."""
-    backend = FasterWhisperBackend(model="tiny", languages="en, es")
+    backend = FasterWhisperBackend(
+        model="tiny", languages="en, es", language_detection="chunked"
+    )
 
     assert backend._allowed_languages() == ("en", "es")
 
 
 def test_no_allowed_language_ranked_reports_nothing():
-    backend = FasterWhisperBackend(model="tiny", languages=["de"])
+    backend = FasterWhisperBackend(
+        model="tiny", languages=["de"], language_detection="chunked"
+    )
     model = _Model([("pt", 0.7), ("es", 0.25)])
 
     assert backend._detect_language(model, None) == (None, 0.0)
@@ -318,3 +322,32 @@ def test_merging_reduces_the_number_of_decodes(monkeypatch):
     backend._transcribe_chunked(model, Path("a.wav"), "a.wav")
 
     assert len(model.transcribe_calls) == 1
+
+
+# --- Options that contradict the detection mode ---
+#
+# Both of these were recorded in the manifest and silently ignored: chunked mode
+# overwrote a forced `language` with whatever it detected, and file mode never
+# read the chunked-only options at all.
+
+
+def test_a_forced_language_is_rejected_in_chunked_mode():
+    with pytest.raises(BackendRequirementError, match="language"):
+        FasterWhisperBackend(language="es", language_detection="chunked")
+
+
+@pytest.mark.parametrize(
+    "option",
+    [
+        {"languages": ["en", "es"]},
+        {"language_threshold": 0.7},
+        {"chunk_seconds": 15.0},
+    ],
+)
+def test_chunked_only_options_are_rejected_in_file_mode(option):
+    with pytest.raises(BackendRequirementError, match="language_detection=chunked"):
+        FasterWhisperBackend(**option)
+
+
+def test_a_forced_language_is_accepted_in_file_mode():
+    assert FasterWhisperBackend(language="es").effective_config()["language"] == "es"
