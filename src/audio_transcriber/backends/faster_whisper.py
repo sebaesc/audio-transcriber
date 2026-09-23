@@ -20,6 +20,7 @@ import glob
 import logging
 import os
 import site
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,7 @@ from faster_whisper import WhisperModel, decode_audio
 from faster_whisper.version import __version__ as _FASTER_WHISPER_VERSION
 
 from audio_transcriber.backend import Capabilities, TranscriptionBackend
+from audio_transcriber.backends import diarization
 from audio_transcriber.backends.chunking import (
     DEFAULT_TARGET_SECONDS,
     SAMPLE_RATE,
@@ -132,6 +134,14 @@ _DEFAULTS: dict[str, Any] = {
     "language_threshold": 0.5,
     # Target chunk length for `chunked` detection, in seconds.
     "chunk_seconds": DEFAULT_TARGET_SECONDS,
+    # Speaker diarization. Off by default: it pulls a second model, and its
+    # weights are gated on the Hugging Face Hub.
+    "diarization": False,
+    "diarization_model": diarization.DEFAULT_MODEL,
+    "hf_token": None,
+    "num_speakers": None,
+    "min_speakers": None,
+    "max_speakers": None,
     # Conditioning on previous text helps context, but it also carries any
     # divergence into every later segment. Exposed because it is the lever to
     # reach for when a recording falls into a repetition loop.
@@ -153,7 +163,18 @@ _DEFAULTS: dict[str, Any] = {
 
 #: Options this backend consumes itself rather than passing to the decoder.
 _PIPELINE_OPTIONS = frozenset(
-    {"language_detection", "languages", "language_threshold", "chunk_seconds"}
+    {
+        "language_detection",
+        "languages",
+        "language_threshold",
+        "chunk_seconds",
+        "diarization",
+        "diarization_model",
+        "hf_token",
+        "num_speakers",
+        "min_speakers",
+        "max_speakers",
+    }
 )
 
 #: Options that are not decode keywords: they configure how the model is loaded,
@@ -190,6 +211,13 @@ class FasterWhisperBackend(TranscriptionBackend):
     - `language_threshold`: below this probability a chunk falls back to the
       file-level language. Defaults to 0.5.
     - `chunk_seconds`: target chunk length for `chunked` detection.
+    - `diarization`: label segments by speaker. Off by default; needs the
+      `diarization` extra and accepted Hugging Face gates.
+    - `diarization_model`: the pyannote pipeline to use.
+    - `hf_token`: Hugging Face token. Falls back to `HF_TOKEN` in the environment,
+      and is redacted from the manifest.
+    - `num_speakers`, `min_speakers`, `max_speakers`: constrain the speaker count
+      when it is known.
     - `seed`: seeds CTranslate2's RNG, making sampled decoding reproducible.
       Defaults to 0. The model is rebuilt per file to apply it, costing about
       1.7 s per file for `large-v3`. `None` skips that and reuses the loaded
@@ -223,16 +251,31 @@ class FasterWhisperBackend(TranscriptionBackend):
         super().__init__(**{**_DEFAULTS, **config})
         self._model: WhisperModel | None = None
         self._resolved_device: str | None = None
+        self._diarizer = None
+        if self.config["diarization"]:
+            # Declared per instance, not per class: what this backend can do
+            # depends on how it was configured, and a consumer reading the
+            # capability flag should see what is actually active.
+            self.capabilities = replace(type(self).capabilities, diarization=True)
 
     def effective_config(self) -> dict[str, Any]:
-        """Return the config with defaults applied and `device` resolved.
+        """Return the config with defaults applied and resolved values filled in.
 
         `device: auto` is recorded as the device actually used, so a run that fell
-        back to CPU is reproducible as a CPU run.
+        back to CPU is reproducible as a CPU run. The diarization library version
+        is recorded too, since speaker labels are only traceable if what produced
+        them is known.
+
+        The Hugging Face token is redacted: a manifest is written to disk and
+        read by anyone with the output directory.
         """
         config = dict(self.config)
         if self._resolved_device is not None:
             config["device"] = self._resolved_device
+        if config.get("hf_token"):
+            config["hf_token"] = "<redacted>"
+        if config["diarization"]:
+            config["diarization_version"] = diarization.version()
         return config
 
     def model_version(self) -> str:
@@ -266,6 +309,11 @@ class FasterWhisperBackend(TranscriptionBackend):
                 f"unknown model {model_name!r}.",
                 f"Use one of: {', '.join(KNOWN_MODELS)}, "
                 "or a path to converted weights.",
+            )
+
+        if self.config["diarization"]:
+            diarization.check_requirements(
+                self.config["diarization_model"], self.config["hf_token"], self.name
             )
 
         failures: list[str] = []
@@ -488,6 +536,53 @@ class FasterWhisperBackend(TranscriptionBackend):
             model_version=self.model_version(),
         )
 
+    def _diarize(self, audio_path: Path) -> list[diarization.SpeakerTurn]:
+        """Return the speaker turns for one file, loading the pipeline once."""
+        if self._diarizer is None:
+            self._diarizer = diarization.load_pipeline(
+                self.config["diarization_model"],
+                diarization.find_token(self.config["hf_token"]),
+            )
+        return diarization.diarize(
+            self._diarizer,
+            audio_path,
+            num_speakers=self.config["num_speakers"],
+            min_speakers=self.config["min_speakers"],
+            max_speakers=self.config["max_speakers"],
+        )
+
+    def _maybe_diarize(
+        self, transcript: Transcript, audio_path: Path, source: str
+    ) -> Transcript:
+        """Attach speaker labels to a transcript's segments.
+
+        Each segment takes the speaker holding most of its span. A segment that
+        overlaps no turn keeps `None`: inventing a speaker would be worse than
+        admitting there is not one.
+        """
+        if not self.config["diarization"]:
+            return transcript
+        try:
+            turns = self._diarize(audio_path)
+        except Exception as error:  # noqa: BLE001 - one file failing is not fatal
+            raise TranscriptionError(
+                source, self.name, f"diarization failed: {error}"
+            ) from error
+        if not turns:
+            return transcript
+        return replace(
+            transcript,
+            segments=tuple(
+                replace(
+                    segment,
+                    speaker=diarization.speaker_for(
+                        turns, segment.start_time, segment.end_time
+                    ),
+                )
+                for segment in transcript.segments
+            ),
+        )
+
     def transcribe(self, audio_path: Path, source: str) -> Transcript:
         """Transcribe one decoded file and normalize the result.
 
@@ -504,7 +599,10 @@ class FasterWhisperBackend(TranscriptionBackend):
         model = self._model_for_file()
         if self.config["language_detection"] == "chunked":
             try:
-                return self._transcribe_chunked(model, audio_path, source)
+                transcript = self._transcribe_chunked(model, audio_path, source)
+                return self._maybe_diarize(transcript, audio_path, source)
+            except TranscriptionError:
+                raise
             except Exception as error:  # noqa: BLE001 - one file failing is not fatal
                 raise TranscriptionError(source, self.name, str(error)) from error
         try:
@@ -515,7 +613,7 @@ class FasterWhisperBackend(TranscriptionBackend):
         except Exception as error:  # noqa: BLE001 - one file failing is not fatal
             raise TranscriptionError(source, self.name, str(error)) from error
 
-        return Transcript(
+        transcript = Transcript(
             source=source,
             segments=segments,
             language=info.language,
@@ -523,6 +621,7 @@ class FasterWhisperBackend(TranscriptionBackend):
             backend=self.name,
             model_version=self.model_version(),
         )
+        return self._maybe_diarize(transcript, audio_path, source)
 
     def _decode_options(self) -> dict[str, Any]:
         """Return every config option that is passed to a decode.

@@ -176,11 +176,11 @@ qualitative evaluation only, and says so plainly in the doc page.
 ### Tasks
 
 - [x] Task 4.1: Select a diarization model and record why, including its licence and gating
-- [ ] Task 4.2: Add it as its own optional extra, loaded only when diarization is enabled
-- [ ] Task 4.3: Implement requirement checks — model availability, credentials, device — reported up front like every other backend requirement
-- [ ] Task 4.4: Assign speaker labels to segments, stable within a transcript
-- [ ] Task 4.5: Make `capabilities.diarization` reflect whether it is actually active, rather than what the engine could do
-- [ ] Task 4.6: Record the diarization model and its version in the manifest, so a transcript's speaker labels are traceable
+- [x] Task 4.2: Add it as its own optional extra, loaded only when diarization is enabled
+- [x] Task 4.3: Implement requirement checks — model availability, credentials, device — reported up front like every other backend requirement
+- [x] Task 4.4: Assign speaker labels to segments, stable within a transcript
+- [x] Task 4.5: Make `capabilities.diarization` reflect whether it is actually active, rather than what the engine could do
+- [x] Task 4.6: Record the diarization model and its version in the manifest, so a transcript's speaker labels are traceable
 - [ ] Task 4.7: Evaluate against whatever Task 1.7 settled on, and write the result down
 
 ### Task 4.1 decision — diarization model
@@ -202,10 +202,17 @@ Sortformer was the tempting option — ungated, good quality, and it runs on the
 already installed — but it inherits NVIDIA's non-commercial licence, and `product.md` describes
 internal team workflows. That is commercial use.
 
+**Revised during implementation:** the pinned `pyannote.audio<4.0` resolved to 3.4.0, which
+references `torchaudio.AudioMetaData` — removed in torchaudio 2.11. Upgrading to `>=4.0,<5.0`
+fixes it, and 4.x ships `pyannote/speaker-diarization-community-1` as its recommended pipeline.
+That is now the default: it bundles its embedding and scoring weights, so only its own gate needs
+accepting, where `speaker-diarization-3.1` references its segmentation model externally and needs
+two. The required gates are therefore per model rather than a fixed list.
+
 **Consequence:** the model cannot be fetched until someone accepts the conditions at
-`huggingface.co/pyannote/speaker-diarization-3.1` **and** `huggingface.co/pyannote/segmentation-3.0`
-(the pipeline pulls the segmentation model separately) and sets `HF_TOKEN`. Everything else in
-this phase is built and tested against that; the requirement check names both URLs.
+`huggingface.co/pyannote/speaker-diarization-community-1` and sets `HF_TOKEN`. Everything else in
+this phase is built and tested against that; the requirement check names the pages for whichever
+pipeline is configured.
 
 ### Verification
 
