@@ -262,7 +262,7 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 - [ ] Task 5.1: Tune chunk length and confidence threshold against the eval; record the chosen values and what they cost
 - [ ] Task 5.2: Measure and document throughput for each mode — chunked detection adds a pass, diarization adds a model
 - [ ] Task 5.3: Update `docs/backends/faster-whisper.md` with the new options, their cost, and their limits
-- [ ] Task 5.4: Document the eval harness: how to run it, what it measures, and how to read the report
+- [x] Task 5.4: Document the eval harness: how to run it, what it measures, and how to read the report
 - [x] Task 5.5: Record in the spec's known limits that intra-sentential switching is not expressible at chunk granularity
 - [ ] Task 5.6: Decide whether `chunked` should become the default, with the eval as the argument either way
 - [~] Task 5.7: **Drop implausibly dense segments.** Whisper emitted "For more info, see the links in the description." — eight words — into a 15 ms segment, after the duration clamp squashed a hallucination past the end of speech rather than discarding it. No real segment fits eight words into 15 ms, so words-per-second is a reliable discriminator. Filter in normalization, with the threshold chosen from the corpus rather than guessed, and a test built from the observed case
