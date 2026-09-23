@@ -181,7 +181,7 @@ qualitative evaluation only, and says so plainly in the doc page.
 - [x] Task 4.4: Assign speaker labels to segments, stable within a transcript
 - [x] Task 4.5: Make `capabilities.diarization` reflect whether it is actually active, rather than what the engine could do
 - [x] Task 4.6: Record the diarization model and its version in the manifest, so a transcript's speaker labels are traceable
-- [ ] Task 4.7: Evaluate against whatever Task 1.7 settled on, and write the result down
+- [-] Task 4.7: Evaluate against whatever Task 1.7 settled on, and write the result down — **deferred, see below**
 
 ### Task 4.1 decision — diarization model
 
@@ -214,11 +214,46 @@ two. The required gates are therefore per model rather than a fixed list.
 this phase is built and tested against that; the requirement check names the pages for whichever
 pipeline is configured.
 
+### Task 4.7 — deferred 2026-09-23
+
+**Not done, and deliberately so.** Task 1.7 settled on `diarizers-community/voxconverse` for DER,
+because the Bangor Miami dataset used everywhere else in this track has no speaker labels: the
+published version strips CHAT markup including the speaker tiers, so there is nothing to score
+against. VoxConverse is a different corpus that answers a different question.
+
+| | Corpus | Measures | Describes this project's audio |
+| --- | ------ | -------- | ------------------------------ |
+| Phases 1–3 | Bangor Miami | WER, coverage, language mix | Yes — Spanish-English code-switching |
+| Task 4.7 | VoxConverse | DER | No — English-only conversation |
+
+A DER figure on English meeting recordings is published, unactionable, and does not describe
+bilingual speech. It carries no decision, and the harness to produce it is roughly a day's work.
+
+**What was verified instead:** diarization runs end to end on real audio and populates `speaker`
+on every segment, with the model and library version recorded in the manifest. That establishes
+the feature works, not how well.
+
+**What is therefore unknown:** diarization accuracy, on any audio. No claim is made about it, and
+the backend doc page must say so rather than cite pyannote's published benchmarks — which describe
+`speaker-diarization-3.1`, not the `community-1` pipeline this uses.
+
+**To close it, in order of value:**
+
+1. **TalkBank credentials** (free, researcher registration). Gets speaker tiers *and* word-level
+   language IDs on the recordings already in use, upgrading both evaluations at once. The real fix.
+2. **Qualitative check on our own audio.** Twenty minutes, answers "is this usable for us", which
+   VoxConverse does not.
+3. **VoxConverse DER.** Regression protection so a future change cannot silently degrade
+   diarization. Worth having once something depends on it.
+
 ### Verification
 
 - [ ] `speaker` is populated and stable within a transcript when enabled, `null` when not
 - [ ] Disabled by default; nothing about the Phase 3 output changes when it is off
 - [ ] `pytest -k conformance` passes with diarization both on and off
+
+> **Phase 4 closes with Task 4.7 deferred.** The capability is built and verified working; its
+> quality is unmeasured. Track completion must not read as though diarization was evaluated.
 
 ## Phase 5: Tuning and Documentation
 

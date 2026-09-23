@@ -10,13 +10,16 @@
   ],
   "phases": {
     "total": 5,
-    "completed": 3
+    "completed": 4
   },
   "tasks": {
     "total": 35,
     "completed": 26
   },
-  "current_phase": 4,
-  "current_task": "4.7",
-  "commits": []
+  "current_phase": 5,
+  "current_task": "5.1",
+  "commits": [],
+  "deferred": {
+    "4.7": "Diarization DER evaluation. VoxConverse measures English-only conversation, not this project's bilingual audio; the Bangor corpus has no speaker labels. Diarization accuracy is therefore unmeasured."
+  }
 }

@@ -77,7 +77,7 @@ correctly attributed text instead of one language's guess applied to the whole f
 
 - [ ] Language detection runs per chunk, not per file, and is restricted to `{en, es}`
 - [ ] `spoken_language` varies within a transcript when the audio switches language
-- [ ] `speaker` is populated with stable labels within a run's transcript
+- [ ] `speaker` is populated with stable labels within a run's transcript (met; **quality unmeasured** — Task 4.7 deferred)
 - [ ] A reproducible eval harness reports WER and language-mix error against the Bangor Miami
       ground truth, and is runnable on demand
 - [ ] Measured WER improves on the recorded baseline across **all five** `mixed` recordings, not
