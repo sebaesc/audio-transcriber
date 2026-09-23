@@ -35,9 +35,11 @@ reproducible; this phase makes them so.
 
 ### Verification
 
-- [ ] `pytest` passes; reference cleaning is covered by tests
-- [ ] The eval runs end to end and reproduces a WER near 0.44 for `zeledon4` under the current default
-- [ ] The baseline report is committed, and Task 1.7's decision is written into this plan
+- [x] `pytest` passes; reference cleaning is covered by tests (`tests/test_evaluation_text.py`)
+- [x] The eval runs end to end and reproduces a WER near 0.44 for `zeledon4` under the current default
+  — *superseded:* 0.44 was one unseeded draw. Seeded, `zeledon4` scores 0.375 and reproduces
+  byte-for-byte across runs (re-verified 2026-09-23 on all five recordings)
+- [x] The baseline report is committed, and Task 1.7's decision is written into this plan
 
 ### Task 1.7 decision — diarization ground truth
 
@@ -80,9 +82,11 @@ correct chunk boundaries and proves they lose nothing.
 
 ### Verification
 
-- [ ] Chunk lengths respect the configured target
+- [x] Chunk lengths respect the configured target (`tests/test_chunking.py`)
 - [ ] Transcribing chunk-by-chunk under the file-level language scores no worse than the baseline; this isolates chunking from detection
-- [ ] Coverage assertion in place and passing
+  — **never measured.** Phase 3's comparison mixes chunking and detection; this isolating run was
+  not done
+- [x] Coverage assertion in place and passing — now `retained`, per Task 5.8
 
 ### Deviations
 
@@ -131,7 +135,8 @@ The measured win. Opt-in, restricted to `{en, es}`.
 
 ### Verification
 
-- [x] `pytest -k conformance` still passes in both modes
+- [x] `pytest -k conformance` still passes in both modes — *corrected 2026-09-23:* this was ticked
+  when the suite only ran each backend's defaults. It now runs chunked mode explicitly, and passes
 - [ ] **Not met:** WER improves on the baseline and Spanish share lands within 0.05 of the reference
 - [x] Coverage assertion still passing — the win is not bought with deletions
 - [x] The default path is byte-for-byte unchanged when `language_detection=file`
@@ -248,9 +253,11 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 
 ### Verification
 
-- [ ] `speaker` is populated and stable within a transcript when enabled, `null` when not
-- [ ] Disabled by default; nothing about the Phase 3 output changes when it is off
-- [ ] `pytest -k conformance` passes with diarization both on and off
+- [x] `speaker` is populated and stable within a transcript when enabled, `null` when not — tests, plus
+  the 2026-09-23 end-to-end run (two labels over 554 segments; `null` only where no turn overlaps)
+- [x] Disabled by default; nothing about the Phase 3 output changes when it is off — final `chunked`
+  report differs from Phase 3's only by the one segment Task 5.7 drops
+- [x] `pytest -k conformance` passes with diarization both on and off — four configurations, 2026-09-23
 
 > **Phase 4 closes with Task 4.7 deferred.** The capability is built and verified working; its
 > quality is unmeasured. Track completion must not read as though diarization was evaluated.
@@ -259,17 +266,69 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 
 ### Tasks
 
-- [ ] Task 5.1: Tune chunk length and confidence threshold against the eval; record the chosen values and what they cost
-- [ ] Task 5.2: Measure and document throughput for each mode — chunked detection adds a pass, diarization adds a model
-- [ ] Task 5.3: Update `docs/backends/faster-whisper.md` with the new options, their cost, and their limits
+- [x] Task 5.1: Tune chunk length and confidence threshold against the eval; record the chosen values and what they cost
+- [x] Task 5.2: Measure and document throughput for each mode — chunked detection adds a pass, diarization adds a model
+- [x] Task 5.3: Update `docs/backends/faster-whisper.md` with the new options, their cost, and their limits
 - [x] Task 5.4: Document the eval harness: how to run it, what it measures, and how to read the report
 - [x] Task 5.5: Record in the spec's known limits that intra-sentential switching is not expressible at chunk granularity
-- [ ] Task 5.6: Decide whether `chunked` should become the default, with the eval as the argument either way
+- [x] Task 5.6: Decide whether `chunked` should become the default, with the eval as the argument either way
 - [x] Task 5.7: **Drop implausibly dense segments.** Whisper emitted "For more info, see the links in the description." — eight words — into a 15 ms segment, after the duration clamp squashed a hallucination past the end of speech rather than discarding it. No real segment fits eight words into 15 ms, so words-per-second is a reliable discriminator. Filter in normalization, with the threshold chosen from the corpus rather than guessed, and a test built from the observed case
 - [x] Task 5.8: **Investigate over-generation.** `sastre8` scored coverage 1.019 at baseline: the transcript is longer than the reference. Establish whether that is hallucinated content, reference gaps, or normalization, since coverage is the metric guarding every other measurement in this track and a systematic bias in it would matter
 - [x] Task 5.9: Reject options the detection mode would silently ignore (unplanned; see deviations)
 - [x] Task 5.10: Run diarization on the resolved device, not always the CPU (unplanned; see deviations)
 - [x] Task 5.11: Stop seeded runs holding two copies of the model on the device (unplanned; see deviations)
+
+### Task 5.1 result — tuning
+
+**Defaults kept: `language_threshold=0.5`, `chunk_seconds=25`. Not tuned by full evaluation —
+decided 2026-09-23 to run only the evaluations the track's verification requires.** What was
+measured instead is detection alone: every chunk's best-allowed language and probability, for
+chunk lengths 10–30 s across all five recordings, with thresholds replayed offline.
+
+At 25 s chunks (flipped = chunks whose language changes to the file-level fallback):
+
+| threshold | flipped, per recording | decode spans, per recording |
+| --------- | ---------------------- | --------------------------- |
+| 0.3 | 0–1 | 5–35 |
+| 0.5 (default) | 0–6 | 5–35 |
+| 0.7 | 1–17 | 3–23 |
+| 0.9 | 2–31 | 1–12 |
+
+- **The threshold barely acts at 0.5.** Only 3.7% of 25 s chunks score below it; the median
+  chunk scores 0.79. 0.3 and 0.5 are near-identical.
+- **Raising it pushes toward the file-level language**, which is decided from the first 30 s of
+  the recording and was wrong on exactly the recordings chunked mode helps most (`herring17`,
+  `maria20`). A higher threshold would re-import the error chunked mode exists to fix. That is an
+  argument, not a measurement.
+- **Shorter chunks roughly double decode spans** on bilingual recordings (15 s: 32–55 spans
+  where 25 s gives 19–35, excluding the 98%-Spanish `zeledon14`). Phase 3 measured that every boundary costs content.
+
+**What this costs:** the defaults are reasoned, not measured against alternatives. Per-recording
+seed noise (WER 0.259 vs 0.394 on one recording) is larger than any effect either knob is likely
+to have, so a tuning claim would need a noise-floor run beside each candidate — about 25 minutes
+of GPU each. Reopen if chunked mode becomes the default or a new corpus arrives.
+
+### Task 5.6 result — default
+
+**`file` stays the default; `chunked` stays opt-in.** Final reports, `eval/baseline.json` against
+`eval/chunked.json`, both on the finished code:
+
+| recording | ΔWER | Δretained | mix error file → chunked |
+| --------- | ---- | --------- | ------------------------ |
+| herring17 | −0.052 | +0.013 | 0.341 → 0.083 |
+| maria20   | −0.156 | +0.079 | 0.348 → 0.092 |
+| sastre8   | +0.081 | −0.042 | 0.013 → 0.037 |
+| zeledon14 | +0.009 | −0.004 | 0.001 → 0.006 |
+| zeledon4  | +0.030 | −0.049 | 0.118 → 0.034 |
+
+Mean: WER −0.018, retained −0.001, language-mix error −0.114. Chunked wins where file-level
+detection guessed the recording's language wrong and loses where it guessed right, and the
+backend cannot tell which before transcribing. A default that makes 3 of 5 recordings worse on
+WER is not one to ship; the doc page tells users with bilingual audio to opt in.
+
+**Throughput (Task 5.2),** same runs: `file` 20.5 min for 150 min of audio (7.3x), `chunked`
+23.0 min (6.5x), about 12% more. Diarization 22.9x on CUDA, 1.8x on CPU, on one 21.8-min
+recording. Documented in the doc page.
 
 ### Task 5.7 result — density filter
 
@@ -335,9 +394,14 @@ deltas have the same sign as the coverage deltas on all five recordings, so its 
 
 ### Verification
 
-- [ ] Doc page current, per gate 6
-- [ ] A real run over bilingual audio produces varying `spoken_language` and populated `speaker`
-- [ ] No segment in the eval output exceeds the words-per-second threshold from Task 5.7
+- [x] Doc page current, per gate 6
+- [x] A real run over bilingual audio produces varying `spoken_language` and populated `speaker`
+  — 2026-09-23, CLI, `zeledon4` (21.8 min), `large-v3`, chunked + diarization, CUDA: 554
+  segments, `en` 343 / `es` 211, `SPEAKER_00` 248 / `SPEAKER_01` 299 / `null` 7 (no overlapping
+  turn). 241 s wall-clock, peak VRAM 6.7 GB. Manifest records mode, threshold, languages,
+  chunk length, diarization model and pyannote version; token not written
+- [x] No segment in the eval output exceeds the words-per-second threshold from Task 5.7 — 0 of 6683
+  in the final reports' transcripts
 
 ### Deviations
 
@@ -367,15 +431,18 @@ next is built.
 
 ## Final Verification
 
-- [ ] All acceptance criteria in [spec.md](./spec.md) met
-- [ ] Gate 1 — `pytest` passing
-- [ ] Gate 2 — detection, chunking, and normalization covered by tests
-- [ ] Gate 3 — `pytest -k conformance` passing in every mode
-- [ ] Gate 4 — `ruff check .` clean
-- [ ] Gate 5 — `ruff format --check .` clean
-- [ ] Gate 6 — the `faster-whisper` doc page covers every new option
-- [ ] Gate 7 — manifest records detection mode, threshold, languages, and diarization model
-- [ ] Eval report committed, showing the improvement over the recorded baseline
+- [ ] All acceptance criteria in [spec.md](./spec.md) met — **one not met:** WER does not improve on
+  all five recordings (2 of 5), and Spanish share is not within 0.05 on every one. See Phase 3 and
+  Task 5.6: inherent to the approach, which is why `chunked` stays opt-in
+- [x] Gate 1 — `pytest` passing
+- [x] Gate 2 — detection, chunking, and normalization covered by tests
+- [x] Gate 3 — `pytest -k conformance` passing in every mode
+- [x] Gate 4 — `ruff check .` clean
+- [x] Gate 5 — `ruff format --check .` clean
+- [x] Gate 6 — the `faster-whisper` doc page covers every new option
+- [x] Gate 7 — manifest records detection mode, threshold, languages, and diarization model
+- [x] Eval report committed, showing the improvement over the recorded baseline — language-mix
+  error improves on all five; WER on two
 - [ ] Manual sign-off recorded here
 
 ---

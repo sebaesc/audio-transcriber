@@ -3,7 +3,7 @@
 **Track ID:** codeswitch-diarization_20260922
 **Type:** Feature
 **Created:** 2026-09-22
-**Status:** Draft
+**Status:** Implemented — one acceptance criterion not met, see below
 
 ## Summary
 
@@ -75,17 +75,22 @@ correctly attributed text instead of one language's guess applied to the whole f
 
 ## Acceptance Criteria
 
-- [ ] Language detection runs per chunk, not per file, and is restricted to `{en, es}`
-- [ ] `spoken_language` varies within a transcript when the audio switches language
-- [ ] `speaker` is populated with stable labels within a run's transcript (met; **quality unmeasured** — Task 4.7 deferred)
-- [ ] A reproducible eval harness reports WER and language-mix error against the Bangor Miami
+- [x] Language detection runs per chunk, not per file, and is restricted to `{en, es}`
+- [x] `spoken_language` varies within a transcript when the audio switches language
+- [x] `speaker` is populated with stable labels within a run's transcript (met; **quality unmeasured** — Task 4.7 deferred)
+- [x] A reproducible eval harness reports WER and language-mix error against the Bangor Miami
       ground truth, and is runnable on demand
 - [ ] Measured WER improves on the recorded baseline across **all five** `mixed` recordings, not
       one, and transcribed Spanish share lands within 0.05 of each reference share
-- [ ] Chunked detection is opt-in configuration on the existing `faster-whisper` backend; the
+  **Not met (2026-09-23).** WER improves on 2 of 5 (`herring17` −0.052, `maria20` −0.156) and
+  worsens on 3 (up to +0.081 on `sastre8`). Spanish share lands within 0.05 on 3 of 5; language-mix
+  error improves on all 5 (mean 0.164 → 0.050). Chunked detection helps where file-level detection
+  guessed the language wrong and costs where it guessed right — inherent, not a tuning gap. The
+  consequence is that `chunked` stays opt-in (plan, Task 5.6).
+- [x] Chunked detection is opt-in configuration on the existing `faster-whisper` backend; the
       shipped per-file default behaviour is unchanged unless it is enabled
-- [ ] No pipeline or schema changes — the existing contracts already express both fields
-- [ ] The backend doc page covers the new options, their cost, and their limits
+- [x] No pipeline or schema changes — the existing contracts already express both fields
+- [x] The backend doc page covers the new options, their cost, and their limits
 
 ## Dependencies
 

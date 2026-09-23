@@ -2,7 +2,7 @@
   "id": "codeswitch-diarization_20260922",
   "title": "Code-Switching Language Detection and Speaker Diarization",
   "type": "feature",
-  "status": "in_progress",
+  "status": "awaiting_signoff",
   "created": "2026-09-22T00:00:00Z",
   "updated": "2026-09-23T00:00:00Z",
   "depends_on": [
@@ -10,14 +10,14 @@
   ],
   "phases": {
     "total": 5,
-    "completed": 4
+    "completed": 5
   },
   "tasks": {
     "total": 38,
-    "completed": 33
+    "completed": 37
   },
   "current_phase": 5,
-  "current_task": "5.1",
+  "current_task": null,
   "commits": [
     "68722ce: docs(conductor): record intra-sentential switching as a known limit",
     "f231b77: fix(backends): reject options the detection mode would silently ignore",
@@ -26,7 +26,10 @@
     "446233c: docs(eval): document the evaluation harness",
     "1beb1c1: fix(normalize): drop segments too dense to have been spoken",
     "d65c010: fix(backends): run diarization on the device transcription resolved to",
-    "4e7e35e: fix(backends): unload the previous model before rebuilding for a seed"
+    "4e7e35e: fix(backends): unload the previous model before rebuilding for a seed",
+    "8c6d389: test(conformance): check every mode, not only each backend's defaults",
+    "542c005: test(eval): record the final baseline and chunked reports",
+    "7689717: docs(backends): document chunked detection, diarization, cost and limits"
   ],
   "deferred": {
     "4.7": "Diarization DER evaluation. VoxConverse measures English-only conversation, not this project's bilingual audio; the Bangor corpus has no speaker labels. Diarization accuracy is therefore unmeasured."
