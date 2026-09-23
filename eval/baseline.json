@@ -1,6 +1,6 @@
 {
   "label": "baseline",
-  "created_at": "2026-09-22T19:49:53.719335+00:00",
+  "created_at": "2026-09-23T18:18:25.750088+00:00",
   "tool_version": "0.1.0",
   "backend": "faster-whisper",
   "model_version": "faster-whisper-1.2.1/large-v3",
@@ -13,6 +13,16 @@
     "vad_filter": true,
     "temperature": "[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]",
     "seed": 0,
+    "language_detection": "file",
+    "languages": null,
+    "language_threshold": 0.5,
+    "chunk_seconds": 25.0,
+    "diarization": false,
+    "diarization_model": "pyannote/speaker-diarization-community-1",
+    "hf_token": null,
+    "num_speakers": null,
+    "min_speakers": null,
+    "max_speakers": null,
     "condition_on_previous_text": true,
     "repetition_penalty": 1.0,
     "no_repeat_ngram_size": 0,
@@ -31,6 +41,7 @@
     "recordings": 5,
     "scored": 5,
     "mean_wer": 0.3773,
+    "mean_retained": 0.8469,
     "mean_coverage": 0.8899,
     "mean_language_mix_error": 0.1639
   },
@@ -38,14 +49,15 @@
     {
       "name": "herring17",
       "duration_s": 1801.3,
-      "elapsed_s": 302.7,
-      "realtime_factor": 6.0,
+      "elapsed_s": 279.1,
+      "realtime_factor": 6.5,
       "segments": 877,
       "detected_languages": [
         "en"
       ],
       "score": {
         "wer": 0.4921,
+        "retained": 0.7494,
         "coverage": 0.7613,
         "language_mix_error": 0.3407,
         "reference_spanish_share": 0.5751,
@@ -62,14 +74,15 @@
     {
       "name": "maria20",
       "duration_s": 1914.6,
-      "elapsed_s": 95.1,
-      "realtime_factor": 20.1,
+      "elapsed_s": 87.5,
+      "realtime_factor": 21.9,
       "segments": 124,
       "detected_languages": [
         "en"
       ],
       "score": {
         "wer": 0.5189,
+        "retained": 0.8056,
         "coverage": 0.8607,
         "language_mix_error": 0.3477,
         "reference_spanish_share": 0.5523,
@@ -86,14 +99,15 @@
     {
       "name": "sastre8",
       "duration_s": 2003.1,
-      "elapsed_s": 337.8,
-      "realtime_factor": 5.9,
+      "elapsed_s": 308.7,
+      "realtime_factor": 6.5,
       "segments": 1008,
       "detected_languages": [
         "en"
       ],
       "score": {
         "wer": 0.2461,
+        "retained": 0.924,
         "coverage": 0.9865,
         "language_mix_error": 0.0126,
         "reference_spanish_share": 0.5659,
@@ -110,14 +124,15 @@
     {
       "name": "zeledon14",
       "duration_s": 1984.9,
-      "elapsed_s": 345.5,
-      "realtime_factor": 5.7,
+      "elapsed_s": 316.7,
+      "realtime_factor": 6.3,
       "segments": 943,
       "detected_languages": [
         "es"
       ],
       "score": {
         "wer": 0.255,
+        "retained": 0.9225,
         "coverage": 0.979,
         "language_mix_error": 0.0009,
         "reference_spanish_share": 0.9063,
@@ -134,14 +149,15 @@
     {
       "name": "zeledon4",
       "duration_s": 1310.9,
-      "elapsed_s": 257.8,
-      "realtime_factor": 5.1,
+      "elapsed_s": 237.5,
+      "realtime_factor": 5.5,
       "segments": 600,
       "detected_languages": [
         "es"
       ],
       "score": {
         "wer": 0.3747,
+        "retained": 0.8331,
         "coverage": 0.862,
         "language_mix_error": 0.1177,
         "reference_spanish_share": 0.6055,
