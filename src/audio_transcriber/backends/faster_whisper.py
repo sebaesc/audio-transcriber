@@ -472,9 +472,13 @@ class FasterWhisperBackend(TranscriptionBackend):
         if self.config["seed"] is None:
             assert self._model is not None
             return self._model
-        # Replacing the reference frees the previous model rather than holding
-        # two copies of the weights on the device.
-        self._model = None
+        # Unload explicitly: dropping the reference does not free the weights,
+        # because something else still holds the object until a garbage
+        # collection. Two copies of large-v3 then sat on the device at once,
+        # 7.9 GB, and diarization on top of that paged to system memory.
+        if self._model is not None:
+            self._model.model.unload_model()
+            self._model = None
         self._model = self._build_model(self._resolved_device or "cpu")
         return self._model
 

@@ -31,6 +31,13 @@ class _NativeSegment:
     text: str
 
 
+class _Weights:
+    """Stands in for the CTranslate2 model a WhisperModel wraps."""
+
+    def unload_model(self):
+        pass
+
+
 @pytest.fixture
 def backend() -> FasterWhisperBackend:
     return FasterWhisperBackend(model="tiny")
@@ -317,6 +324,8 @@ def test_temperature_is_forwarded_to_the_engine(backend, monkeypatch, tmp_path):
     seen = {}
 
     class _Model:
+        model = _Weights()
+
         def transcribe(self, audio, **kwargs):
             seen.update(kwargs)
 
@@ -372,6 +381,8 @@ def test_every_recorded_option_reaches_the_decoder(monkeypatch, tmp_path):
     seen = {}
 
     class _Model:
+        model = _Weights()
+
         def transcribe(self, audio, **kwargs):
             seen.update(kwargs)
 
@@ -403,6 +414,8 @@ def test_repetition_controls_are_forwarded(monkeypatch, tmp_path):
     seen = {}
 
     class _Model:
+        model = _Weights()
+
         def transcribe(self, audio, **kwargs):
             seen.update(kwargs)
 
@@ -460,6 +473,8 @@ def test_a_seed_rebuilds_the_model_for_every_file(monkeypatch, tmp_path):
     builds = []
 
     class _Model:
+        model = _Weights()
+
         def transcribe(self, audio, **kwargs):
             class _Info:
                 language = "en"
@@ -480,11 +495,48 @@ def test_a_seed_rebuilds_the_model_for_every_file(monkeypatch, tmp_path):
     assert builds == ["cpu", "cpu"]
 
 
+def test_the_previous_model_is_unloaded_before_the_next_is_built(monkeypatch):
+    """Two copies of the weights must never be resident at once.
+
+    Dropping the Python reference was assumed to free the old model. It did not
+    — something still held it — so every seeded run peaked at twice the model:
+    7.9 GB for large-v3 on an 8 GB card. Adding diarization overflowed that,
+    WSL2 paged GPU memory to system RAM, and a 57 s diarization took over 20
+    minutes. Unloading frees the weights whatever else refers to the object.
+    """
+    events = []
+
+    class _Weights:
+        def unload_model(self):
+            events.append("unload")
+
+    class _Model:
+        def __init__(self):
+            self.model = _Weights()
+
+    backend = FasterWhisperBackend(seed=0)
+    backend._resolved_device = "cpu"
+    backend._model = _Model()
+
+    def _build(device):
+        events.append("build")
+        return _Model()
+
+    monkeypatch.setattr(backend, "_build_model", _build)
+
+    backend._model_for_file()
+    backend._model_for_file()
+
+    assert events == ["unload", "build", "unload", "build"]
+
+
 def test_no_seed_reuses_the_loaded_model(monkeypatch, tmp_path):
     """Opting out of reproducibility should also opt out of its cost."""
     builds = []
 
     class _Model:
+        model = _Weights()
+
         def transcribe(self, audio, **kwargs):
             class _Info:
                 language = "en"
@@ -529,6 +581,8 @@ def test_the_seed_is_not_passed_to_the_decoder(monkeypatch, tmp_path):
     )
 
     class _Model:
+        model = _Weights()
+
         def transcribe(self, audio, **kwargs):
             seen.update(kwargs)
 
