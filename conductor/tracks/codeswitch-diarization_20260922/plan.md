@@ -175,13 +175,37 @@ qualitative evaluation only, and says so plainly in the doc page.
 
 ### Tasks
 
-- [ ] Task 4.1: Select a diarization model and record why, including its licence and gating
+- [x] Task 4.1: Select a diarization model and record why, including its licence and gating
 - [ ] Task 4.2: Add it as its own optional extra, loaded only when diarization is enabled
 - [ ] Task 4.3: Implement requirement checks — model availability, credentials, device — reported up front like every other backend requirement
 - [ ] Task 4.4: Assign speaker labels to segments, stable within a transcript
 - [ ] Task 4.5: Make `capabilities.diarization` reflect whether it is actually active, rather than what the engine could do
 - [ ] Task 4.6: Record the diarization model and its version in the manifest, so a transcript's speaker labels are traceable
 - [ ] Task 4.7: Evaluate against whatever Task 1.7 settled on, and write the result down
+
+### Task 4.1 decision — diarization model
+
+**Decided 2026-09-23: `pyannote/speaker-diarization-3.1`.**
+
+Every full diarization pipeline available is either gated or non-commercial; the ungated
+permissively-licensed options are speaker-embedding models that would need a segmentation
+front-end and clustering built around them.
+
+| Model | Gated | Licence | Commercial use |
+| ----- | ----- | ------- | -------------- |
+| `pyannote/speaker-diarization-3.1` | Yes, accept conditions + token | MIT | Yes |
+| `soniqo/Sortformer-Diarization-4spk-ONNX` | No | CC-BY-NC-4.0, inherited from `nvidia/diar_streaming_sortformer_4spk-v2.1` | **No** |
+| `speechbrain/spkrec-ecapa-voxceleb` | No | Apache-2.0 | Yes, embeddings only |
+| `pyannote/wespeaker-voxceleb-resnet34-LM` | No | CC-BY-4.0 | Yes, embeddings only |
+
+Sortformer was the tempting option — ungated, good quality, and it runs on the `onnxruntime`
+already installed — but it inherits NVIDIA's non-commercial licence, and `product.md` describes
+internal team workflows. That is commercial use.
+
+**Consequence:** the model cannot be fetched until someone accepts the conditions at
+`huggingface.co/pyannote/speaker-diarization-3.1` **and** `huggingface.co/pyannote/segmentation-3.0`
+(the pipeline pulls the segmentation model separately) and sets `HF_TOKEN`. Everything else in
+this phase is built and tested against that; the requirement check names both URLs.
 
 ### Verification
 

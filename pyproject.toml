@@ -30,6 +30,12 @@ faster-whisper = [
     "faster-whisper>=1.0,<2.0",
 ]
 
+# Speaker diarization. pyannote's models are MIT-licensed but gated: accepting
+# their conditions on the Hugging Face Hub and setting HF_TOKEN is required.
+diarization = [
+    "pyannote.audio>=3.1,<4.0",
+]
+
 # Measuring transcription quality against a reference corpus. Not needed to run
 # the pipeline, and never a dependency of a backend.
 eval = [
