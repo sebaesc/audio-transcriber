@@ -125,6 +125,9 @@ Every backend must pass the shared contract suite:
 .venv/bin/pytest -k conformance
 ```
 
+To measure whether a change improves transcription quality, run the evaluation harness against
+the Spanish-English reference corpus — see [`docs/evaluation.md`](docs/evaluation.md).
+
 ## Adding a backend
 
 Implement one interface, register it by name, and write its doc page. See
@@ -135,4 +138,5 @@ Implement one interface, register it by name, and write its doc page. See
 
 - [Backend interface contract](docs/backend-interface.md)
 - [Per-backend documentation](docs/backends/)
+- [Evaluation harness](docs/evaluation.md)
 - Project context, tracks, and workflow: [`conductor/`](conductor/)
