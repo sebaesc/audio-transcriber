@@ -14,15 +14,17 @@
   },
   "tasks": {
     "total": 36,
-    "completed": 30
+    "completed": 31
   },
   "current_phase": 5,
-  "current_task": "5.7",
+  "current_task": "5.1",
   "commits": [
     "68722ce: docs(conductor): record intra-sentential switching as a known limit",
     "f231b77: fix(backends): reject options the detection mode would silently ignore",
     "27fc6ed: feat(eval): keep each hypothesis as segments, not only as text",
-    "4a35e01: fix(eval): guard against dropped content with deletions, not length"
+    "4a35e01: fix(eval): guard against dropped content with deletions, not length",
+    "446233c: docs(eval): document the evaluation harness",
+    "1beb1c1: fix(normalize): drop segments too dense to have been spoken"
   ],
   "deferred": {
     "4.7": "Diarization DER evaluation. VoxConverse measures English-only conversation, not this project's bilingual audio; the Bangor corpus has no speaker labels. Diarization accuracy is therefore unmeasured."

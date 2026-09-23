@@ -265,9 +265,34 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 - [x] Task 5.4: Document the eval harness: how to run it, what it measures, and how to read the report
 - [x] Task 5.5: Record in the spec's known limits that intra-sentential switching is not expressible at chunk granularity
 - [ ] Task 5.6: Decide whether `chunked` should become the default, with the eval as the argument either way
-- [~] Task 5.7: **Drop implausibly dense segments.** Whisper emitted "For more info, see the links in the description." — eight words — into a 15 ms segment, after the duration clamp squashed a hallucination past the end of speech rather than discarding it. No real segment fits eight words into 15 ms, so words-per-second is a reliable discriminator. Filter in normalization, with the threshold chosen from the corpus rather than guessed, and a test built from the observed case
+- [x] Task 5.7: **Drop implausibly dense segments.** Whisper emitted "For more info, see the links in the description." — eight words — into a 15 ms segment, after the duration clamp squashed a hallucination past the end of speech rather than discarding it. No real segment fits eight words into 15 ms, so words-per-second is a reliable discriminator. Filter in normalization, with the threshold chosen from the corpus rather than guessed, and a test built from the observed case
 - [x] Task 5.8: **Investigate over-generation.** `sastre8` scored coverage 1.019 at baseline: the transcript is longer than the reference. Establish whether that is hallucinated content, reference gaps, or normalization, since coverage is the metric guarding every other measurement in this track and a systematic bias in it would matter
 - [x] Task 5.9: Reject options the detection mode would silently ignore (unplanned; see deviations)
+
+### Task 5.7 result — density filter
+
+**Rule: drop a segment of ≥ 4 words packed faster than 50 words/s.** Chosen from the five
+recordings in both modes (6684 segments), segment timings kept by the harness for the purpose.
+
+| | max words/s seen |
+| --- | --- |
+| Real segments, ≥ 4 words | 28.6 |
+| Real segments, 1–3 words | 100 — 20 ms timestamp resolution plus overlap clamping |
+| The Phase 4 hallucination | 533 — 8 words in 15 ms |
+
+Speech rate was not usable as the threshold. Whisper's timestamps sometimes collapse into
+uniform 1.000 s slots regardless of length, putting 17–18 real, correctly transcribed words in
+one second on `zeledon14`, `zeledon4` and `sastre8`. Any threshold near human speech rate deletes
+real content.
+
+The rule drops one segment in the corpus, in chunked mode: "She's a sweet girl." in 20 ms,
+repeating its predecessor, where the reference has the line once. A true positive.
+
+**Follow-up, not in scope:** at Whisper's minimum 20 ms duration, 10 of 11 chunked-mode segments
+duplicate a neighbour — a seven-fold "No." loop on `zeledon4`, "That's my dream." twice on
+`sastre8`. That is a repetition failure, and mostly one to three words, below what density can
+judge without also dropping squashed real backchannels. Deduplicating 20 ms segments against their
+neighbours would address it; it needs its own measurement.
 
 ### Task 5.8 result — over-generation
 
