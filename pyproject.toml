@@ -14,6 +14,9 @@ license = { text = "Proprietary" }
 # optional extras below: installing the pipeline must never pull in every engine.
 dependencies = [
     "typer>=0.12,<0.20",
+    # Credentials reach the pipeline through the environment. A .env beside the
+    # project is the convention people reach for, and Python does not read one.
+    "python-dotenv>=1.0,<2.0",
 ]
 
 [project.scripts]

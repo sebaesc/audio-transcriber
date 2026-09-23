@@ -105,6 +105,9 @@ def test_a_missing_token_names_both_gated_models(monkeypatch):
     )
     for name in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_TOKEN"):
         monkeypatch.delenv(name, raising=False)
+    # A developer running this has a real .env. Without this, dotenv finds it,
+    # a token is available, and the test passes while checking nothing.
+    monkeypatch.setattr(diarization, "_dotenv_loaded", True)
 
     with pytest.raises(BackendRequirementError) as caught:
         diarization.check_requirements(diarization.DEFAULT_MODEL, None, "stub")
@@ -132,6 +135,7 @@ def test_an_unknown_pipeline_is_assumed_to_gate_only_itself():
 
 
 def test_the_token_is_read_from_the_environment(monkeypatch):
+    monkeypatch.setattr(diarization, "_dotenv_loaded", True)
     monkeypatch.setenv("HF_TOKEN", "hf_abc")
 
     assert diarization.find_token(None) == "hf_abc"
@@ -144,6 +148,7 @@ def test_an_explicit_token_wins_over_the_environment(monkeypatch):
 
 
 def test_alternative_token_variables_are_honored(monkeypatch):
+    monkeypatch.setattr(diarization, "_dotenv_loaded", True)
     for name in ("HF_TOKEN", "HUGGINGFACE_TOKEN"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("HUGGING_FACE_HUB_TOKEN", "hf_alt")
@@ -284,3 +289,24 @@ def test_speaker_labels_survive_the_schema_round_trip(monkeypatch):
     data = json.loads(json.dumps(result.to_json_data()))
 
     assert data[0]["speaker"] == "S0"
+
+
+def test_a_dotenv_file_supplies_the_token(tmp_path, monkeypatch):
+    """Python does not read .env on its own, so this has to be wired up."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("HF_TOKEN=hf_from_dotenv\n")
+    for name in ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_TOKEN"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(diarization, "_dotenv_loaded", False)
+
+    assert diarization.find_token(None) == "hf_from_dotenv"
+
+
+def test_an_exported_variable_beats_the_dotenv_file(tmp_path, monkeypatch):
+    """Setting one for a single run must do what it looks like it does."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("HF_TOKEN=hf_from_dotenv\n")
+    monkeypatch.setenv("HF_TOKEN", "hf_exported")
+    monkeypatch.setattr(diarization, "_dotenv_loaded", False)
+
+    assert diarization.find_token(None) == "hf_exported"

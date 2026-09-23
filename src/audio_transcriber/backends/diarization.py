@@ -14,6 +14,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import find_dotenv, load_dotenv
+
 from audio_transcriber.errors import BackendRequirementError
 
 #: pyannote 4.x's recommended pipeline. It bundles its embedding and scoring
@@ -45,6 +47,8 @@ def gates_for(model: str) -> tuple[str, ...]:
 
 _TOKEN_VARIABLES = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_TOKEN")
 
+_dotenv_loaded = False
+
 
 @dataclass(frozen=True, slots=True)
 class SpeakerTurn:
@@ -66,14 +70,36 @@ class SpeakerTurn:
 
 
 def find_token(explicit: str | None = None) -> str | None:
-    """Return the Hugging Face token, from config or the environment."""
+    """Return the Hugging Face token.
+
+    Looked up in order: the backend config, then the environment, then a `.env`
+    beside the project. Putting the token in a `.env` is the obvious thing to do,
+    and Python does not read one on its own, so it would otherwise be ignored in
+    silence with the credential sitting right there.
+    """
     if explicit:
         return explicit
+    _load_dotenv_once()
     for name in _TOKEN_VARIABLES:
         value = os.environ.get(name)
         if value:
             return value
     return None
+
+
+def _load_dotenv_once() -> None:
+    """Load a `.env` into the environment, at most once per process.
+
+    `override=False` keeps an exported variable winning over the file, so
+    setting one for a single run does what it looks like it does.
+    """
+    global _dotenv_loaded
+    if _dotenv_loaded:
+        return
+    _dotenv_loaded = True
+    path = find_dotenv(usecwd=True)
+    if path:
+        load_dotenv(path, override=False)
 
 
 def _gate_instructions(model: str = DEFAULT_MODEL) -> str:
@@ -83,8 +109,8 @@ def _gate_instructions(model: str = DEFAULT_MODEL) -> str:
     return (
         f"Accept the conditions for {plural}, then set HF_TOKEN:\n  "
         f"{pages}\n"
-        "Create a token at https://huggingface.co/settings/tokens and export it "
-        "as HF_TOKEN."
+        "Create a token at https://huggingface.co/settings/tokens, then export "
+        "it as HF_TOKEN or put it in a .env file beside the project."
     )
 
 
@@ -125,7 +151,9 @@ def check_requirements(model: str, token: str | None, backend: str) -> None:
         raise BackendRequirementError(
             backend,
             f"could not load the diarization model {model!r}: {error}",
-            _gate_instructions(model),
+            "If the conditions have not been accepted for this token, "
+            f"{_gate_instructions(model)} "
+            "Otherwise the cause is above, not the gate.",
         ) from error
 
 
@@ -145,7 +173,8 @@ def load_pipeline(model: str, token: str | None):
     """
     from pyannote.audio import Pipeline
 
-    pipeline = Pipeline.from_pretrained(model, use_auth_token=token)
+    # pyannote 4.x renamed this keyword from `use_auth_token` to `token`.
+    pipeline = Pipeline.from_pretrained(model, token=token)
     if pipeline is None:
         # from_pretrained returns None rather than raising when access is denied.
         raise BackendRequirementError(
@@ -195,13 +224,26 @@ def diarize(
         )
         if value is not None
     }
-    annotation = pipeline(str(audio_path), **constraints)
-    turns = [
-        SpeakerTurn(
-            start=float(segment.start), end=float(segment.end), speaker=str(label)
-        )
-        for segment, _, label in annotation.itertracks(yield_label=True)
-    ]
+    output = pipeline(str(audio_path), **constraints)
+    # pyannote 4.x returns a DiarizeOutput whose serialize() is the documented
+    # shape; 3.x returned an Annotation iterated with itertracks(). Both are
+    # supported so the version pin is not the only thing holding this together.
+    if hasattr(output, "serialize"):
+        turns = [
+            SpeakerTurn(
+                start=float(entry["start"]),
+                end=float(entry["end"]),
+                speaker=str(entry["speaker"]),
+            )
+            for entry in output.serialize().get("diarization", [])
+        ]
+    else:
+        turns = [
+            SpeakerTurn(
+                start=float(segment.start), end=float(segment.end), speaker=str(label)
+            )
+            for segment, _, label in output.itertracks(yield_label=True)
+        ]
     return sorted(turns, key=lambda turn: turn.start)
 
 
