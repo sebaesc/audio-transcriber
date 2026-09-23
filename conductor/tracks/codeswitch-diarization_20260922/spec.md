@@ -112,6 +112,25 @@ External:
 - Diarization for any backend other than `faster-whisper`
 - Speaker identification — labels are stable within a transcript, not across files
 
+## Known Limits
+
+- **Intra-sentential switching is not expressible.** Language is decided per chunk, and a chunk
+  is up to `chunk_seconds` (25 s by default) of speech — several utterances. Every segment in a
+  chunk carries one language, so a switch inside a sentence, or between two utterances in one
+  chunk, is labelled as whichever language dominated the chunk and decoded under it.
+
+  Measured on the reference transcripts of all five `mixed` recordings (2026-09-23): **179 of
+  3148 utterances (5.7%), holding 8.7% of words, contain both languages** — per recording from
+  4.8% (`herring17`) to 8.8% (`maria20`). An utterance counts as mixed when it contains at least
+  one Spanish and one English function word from the scoring marker lists, with `no` excluded
+  because it is common in both. That is a floor, not an estimate: switches carried only by
+  content words are missed — "para *if I have a party*" counts, but "es eso es *homeopathic*"
+  from `herring17` does not, because its only English word is a content word.
+
+  Shrinking chunks does not fix this. Language detection needs a few seconds of audio to be
+  confident, and an utterance-length chunk is still coarser than a switch mid-utterance. Closing
+  it needs word-level language ID, which is out of scope.
+
 ## Technical Notes
 
 - **Placement:** configuration on the existing `faster-whisper` backend, e.g.
