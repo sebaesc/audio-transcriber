@@ -17,11 +17,16 @@ from audio_transcriber.evaluation.runner import (
 from audio_transcriber.evaluation.scoring import Score
 
 
-def _score(wer: float, hypothesis_words: int = 95, hyp_share: float = 0.5) -> Score:
+def _score(
+    wer: float,
+    hypothesis_words: int = 95,
+    hyp_share: float = 0.5,
+    deletions: int = 5,
+) -> Score:
     return Score(
         wer=wer,
         substitutions=10,
-        deletions=5,
+        deletions=deletions,
         insertions=2,
         hits=80,
         reference_words=100,
@@ -113,13 +118,13 @@ def test_comparison_requires_every_recording_to_improve():
     assert compare(baseline, candidate)["improved_everywhere"] is True
 
 
-def test_comparison_rejects_a_win_bought_with_coverage():
+def test_comparison_rejects_a_win_bought_with_deletions():
     baseline = _report("base", {"a": _score(0.44, hypothesis_words=95)})
-    candidate = _report("cand", {"a": _score(0.30, hypothesis_words=70)})
+    candidate = _report("cand", {"a": _score(0.30, hypothesis_words=70, deletions=30)})
 
     result = compare(baseline, candidate)
 
-    assert result["per_recording"]["a"]["coverage_regressed"] is True
+    assert result["per_recording"]["a"]["retention_regressed"] is True
     assert result["recordings_improved"] == 0
 
 

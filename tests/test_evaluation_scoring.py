@@ -95,51 +95,100 @@ def test_matching_language_mix_scores_near_zero_error():
     assert result.language_mix_error == 0.0
 
 
-def _score(wer: float, coverage_words: int) -> Score:
+def _score(wer: float, deletions: int = 5, insertions: int = 0) -> Score:
     return Score(
         wer=wer,
         substitutions=0,
-        deletions=0,
-        insertions=0,
-        hits=0,
+        deletions=deletions,
+        insertions=insertions,
+        hits=100 - deletions,
         reference_words=100,
-        hypothesis_words=coverage_words,
+        hypothesis_words=100 - deletions + insertions,
         reference_spanish_share=0.5,
         hypothesis_spanish_share=0.5,
     )
 
 
-def test_a_lower_wer_with_stable_coverage_is_an_improvement():
-    comparison = Comparison(baseline=_score(0.44, 95), candidate=_score(0.34, 95))
+def test_retained_counts_reference_words_not_deleted():
+    """A substitution still transcribed something there; a deletion did not."""
+    result = score("one two three four", "one too three")
+
+    assert result.retained == pytest.approx(0.75)
+
+
+def test_retained_is_not_inflated_by_insertions():
+    """Coverage nets insertions against deletions; retained does not."""
+    # Two words invented at the start, the last two dropped. The six in the
+    # middle anchor the alignment, so these score as insertions and deletions
+    # rather than as substitutions.
+    result = score(
+        "one two three four five six seven eight",
+        "made up one two three four five six",
+    )
+
+    assert (result.insertions, result.deletions) == (2, 2)
+    assert result.coverage == pytest.approx(1.0)
+    assert result.retained == pytest.approx(0.75)
+
+
+def test_retained_of_an_empty_reference_is_zero_not_an_error():
+    assert score("", "anything").retained == 0.0
+
+
+def test_a_lower_wer_with_stable_retention_is_an_improvement():
+    comparison = Comparison(baseline=_score(0.44), candidate=_score(0.34))
 
     assert comparison.improved
-    assert not comparison.coverage_regressed
+    assert not comparison.retention_regressed
 
 
 def test_a_lower_wer_bought_by_dropping_content_is_not_an_improvement():
     """The prototype's failure mode: WER 0.44 to 0.34 while losing 14% of words."""
-    comparison = Comparison(baseline=_score(0.44, 95), candidate=_score(0.34, 81))
+    comparison = Comparison(
+        baseline=_score(0.44, deletions=5), candidate=_score(0.34, deletions=19)
+    )
 
-    assert comparison.coverage_regressed
+    assert comparison.retention_regressed
+    assert not comparison.improved
+
+
+def test_dropped_content_is_caught_even_when_insertions_mask_it():
+    """Observed on `sastre8`: coverage 0.987 with 7.6% of reference words deleted.
+
+    Hallucinated words offset deleted ones in a length ratio, so a guard built on
+    coverage passes a candidate that dropped content while inventing more.
+    """
+    comparison = Comparison(
+        baseline=_score(0.44, deletions=5),
+        candidate=_score(0.34, deletions=19, insertions=14),
+    )
+
+    assert comparison.candidate.coverage == comparison.baseline.coverage
+    assert comparison.retention_regressed
     assert not comparison.improved
 
 
 def test_a_higher_wer_is_never_an_improvement():
-    comparison = Comparison(baseline=_score(0.42, 95), candidate=_score(0.57, 95))
+    comparison = Comparison(baseline=_score(0.42), candidate=_score(0.57))
 
     assert not comparison.improved
 
 
-def test_small_coverage_movement_is_tolerated():
-    comparison = Comparison(baseline=_score(0.44, 95), candidate=_score(0.34, 94))
+def test_small_retention_movement_is_tolerated():
+    comparison = Comparison(
+        baseline=_score(0.44, deletions=5), candidate=_score(0.34, deletions=6)
+    )
 
-    assert not comparison.coverage_regressed
+    assert not comparison.retention_regressed
     assert comparison.improved
 
 
 def test_comparison_reports_its_deltas():
-    data = Comparison(baseline=_score(0.44, 95), candidate=_score(0.34, 81)).to_dict()
+    data = Comparison(
+        baseline=_score(0.44, deletions=5), candidate=_score(0.34, deletions=19)
+    ).to_dict()
 
     assert data["wer_delta"] == pytest.approx(-0.10, abs=1e-4)
+    assert data["retained_delta"] == pytest.approx(-0.14, abs=1e-4)
     assert data["coverage_delta"] == pytest.approx(-0.14, abs=1e-4)
     assert data["improved"] is False

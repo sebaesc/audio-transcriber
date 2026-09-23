@@ -117,6 +117,7 @@ class Report:
                 "recordings": len(self.results),
                 "scored": len(self.scored),
                 "mean_wer": round(self.mean("wer"), 4),
+                "mean_retained": round(self.mean("retained"), 4),
                 "mean_coverage": round(self.mean("coverage"), 4),
                 "mean_language_mix_error": round(self.mean("language_mix_error"), 4),
             },
@@ -244,6 +245,9 @@ def compare(baseline: Report, candidate: Report) -> dict[str, Any]:
         "recordings_improved": improved,
         "improved_everywhere": bool(per_recording) and improved == len(per_recording),
         "mean_wer_delta": round(candidate.mean("wer") - baseline.mean("wer"), 4),
+        "mean_retained_delta": round(
+            candidate.mean("retained") - baseline.mean("retained"), 4
+        ),
         "mean_coverage_delta": round(
             candidate.mean("coverage") - baseline.mean("coverage"), 4
         ),

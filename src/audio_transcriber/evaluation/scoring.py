@@ -5,9 +5,15 @@ by emitting less: deletions cost one error each, while a wrong guess costs a
 substitution and risks an insertion too. A run that silently drops a third of the
 audio can therefore look like an improvement.
 
-So every score carries a **coverage** figure alongside WER, and the language mix
-each transcript reports. A change that improves WER while coverage falls is not
-an improvement, and the eval report says so rather than leaving it to be noticed.
+So every score carries a **retained** figure alongside WER — the share of the
+reference that was transcribed as something rather than deleted — and the
+language mix each transcript reports. A change that improves WER while retention
+falls is not an improvement, and the eval report says so rather than leaving it
+to be noticed.
+
+**Coverage** is reported too, but it cannot be the guard. It is a length ratio,
+so words the transcriber invents offset words it dropped: `sastre8` scored
+coverage 0.987 with 7.6% of its reference deleted.
 """
 
 from __future__ import annotations
@@ -71,6 +77,18 @@ class Score:
         return self.hypothesis_words / self.reference_words
 
     @property
+    def retained(self) -> float:
+        """Fraction of reference words transcribed as something, not deleted.
+
+        A substituted word still counts: the audio there was transcribed, if
+        wrongly. Unlike coverage, insertions cannot raise it, so it measures
+        dropped content directly rather than net of hallucination.
+        """
+        if not self.reference_words:
+            return 0.0
+        return (self.reference_words - self.deletions) / self.reference_words
+
+    @property
     def language_mix_error(self) -> float:
         """Absolute difference between hypothesis and reference Spanish share.
 
@@ -83,6 +101,7 @@ class Score:
         """Return the score as JSON-serializable data."""
         return {
             "wer": round(self.wer, 4),
+            "retained": round(self.retained, 4),
             "coverage": round(self.coverage, 4),
             "language_mix_error": round(self.language_mix_error, 4),
             "reference_spanish_share": round(self.reference_spanish_share, 4),
@@ -103,33 +122,36 @@ class Comparison:
     Attributes:
         baseline: The score to beat.
         candidate: The score being judged.
-        coverage_tolerance: How much coverage may fall before a WER improvement
-            is treated as bought rather than earned.
+        retention_tolerance: How much retention may fall before a WER
+            improvement is treated as bought rather than earned.
     """
 
     baseline: Score
     candidate: Score
-    coverage_tolerance: float = 0.02
+    retention_tolerance: float = 0.02
     notes: list[str] = field(default_factory=list)
 
     @property
-    def coverage_regressed(self) -> bool:
-        """Whether the candidate transcribed materially less than the baseline."""
+    def retention_regressed(self) -> bool:
+        """Whether the candidate dropped materially more than the baseline."""
         return (
-            self.candidate.coverage < self.baseline.coverage - self.coverage_tolerance
+            self.candidate.retained < self.baseline.retained - self.retention_tolerance
         )
 
     @property
     def improved(self) -> bool:
-        """Whether the candidate is better on WER without losing coverage."""
-        return self.candidate.wer < self.baseline.wer and not self.coverage_regressed
+        """Whether the candidate is better on WER without dropping content."""
+        return self.candidate.wer < self.baseline.wer and not self.retention_regressed
 
     def to_dict(self) -> dict[str, Any]:
         """Return the comparison as JSON-serializable data."""
         return {
             "improved": self.improved,
-            "coverage_regressed": self.coverage_regressed,
+            "retention_regressed": self.retention_regressed,
             "wer_delta": round(self.candidate.wer - self.baseline.wer, 4),
+            "retained_delta": round(
+                self.candidate.retained - self.baseline.retained, 4
+            ),
             "coverage_delta": round(
                 self.candidate.coverage - self.baseline.coverage, 4
             ),
@@ -166,7 +188,7 @@ def score(reference: str, hypothesis: str) -> Score:
         hypothesis: Normalized hypothesis text.
 
     Returns:
-        The score, including coverage and language mix.
+        The score, including retention, coverage and language mix.
     """
     import jiwer
 
