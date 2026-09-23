@@ -266,8 +266,45 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 - [x] Task 5.5: Record in the spec's known limits that intra-sentential switching is not expressible at chunk granularity
 - [ ] Task 5.6: Decide whether `chunked` should become the default, with the eval as the argument either way
 - [~] Task 5.7: **Drop implausibly dense segments.** Whisper emitted "For more info, see the links in the description." — eight words — into a 15 ms segment, after the duration clamp squashed a hallucination past the end of speech rather than discarding it. No real segment fits eight words into 15 ms, so words-per-second is a reliable discriminator. Filter in normalization, with the threshold chosen from the corpus rather than guessed, and a test built from the observed case
-- [ ] Task 5.8: **Investigate over-generation.** `sastre8` scored coverage 1.019 at baseline: the transcript is longer than the reference. Establish whether that is hallucinated content, reference gaps, or normalization, since coverage is the metric guarding every other measurement in this track and a systematic bias in it would matter
+- [x] Task 5.8: **Investigate over-generation.** `sastre8` scored coverage 1.019 at baseline: the transcript is longer than the reference. Establish whether that is hallucinated content, reference gaps, or normalization, since coverage is the metric guarding every other measurement in this track and a systematic bias in it would matter
 - [x] Task 5.9: Reject options the detection mode would silently ignore (unplanned; see deviations)
+
+### Task 5.8 result — over-generation
+
+**Not over-generation. The 1.019 was a superseded measurement; the finding is that coverage
+hides deletions.**
+
+The figure comes from the baseline committed in `6f61356`, taken before the per-file model
+rebuild. `sastre8` was the third file of that run, so it decoded with RNG state left by the two
+before it — the order dependence that commit fixed. The same recording scored 531 insertions
+there against 362 in the valid baseline. Reproducibility was re-verified: a fresh file-mode run
+today produced transcripts byte-identical to the committed baseline's on all five recordings.
+No recording now exceeds coverage 1.0.
+
+Of the three candidate causes:
+
+- **Hallucination** — present but minor. Repetition loops ("frantitude" ×30, "jean and a polo
+  shirt" repeated) account for 4–133 inserted words per recording; most insertions are short
+  scattered runs.
+- **Reference gaps** — no evidence in `sastre8`: no insertion run outside a loop exceeds seven
+  words. `maria20` is a different story — 51 reference words per minute against about 200
+  elsewhere, 8% of them `xxx` — and is flagged as the least trustworthy recording in
+  `docs/evaluation.md`.
+- **Normalization** — `xxx` (unintelligible) and fillers survive reference cleaning and can never
+  be matched. They bias every report equally, so they do not distort comparisons.
+
+**What mattered:** coverage is a length ratio, so insertions offset deletions. At baseline:
+
+| recording | coverage | retained (1 − deletions/reference) | gap |
+| --------- | -------- | ---------------------------------- | --- |
+| herring17 | 0.761 | 0.749 | 0.012 |
+| maria20   | 0.861 | 0.806 | 0.055 |
+| sastre8   | 0.987 | 0.924 | 0.063 |
+| zeledon14 | 0.979 | 0.922 | 0.057 |
+| zeledon4  | 0.862 | 0.833 | 0.029 |
+
+The comparison guard now uses `retained`. Phase 3 re-checked: chunked-vs-baseline retention
+deltas have the same sign as the coverage deltas on all five recordings, so its verdicts stand.
 
 ### Verification
 
