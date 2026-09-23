@@ -263,9 +263,9 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 - [ ] Task 5.2: Measure and document throughput for each mode — chunked detection adds a pass, diarization adds a model
 - [ ] Task 5.3: Update `docs/backends/faster-whisper.md` with the new options, their cost, and their limits
 - [ ] Task 5.4: Document the eval harness: how to run it, what it measures, and how to read the report
-- [ ] Task 5.5: Record in the spec's known limits that intra-sentential switching is not expressible at chunk granularity
+- [x] Task 5.5: Record in the spec's known limits that intra-sentential switching is not expressible at chunk granularity
 - [ ] Task 5.6: Decide whether `chunked` should become the default, with the eval as the argument either way
-- [ ] Task 5.7: **Drop implausibly dense segments.** Whisper emitted "For more info, see the links in the description." — eight words — into a 15 ms segment, after the duration clamp squashed a hallucination past the end of speech rather than discarding it. No real segment fits eight words into 15 ms, so words-per-second is a reliable discriminator. Filter in normalization, with the threshold chosen from the corpus rather than guessed, and a test built from the observed case
+- [~] Task 5.7: **Drop implausibly dense segments.** Whisper emitted "For more info, see the links in the description." — eight words — into a 15 ms segment, after the duration clamp squashed a hallucination past the end of speech rather than discarding it. No real segment fits eight words into 15 ms, so words-per-second is a reliable discriminator. Filter in normalization, with the threshold chosen from the corpus rather than guessed, and a test built from the observed case
 - [ ] Task 5.8: **Investigate over-generation.** `sastre8` scored coverage 1.019 at baseline: the transcript is longer than the reference. Establish whether that is hallucinated content, reference gaps, or normalization, since coverage is the metric guarding every other measurement in this track and a systematic bias in it would matter
 
 ### Verification
