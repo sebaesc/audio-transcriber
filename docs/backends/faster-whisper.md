@@ -121,7 +121,7 @@ cost of reproducibility and of a file's transcript depending on which files prec
 | `language_detection` | `file` | `file`: one language for the whole recording, as Whisper does natively. `chunked`: detect per speech chunk |
 | `languages` | `None` | Languages detection may choose between, e.g. `["en","es"]` or `en,es`. `None` allows all |
 | `language_threshold` | `0.5` | In `chunked` mode, a chunk whose best allowed language scores below this keeps the file-level language |
-| `chunk_seconds` | `25` | In `chunked` mode, the maximum length of a detection chunk. Under Whisper's 30 s window, so a chunk is one decode |
+| `chunk_seconds` | `15` | In `chunked` mode, the maximum length of a detection chunk |
 
 `language` forces one language for the whole file and is **rejected** with
 `language_detection=chunked`, which would otherwise overwrite it per chunk. Likewise `languages`,
@@ -136,16 +136,21 @@ decoded as one span: every decode boundary costs content, because a word cut acr
 is transcribed badly in both. Segment times are shifted back onto the recording's timeline, so
 they mean the same in either mode.
 
-**The defaults are reasoned, not tuned.** At 0.5 the threshold rarely acts — 3.7% of chunks on
-the evaluation corpus score below it — and raising it falls back more often to the file-level
-language, which is decided from the recording's first 30 s. Shorter chunks roughly double the
-decode boundaries, and each costs content. Neither was measured against alternatives by a full
-evaluation.
+**The defaults are measured.** Each was compared against an alternative over the whole evaluation
+corpus, against a seed noise floor of 0.022 WER per recording:
 
-**When to use it.** On the Spanish-English evaluation corpus, `chunked` reduced language-mix
-error on all five recordings and reported both languages on every one, where `file` reported
-one. It improved WER only where `file` had guessed the recording's language wrong, and cost a
-little where it guessed right. It stays opt-in: use it for audio you know is bilingual. See
+- `language_threshold=0.7` instead of 0.5 was worse: falling back more often to the file-level
+  language — decided from the recording's first 30 s — doubled to quintupled language-mix error
+  on four of five recordings.
+- `chunk_seconds=15` instead of 25 improved WER on four of five recordings, three beyond noise, at
+  the same speed. Consecutive chunks that agree on a language are decoded as one span, so finer
+  detection adds few decode boundaries. One recording was worse by 0.048.
+
+**When to use it.** On the Spanish-English evaluation corpus, `chunked` reported both languages
+on every recording, where `file` reported one, and cut mean language-mix error from 0.164 to
+0.044. It improved WER on four of five recordings (mean −0.034). The fifth, whose language `file`
+mode had already guessed right, got worse by 0.045 WER. It stays opt-in: use it for audio you
+know is bilingual. See
 [`docs/evaluation.md`](../evaluation.md) and the track plan for the numbers.
 
 ### Diarization
@@ -243,12 +248,12 @@ corpus (five recordings, 22–33 min each):
 | Mode | Wall-clock | Realtime factor | Per recording |
 | ---- | ---------- | --------------- | ------------- |
 | `language_detection=file` | 20.5 min | 7.3x | 5.5x–21.9x |
-| `language_detection=chunked` | 23.0 min | 6.5x | 5.4x–11.0x |
+| `language_detection=chunked` | 23.3 min | 6.4x | 5.1x–11.0x |
 | Diarization alone, CUDA | — | 22.9x | measured on one 21.8-min recording |
 | Diarization alone, CPU | — | 1.8x | same recording |
 
-- **`chunked` costs about 12% overall.** The per-chunk detection pass took 136 s summed across
-  the corpus at 25 s chunks — most of the difference. Per recording it varies both ways: a
+- **`chunked` costs about 14% overall.** The per-chunk detection pass took 219 s summed across
+  the corpus at 15 s chunks — most of the difference. Per recording it varies both ways: a
   recording that decodes more cleanly under the right language can come out faster.
 - **Diarization on GPU adds about 4% of the audio's duration** — 57 s for 21.8 minutes. On CPU it
   took 724 s for the same recording, longer than transcribing it, so a GPU matters more for

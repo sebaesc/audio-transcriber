@@ -82,11 +82,11 @@ correctly attributed text instead of one language's guess applied to the whole f
       ground truth, and is runnable on demand
 - [ ] Measured WER improves on the recorded baseline across **all five** `mixed` recordings, not
       one, and transcribed Spanish share lands within 0.05 of each reference share
-  **Not met (2026-09-23).** WER improves on 2 of 5 (`herring17` −0.052, `maria20` −0.156) and
-  worsens on 3 (up to +0.081 on `sastre8`). Spanish share lands within 0.05 on 3 of 5; language-mix
-  error improves on all 5 (mean 0.164 → 0.050). Chunked detection helps where file-level detection
-  guessed the language wrong and costs where it guessed right — inherent, not a tuning gap. The
-  consequence is that `chunked` stays opt-in (plan, Task 5.6).
+  **Not met (2026-09-23), closer after tuning.** At the default 15 s chunks, WER improves on 4 of
+  5 (mean −0.034) and worsens on `sastre8` (+0.045), the recording file-level detection already
+  got right. Spanish share lands within 0.05 on 3 of 5 (`herring17` misses at 0.096, `sastre8`
+  at 0.050); mean
+  language-mix error falls 0.164 → 0.044. `chunked` stays opt-in (plan, Task 5.6).
 - [x] Chunked detection is opt-in configuration on the existing `faster-whisper` backend; the
       shipped per-file default behaviour is unchanged unless it is enabled
 - [x] No pipeline or schema changes — the existing contracts already express both fields
@@ -120,7 +120,7 @@ External:
 ## Known Limits
 
 - **Intra-sentential switching is not expressible.** Language is decided per chunk, and a chunk
-  is up to `chunk_seconds` (25 s by default) of speech — several utterances. Every segment in a
+  is up to `chunk_seconds` (15 s by default) of speech — several utterances. Every segment in a
   chunk carries one language, so a switch inside a sentence, or between two utterances in one
   chunk, is labelled as whichever language dominated the chunk and decoded under it.
 

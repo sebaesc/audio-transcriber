@@ -16,9 +16,13 @@ from faster_whisper.vad import VadOptions, get_speech_timestamps
 
 SAMPLE_RATE = 16_000
 
-#: Default chunk length. Whisper decodes in 30-second windows, so staying under
-#: that keeps a chunk to a single decode.
-DEFAULT_TARGET_SECONDS = 25.0
+#: Default chunk length. Chosen from the eval, not from Whisper's 30-second
+#: window: against 25 s, 15 s improved WER on 4 of the 5 evaluation recordings,
+#: three beyond the seed noise floor, at the same speed. Shorter chunks mean more
+#: decode boundaries, but consecutive chunks that agree on a language are
+#: decoded as one span, so finer detection costs little. One recording,
+#: `maria20`, was worse (+0.048 WER).
+DEFAULT_TARGET_SECONDS = 15.0
 
 #: Chunks shorter than this are merged into their neighbour rather than being
 #: detected on their own: a fragment of a second is not enough audio to identify

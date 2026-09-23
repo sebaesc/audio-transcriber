@@ -285,8 +285,9 @@ the backend doc page must say so rather than cite pyannote's published benchmark
 
 ### Task 5.1 result — tuning
 
-**Defaults kept: `language_threshold=0.5`, `chunk_seconds=25`. Not tuned by full evaluation —
-decided 2026-09-23 to run only the evaluations the track's verification requires.** What was
+**Final: `language_threshold=0.5` kept, `chunk_seconds` changed 25 → 15** — both by full
+evaluation, below. The section starts with the detection-only probe that came first, when only the
+required evaluations were being run.
 measured instead is detection alone: every chunk's best-allowed language and probability, for
 chunk lengths 10–30 s across all five recordings, with thresholds replayed offline.
 
@@ -316,23 +317,26 @@ of GPU each. Reopen if chunked mode becomes the default or a new corpus arrives.
 ### Task 5.6 result — default
 
 **`file` stays the default; `chunked` stays opt-in.** Final reports, `eval/baseline.json` against
-`eval/chunked.json`, both on the finished code:
+`eval/chunked.json` (15 s chunks, per Task 5.1), both on the finished code:
 
 | recording | ΔWER | Δretained | mix error file → chunked |
 | --------- | ---- | --------- | ------------------------ |
-| herring17 | −0.052 | +0.013 | 0.341 → 0.083 |
-| maria20   | −0.156 | +0.079 | 0.348 → 0.092 |
-| sastre8   | +0.081 | −0.042 | 0.013 → 0.037 |
-| zeledon14 | +0.009 | −0.004 | 0.001 → 0.006 |
-| zeledon4  | +0.030 | −0.049 | 0.118 → 0.034 |
+| herring17 | −0.076 | +0.016 | 0.341 → 0.096 |
+| maria20   | −0.108 | +0.053 | 0.348 → 0.019 |
+| sastre8   | +0.045 | −0.035 | 0.013 → 0.050 |
+| zeledon14 | −0.008 | −0.005 | 0.001 → 0.010 |
+| zeledon4  | −0.023 | −0.013 | 0.118 → 0.044 |
 
-Mean: WER −0.018, retained −0.001, language-mix error −0.114. Chunked wins where file-level
-detection guessed the recording's language wrong and loses where it guessed right, and the
-backend cannot tell which before transcribing. A default that makes 3 of 5 recordings worse on
-WER is not one to ship; the doc page tells users with bilingual audio to opt in.
+Mean: WER −0.034, retained +0.003, language-mix error −0.120. At 25 s chunks this was 2 of 5
+better; at 15 s it is 4 of 5, with `zeledon14` within noise. The remaining loss is where it was:
+`sastre8`, whose language file-level detection already had right, loses 0.045 WER beyond noise,
+and mix error rises on the two recordings `file` mode got nearly right. The backend cannot tell
+which kind of recording it has before transcribing, so `chunked` stays opt-in. **This is now a
+closer call than when first decided**, and worth reopening with a larger corpus; flipping it is
+out of scope for this track per the spec.
 
 **Throughput (Task 5.2),** same runs: `file` 20.5 min for 150 min of audio (7.3x), `chunked`
-23.0 min (6.5x), about 12% more. Diarization 22.9x on CUDA, 1.8x on CPU, on one 21.8-min
+23.3 min (6.4x), about 14% more. Diarization 22.9x on CUDA, 1.8x on CPU, on one 21.8-min
 recording. Documented in the doc page.
 
 **Measured after all (2026-09-23).** The full runs above were then made. Each compares against the
@@ -352,7 +356,8 @@ committed `eval/chunked.json` (threshold 0.5, 25 s, seed 0):
   23.0 min). Against the file-mode baseline they improve WER on 4 of 5 recordings (mean −0.034)
   where 25 s improves 2 (mean −0.018). The exception is `maria20`: +0.048 WER and −0.026
   retained, which trips the comparison guard. It is the recording with the sparsest,
-  least trustworthy reference. **Whether to change the default is pending a decision.**
+  least trustworthy reference. **Decided 2026-09-23: default changed to 15 s**, on the 4-of-5
+  result against a single seed. `eval/chunked.json` is now that run.
 
 ### Task 5.7 result — density filter
 

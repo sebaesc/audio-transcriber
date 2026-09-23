@@ -367,7 +367,7 @@ def test_a_forced_language_is_rejected_in_chunked_mode():
     [
         {"languages": ["en", "es"]},
         {"language_threshold": 0.7},
-        {"chunk_seconds": 15.0},
+        {"chunk_seconds": 20.0},
     ],
 )
 def test_chunked_only_options_are_rejected_in_file_mode(option):
@@ -377,3 +377,10 @@ def test_chunked_only_options_are_rejected_in_file_mode(option):
 
 def test_a_forced_language_is_accepted_in_file_mode():
     assert FasterWhisperBackend(language="es").effective_config()["language"] == "es"
+
+
+def test_chunks_default_to_fifteen_seconds():
+    """Chosen from the eval: better than 25 s on 4 of 5 recordings."""
+    config = FasterWhisperBackend(language_detection="chunked").effective_config()
+
+    assert config["chunk_seconds"] == 15.0
