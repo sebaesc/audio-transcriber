@@ -543,3 +543,48 @@ def test_the_seed_is_not_passed_to_the_decoder(monkeypatch, tmp_path):
     backend.transcribe(tmp_path / "a.wav", "a.wav")
 
     assert "seed" not in seen
+
+
+# --- Implausibly dense segments ---
+
+
+def test_normalize_drops_a_hallucination_squashed_by_the_end_clamp(backend):
+    """Observed with large-v3: eight words clamped into the last 15 ms of audio.
+
+    The segment was a hallucination running past the end of the recording.
+    Starting just inside the audio, it was clamped rather than dropped, which
+    left a stock YouTube outro claiming to have been said in 15 ms.
+    """
+    segments = backend._normalize(
+        [
+            _NativeSegment(0.0, 5.0, "and that was the whole story"),
+            _NativeSegment(
+                10.42, 14.0, "For more info, see the links in the description."
+            ),
+        ],
+        "en",
+        duration=10.435,
+    )
+
+    assert [s.text for s in segments] == ["and that was the whole story"]
+
+
+def test_normalize_keeps_fast_but_real_speech(backend):
+    """Fast conversational speech runs around 4-5 words per second."""
+    segments = backend._normalize(
+        [_NativeSegment(0.0, 2.0, "no no I told you that already")], "en"
+    )
+
+    assert len(segments) == 1
+
+
+def test_normalize_keeps_a_short_single_word(backend):
+    """A lone backchannel is short, and its timestamps are coarse.
+
+    One word in a tenth of a second is a density no sentence reaches, but it is
+    what "yeah" looks like when the decoder places it tightly. Density is only
+    evidence of hallucination when there is enough text for it to mean anything.
+    """
+    segments = backend._normalize([_NativeSegment(3.0, 3.1, "Yeah.")], "en")
+
+    assert len(segments) == 1

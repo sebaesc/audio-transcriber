@@ -58,6 +58,26 @@ KNOWN_MODELS = (
 #: Length of the silent buffer the device smoke test decodes, in samples.
 _SMOKE_TEST_SAMPLES = 16_000
 
+#: A segment with at least `_DENSITY_MIN_WORDS` words packed faster than
+#: `_MAX_WORDS_PER_SECOND` did not happen in the audio: it is a hallucination
+#: that a clamp squashed into a sliver of time. Observed: eight words, a stock
+#: YouTube outro, clamped into the last 15 ms of a recording — 533 words/s.
+#:
+#: Chosen from the five-recording eval corpus — 3552 segments in file mode, 3132
+#: in chunked mode — not from a model of speech rate. It drops one segment
+#: there, and that one is a hallucination too: "She's a sweet girl." in 20 ms,
+#: repeating the segment before it, where the reference has the line once.
+#:
+#: - Real segments of four or more words peaked at 28.6 words/s. Whisper's
+#:   timestamps collapse at times into uniform 1.000 s slots regardless of
+#:   length, putting eighteen real, correctly transcribed words in one second.
+#:   A threshold near human speech rate would delete those; 50 leaves margin.
+#: - Shorter segments reached 100 words/s ("¿Por qué?" in 20 ms): timestamps
+#:   resolve to 20 ms and overlap clamping squashes further, so a rate over one
+#:   to three words means nothing. Hence the minimum word count.
+_MAX_WORDS_PER_SECOND = 50.0
+_DENSITY_MIN_WORDS = 4
+
 #: CUDA libraries CTranslate2 loads by name, in dependency order. Installed by
 #: the `nvidia-cublas-cu12` and `nvidia-cudnn-cu12` wheels.
 _CUDA_LIBRARIES = (
@@ -186,6 +206,12 @@ _CHUNKED_ONLY_OPTIONS = frozenset({"languages", "language_threshold", "chunk_sec
 _NON_DECODE_OPTIONS = (
     frozenset({"model", "device", "compute_type", "seed"}) | _PIPELINE_OPTIONS
 )
+
+
+def _implausibly_dense(text: str, seconds: float) -> bool:
+    """Return whether `text` has more words than `seconds` could have held."""
+    words = len(text.split())
+    return words >= _DENSITY_MIN_WORDS and words > _MAX_WORDS_PER_SECOND * seconds
 
 
 @register
@@ -691,6 +717,11 @@ class FasterWhisperBackend(TranscriptionBackend):
         Anything starting at or after the end of the audio is therefore dropped,
         and a segment overhanging the end is clamped to it.
 
+        Clamping has a failure of its own: a hallucination that starts just
+        inside the audio is squashed into what little remains, and survives as
+        several words claiming a few milliseconds. Those are dropped by density,
+        after every clamp has been applied.
+
         It also emits empty text, segments ending before they start, and segments
         overlapping their predecessor by a few milliseconds. The schema forbids
         all of those, so they are cleaned up here rather than reaching the
@@ -721,6 +752,15 @@ class FasterWhisperBackend(TranscriptionBackend):
                 end = min(end, duration)
                 if end <= start:
                     continue
+
+            if _implausibly_dense(text, end - start):
+                _logger.debug(
+                    "dropping %d words in %.3fs as implausibly dense: %r",
+                    len(text.split()),
+                    end - start,
+                    text,
+                )
+                continue
 
             segments.append(
                 Segment(

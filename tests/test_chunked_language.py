@@ -324,6 +324,32 @@ def test_merging_reduces_the_number_of_decodes(monkeypatch):
     assert len(model.transcribe_calls) == 1
 
 
+def test_a_segment_squashed_onto_the_span_end_is_dropped(monkeypatch):
+    """Each span is normalized against its own length, so the clamp that
+    squashes a hallucination runs per span — and so must the density check."""
+    _patch_audio(monkeypatch, 10.0, [(0.0, 9.0), (9.99, 10.0)])
+    backend = _backend()
+
+    class _Squashing:
+        def detect_language(self, audio):
+            return "en", 1.0, [("en", 1.0)]
+
+        def transcribe(self, audio, **kwargs):
+            # Relative to its span: starts 5 ms before the span ends.
+            return iter(
+                [
+                    _NativeSegment(0.0, 5.0, "a real sentence here"),
+                    _NativeSegment(
+                        9.995, 12.0, "For more info, see the links in the description."
+                    ),
+                ]
+            ), None
+
+    transcript = backend._transcribe_chunked(_Squashing(), Path("a.wav"), "a.wav")
+
+    assert [s.text for s in transcript.segments] == ["a real sentence here"]
+
+
 # --- Options that contradict the detection mode ---
 #
 # Both of these were recorded in the manifest and silently ignored: chunked mode
