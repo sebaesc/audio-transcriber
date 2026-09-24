@@ -8,6 +8,7 @@ With no backends registered this collects nothing and is trivially green, which
 is the expected state until the first backend lands in Phase 3.
 """
 
+import os
 from pathlib import Path
 
 import pytest
@@ -29,6 +30,7 @@ pytestmark = pytest.mark.conformance
 #: must meet the contract on its own. A mode that is only ever tested at its
 #: defaults is a mode the suite has not checked.
 _EXTRA_CONFIGS: dict[str, list[dict]] = {
+    "elevenlabs-scribe": [{"diarization": True}],
     "faster-whisper": [
         {"language_detection": "chunked", "languages": ["en", "es"]},
         {"diarization": True},
@@ -49,10 +51,22 @@ def _backend_configs() -> list:
     ]
 
 
+#: Backends that call a paid, remote API. A key in `.env` is enough for their
+#: requirements to pass, so without this every plain `pytest` would spend money
+#: and fail offline. They run live only when asked to; each one's own test file
+#: runs this suite against a fake client on every run instead.
+_HOSTED = frozenset({"elevenlabs-scribe"})
+
+#: Set to 1 to run the hosted backends against their real APIs.
+LIVE_TESTS_VARIABLE = "AUDIO_TRANSCRIBER_LIVE_TESTS"
+
+
 @pytest.fixture(params=_backend_configs())
 def registered_backend(request) -> TranscriptionBackend:
     """Each registered backend in each configuration, skipped if unrunnable."""
     name, config = request.param
+    if name in _HOSTED and os.environ.get(LIVE_TESTS_VARIABLE) != "1":
+        pytest.skip(f"hosted backend; set {LIVE_TESTS_VARIABLE}=1 to call its API")
     backend = registry.create(name, **config)
     try:
         backend.check_requirements()
