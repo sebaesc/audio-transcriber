@@ -83,9 +83,16 @@ option is recorded in the run manifest, and an option the backend does not recog
 
 | Option | Default | Meaning |
 | ------ | ------- | ------- |
-| `model` | `base` | A size from `KNOWN_MODELS`, or a path to converted weights |
+| `model` | `large-v3` | A size from `KNOWN_MODELS`, or a path to converted weights |
 | `device` | `auto` | `auto`, `cpu`, or `cuda` |
 | `compute_type` | `default` | CTranslate2 compute type, e.g. `int8`, `float16` |
+
+**The default is the largest model.** `large-v3` is a 3.1 GB download on first use, about 70 s to
+download and load, and needs about 3.8 GB of VRAM at `float16`, more with diarization on the same
+device (see [Hardware](#hardware)). On a small GPU it may not fit; `compute_type=int8_float16`
+halves its memory. CPU throughput was measured only with `tiny`, and `large-v3` will be far slower.
+For a CPU-only host, or a quick check, pass a smaller model: `--option model=base`, or
+`model=tiny` for a smoke test.
 
 ### Decoding
 
@@ -193,11 +200,11 @@ and cached in `~/.cache/huggingface/hub`. Sizes are the repository totals:
 | Model | Download | Notes |
 | ----- | -------- | ----- |
 | `tiny`, `tiny.en` | 78 MB | Fast, low accuracy. Good for smoke tests |
-| `base`, `base.en` | 148 MB | The default |
+| `base`, `base.en` | 148 MB | |
 | `small`, `small.en` | 486 MB | |
 | `medium`, `medium.en` | 1.5 GB | |
 | `large-v1`, `large-v2` | 3.1 GB | |
-| `large-v3` | 3.1 GB | Best accuracy |
+| `large-v3` | 3.1 GB | The default. Best accuracy |
 
 The `.en` variants are English-only and slightly more accurate on English than their multilingual
 counterparts at the same size.

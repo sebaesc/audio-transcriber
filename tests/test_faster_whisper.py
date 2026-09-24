@@ -141,7 +141,7 @@ def test_defaults_are_recorded_in_the_effective_config():
     """Nothing is left implicit in a flag default; the manifest gets real values."""
     config = FasterWhisperBackend().effective_config()
 
-    assert config["model"] == "base"
+    assert config["model"] == "large-v3"
     assert config["beam_size"] == 5
     assert config["vad_filter"] is True
 
