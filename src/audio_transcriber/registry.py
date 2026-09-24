@@ -18,7 +18,10 @@ _REGISTRY: dict[str, type[TranscriptionBackend]] = {}
 #: Modules registering a built-in backend, imported on first lookup. A backend
 #: whose optional extra is not installed is skipped, not an error: a missing
 #: engine only matters when it is the one selected.
-_BUILTIN_MODULES = ("audio_transcriber.backends.faster_whisper",)
+_BUILTIN_MODULES = (
+    "audio_transcriber.backends.faster_whisper",
+    "audio_transcriber.backends.elevenlabs_scribe",
+)
 
 _builtins_loaded = False
 

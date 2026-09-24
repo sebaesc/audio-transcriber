@@ -24,6 +24,7 @@ BACKENDS_DIR = PACKAGE_ROOT / "backends"
 ENGINE_LIBRARIES = frozenset(
     {
         "faster_whisper",
+        "elevenlabs",
         "whisper",
         "ctranslate2",
         "torch",
