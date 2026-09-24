@@ -3,7 +3,7 @@
 **Track ID:** elevenlabs-scribe_20260924
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-09-24
-**Status:** [ ] Not Started
+**Status:** [~] In Progress
 
 ## Overview
 
@@ -25,32 +25,48 @@ Make the backend selectable and able to validate itself, without transcribing ye
 
 ### Tasks
 
-- [ ] Task 1.1: Add the `elevenlabs = ["elevenlabs>=2.0,<3.0"]` extra to `pyproject.toml`; install
+- [x] Task 1.1: Add the `elevenlabs = ["elevenlabs>=2.0,<3.0"]` extra to `pyproject.toml`; install
       it in `.venv` and record the installed version
-- [ ] Task 1.2: Add `elevenlabs` to `ENGINE_LIBRARIES` in `tests/test_no_engine_leakage.py`, and
+- [x] Task 1.2: Add `elevenlabs` to `ENGINE_LIBRARIES` in `tests/test_no_engine_leakage.py`, and
       the new module to the registry's list of built-in backend modules
-- [ ] Task 1.3: Write the option tests first: defaults (`seed=0`, `temperature=0.0`,
+- [x] Task 1.3: Write the option tests first: defaults (`seed=0`, `temperature=0.0`,
       `diarization=False`, `timeout` default, `language=None`); unknown options rejected;
       `num_speakers` and `min_speakers` rejected with a pointer to `max_speakers`; `max_speakers`
       checked to be between 1 and 32; `diarization_threshold` rejected alongside `max_speakers` or
       without `diarization`; `diarization=True` flips the per-instance capability
-- [ ] Task 1.4: Implement `ElevenLabsScribeBackend` skeleton: `name`, class `Capabilities`
+- [x] Task 1.4: Implement `ElevenLabsScribeBackend` skeleton: `name`, class `Capabilities`
       (`language_detection=True`, `word_timestamps=True`), `_DEFAULTS`, option validation,
       `effective_config()` with `api_key` redacted, `model_version()` → `scribe_v2` + SDK version
-- [ ] Task 1.5: Shared `.env` credentials. Move `_load_dotenv_once()` and the lookup order
+- [x] Task 1.5: Shared `.env` credentials. Move `_load_dotenv_once()` and the lookup order
       (config, then environment, then `.env`) out of `backends/diarization.py` into a shared
       helper that both backends use. `find_dotenv(usecwd=True)` and `override=False` stay as they
       are, and existing diarization tests pass unchanged. Add a committed `.env.example` listing
       `HF_TOKEN=` and `ELEVENLABS_API_KEY=` with comments on where to get each; never write to the
       real `.env`
-- [ ] Task 1.6: Test and implement `check_requirements()`: missing SDK → install command for the
+- [x] Task 1.6: Test and implement `check_requirements()`: missing SDK → install command for the
       extra; missing key → names `ELEVENLABS_API_KEY`, `.env` and `.env.example`. The key is found
       through the shared helper from Task 1.5
 
 ### Verification
 
-- [ ] `pytest tests/test_elevenlabs_scribe.py tests/test_no_engine_leakage.py tests/test_registry.py`
+- [x] `pytest tests/test_elevenlabs_scribe.py tests/test_no_engine_leakage.py tests/test_registry.py`
       passes; `--backend elevenlabs-scribe` with no key fails up front with the fix-it message
+      (exit 3, no output written)
+
+### Notes and deviations
+
+- **1.1:** `elevenlabs` 2.68.0 installed (brings httpx 0.28.1).
+- **1.5:** Moving the flag to `backends/credentials.py` meant `tests/test_diarization.py` could
+  not stay unchanged: its monkeypatches now target `credentials._dotenv_loaded` instead of
+  `diarization._dotenv_loaded`. Only the patch target changed; the assertions did not. Keeping a
+  dead alias in `diarization` just to leave the tests untouched would have been worse.
+- **1.6:** A missing SDK cannot reach `check_requirements()`. The module imports the SDK at the
+  top, so the registry skips the backend and `--backend elevenlabs-scribe` reports "unknown
+  backend", the same as faster-whisper without its extra. Naming the missing extra there needs a
+  registry change (remember why each built-in failed to import), which is outside this track.
+  Possible follow-up.
+- **1.6:** The key is not tried against the API up front, because that would spend a request on
+  every run. A wrong key fails every file with a 401 that names the key.
 
 ## Phase 2: Normalization — Scribe Response → Transcript
 
@@ -59,26 +75,36 @@ responses shaped like the documented `SpeechToTextChunkResponseModel`.
 
 ### Tasks
 
-- [ ] Task 2.1: Test and implement language-code normalization: `eng`/`en` → `en`, `spa`/`es` →
+- [x] Task 2.1: Test and implement language-code normalization: `eng`/`en` → `en`, `spa`/`es` →
       `es`, other 639-3 codes mapped where a 639-1 code exists, and unknown codes passed through
       unchanged
-- [ ] Task 2.2: Test and implement word grouping. Drop `spacing` and `audio_event` tokens. Start a
+- [x] Task 2.2: Test and implement word grouping. Drop `spacing` and `audio_event` tokens. Start a
       new segment on a `speaker_id` change or on a pause over a threshold. Segment text is built
       from the words and stripped. Timings are ascending and non-overlapping, and words with null
       `start`/`end` are handled. The pause threshold is a module constant, recorded in the
       manifest if it is made configurable
-- [ ] Task 2.3: Test and implement `_normalize()` → `Transcript`: every segment gets the
+- [x] Task 2.3: Test and implement `_normalize()` → `Transcript`: every segment gets the
       file-level `spoken_language`; `speaker` is set only when diarization is on; `duration`
       comes from `audio_duration_secs` or else the WAV header; `source` is the original input.
       Empty `words` → an empty transcript, not an error
-- [ ] Task 2.4: Test edge cases: a response of only audio events or spacing, a single word,
+- [x] Task 2.4: Test edge cases: a response of only audio events or spacing, a single word,
       segments reaching past the audio's end (clamped or rejected so runtime validation doesn't
       turn them into a file failure unexpectedly), and a multichannel-shaped response rejected
       clearly
 
 ### Verification
 
-- [ ] Normalized fixtures pass `assert_transcript_conforms`; all Phase 2 tests pass
+- [x] Normalized fixtures pass `assert_transcript_conforms`; all Phase 2 tests pass
+
+### Notes
+
+- **2.1:** Built from Scribe v2's published list of 99 languages. Eight have no ISO 639-1 code
+  and pass through as-is: `ast`, `ceb`, `fil`, `kea`, `luo`, `nso`, `umb`, `yue`.
+- **2.2:** Segments break at a sentence end (`. ? ! …`), a speaker change (diarization only),
+  or a pause over `PAUSE_SECONDS = 1.0`. Spacing tokens are kept inside a segment, so text keeps
+  Scribe's own spacing, and none is invented for languages written without spaces. The
+  threshold is a constant, not an option; revisit if the evaluation shows segmentation hurting
+  anything.
 
 ## Phase 3: API Call, Error Mapping, Conformance
 

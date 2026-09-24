@@ -2,18 +2,21 @@
   "id": "elevenlabs-scribe_20260924",
   "title": "ElevenLabs Scribe v2 Backend",
   "type": "feature",
-  "status": "pending",
+  "status": "in_progress",
   "created": "2026-09-24T03:42:14Z",
-  "updated": "2026-09-24T03:42:14Z",
+  "updated": "2026-09-24T03:50:22Z",
   "phases": {
     "total": 4,
-    "completed": 0
+    "completed": 2
   },
   "tasks": {
     "total": 19,
-    "completed": 0
+    "completed": 10
   },
-  "current_phase": null,
-  "current_task": null,
-  "commits": []
+  "current_phase": 3,
+  "current_task": "3.1",
+  "commits": [
+    "bfafdf4: refactor(backends): share .env credential lookup across backends",
+    "69d8091: feat(backends): add elevenlabs-scribe options, key check and normalization"
+  ]
 }
