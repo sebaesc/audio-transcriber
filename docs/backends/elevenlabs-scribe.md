@@ -24,9 +24,10 @@ machine**, the service bills per audio hour, and ElevenLabs stores what it recei
 ```
 
 This installs the official `elevenlabs` Python SDK (2.x), which brings `httpx`, `pydantic`,
-`requests` and `websockets`. It is not part of the core install. Without it the backend is not
-registered, and `--backend elevenlabs-scribe` reports an unknown backend. `--list-backends` shows
-what is installed.
+`requests` and `websockets`. It is not part of the core install. Without it,
+`--backend elevenlabs-scribe` stops before any file is processed (exit 3) and names the extra to
+install. `--list-backends` prints the installed backends, and notes on stderr any built-in whose
+extra is missing.
 
 ### API key
 

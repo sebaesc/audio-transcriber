@@ -34,6 +34,26 @@ class UnknownBackendError(ConfigError):
         super().__init__(f"unknown backend {name!r}. Available backends: {available}")
 
 
+class BackendNotInstalledError(UnknownBackendError):
+    """Raised when a built-in backend is selected but could not be imported.
+
+    Usually its optional extra is not installed. A subclass of
+    `UnknownBackendError`, since the backend is not registered either way; only
+    the message differs, saying what to install.
+
+    Attributes:
+        name: The requested backend name.
+        known: The registered backend names.
+        detail: Why it is unavailable, and the fix when there is one.
+    """
+
+    def __init__(self, name: str, detail: str, known: tuple[str, ...]) -> None:
+        self.name = name
+        self.known = known
+        self.detail = detail
+        ConfigError.__init__(self, f"backend {name!r} is {detail}")
+
+
 class BackendRequirementError(AudioTranscriberError):
     """Raised when a backend's requirements are not met.
 

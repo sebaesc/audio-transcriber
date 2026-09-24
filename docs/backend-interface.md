@@ -146,12 +146,17 @@ engine-shaped may reach the pipeline. In practice:
 
 ## Registration
 
-Decorate the class with `@register`, or call `register(ExampleBackend)`. Add the module to
-`_BUILTIN_MODULES` in `audio_transcriber/registry.py` so it is discovered on lookup.
+Decorate the class with `@register`, or call `register(ExampleBackend)`. For a built-in, add a
+`_Builtin(name, module, extra)` entry to `_BUILTINS` in `audio_transcriber/registry.py` so it is
+discovered on lookup. A test checks that the declared name matches the class and that the extra
+exists in `pyproject.toml`.
 
 A backend whose optional extra is not installed is skipped at import rather than raising: a
-missing engine only matters when it is the one selected. Keep engine imports at module scope so
-that skip works.
+missing engine only matters when it is the one selected. When it is selected, `registry.get`
+raises `BackendNotInstalledError`, a subclass of `UnknownBackendError`, whose message names the
+missing module and the `pip install` command for the extra. An import failure inside this
+package is reported as broken instead, never as a missing extra. Keep engine imports at module
+scope so the skip works.
 
 ## Dependencies
 
