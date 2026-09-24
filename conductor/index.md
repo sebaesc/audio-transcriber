@@ -38,6 +38,7 @@ A modular audio transcription pipeline with swappable model backends.
 | [Core Pipeline and Backend Interface](./tracks/core-pipeline_20260922/index.md) | Complete | Critical | [spec](./tracks/core-pipeline_20260922/spec.md) | [plan](./tracks/core-pipeline_20260922/plan.md) |
 | [Code-Switching Language Detection and Speaker Diarization](./tracks/codeswitch-diarization_20260922/index.md) | In Progress | High | [spec](./tracks/codeswitch-diarization_20260922/spec.md) | [plan](./tracks/codeswitch-diarization_20260922/plan.md) |
 | [Default Whisper Model to large-v3](./tracks/default-large-v3_20260923/index.md) | Complete | Low | [spec](./tracks/default-large-v3_20260923/spec.md) | [plan](./tracks/default-large-v3_20260923/plan.md) |
+| [Per-Word Speaker Assignment](./tracks/word-speakers_20260924/index.md) | Pending | Medium | [spec](./tracks/word-speakers_20260924/spec.md) | [plan](./tracks/word-speakers_20260924/plan.md) |
 
 ## Recent Activity
 
@@ -51,6 +52,7 @@ A modular audio transcription pipeline with swappable model backends.
 | 2026-09-22 | codeswitch-diarization_20260922 | Track created (5 phases, 31 tasks) |
 | 2026-09-23 | default-large-v3_20260923 | Track created (2 phases, 5 tasks) |
 | 2026-09-23 | default-large-v3_20260923 | Track complete (2 phases, 5 tasks, all gates passed) |
+| 2026-09-24 | word-speakers_20260924 | Track created (4 phases, 21 tasks) |
 
 ## Project Status
 
