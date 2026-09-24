@@ -14,6 +14,9 @@ license = { text = "Proprietary" }
 # optional extras below: installing the pipeline must never pull in every engine.
 dependencies = [
     "typer>=0.12,<0.20",
+    # Credentials reach the pipeline through the environment. A .env beside the
+    # project is the convention people reach for, and Python does not read one.
+    "python-dotenv>=1.0,<2.0",
 ]
 
 [project.scripts]
@@ -28,6 +31,22 @@ dev = [
 # One extra per backend. Adding a backend adds an entry here and nothing else.
 faster-whisper = [
     "faster-whisper>=1.0,<2.0",
+]
+
+# Speaker diarization. pyannote's models are MIT-licensed but gated: accepting
+# their conditions on the Hugging Face Hub and setting HF_TOKEN is required.
+diarization = [
+    "pyannote.audio>=4.0,<5.0",
+    # Scores diarization against reference speakers (evaluation --talkbank).
+    # Already pulled in by pyannote.audio; declared because the harness uses it.
+    "pyannote.metrics>=4.0,<5.0",
+]
+
+# Measuring transcription quality against a reference corpus. Not needed to run
+# the pipeline, and never a dependency of a backend.
+eval = [
+    "jiwer>=3.0,<5.0",
+    "pyarrow>=15.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -65,4 +84,8 @@ filterwarnings = [
     # and ignoring it narrowly keeps real warnings visible as errors.
     "ignore:'click.utils.get_binary_stream' is deprecated:DeprecationWarning",
     "ignore:'click.utils.get_text_stream' is deprecated:DeprecationWarning",
+    # pyannote announces on every run that it disabled TF32 for reproducibility.
+    # Informational. Matched by message so a missing diarization extra cannot
+    # break collection.
+    "ignore:TensorFloat-32 \\(TF32\\) has been disabled",
 ]

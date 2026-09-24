@@ -1,7 +1,7 @@
 # Track: Code-Switching Language Detection and Speaker Diarization
 
 **ID:** codeswitch-diarization_20260922
-**Status:** Pending
+**Status:** Complete — signed off 2026-09-23
 **Depends on:** [core-pipeline_20260922](../core-pipeline_20260922/index.md) (complete)
 
 ## Documents

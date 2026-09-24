@@ -13,6 +13,11 @@ engines (local Whisper, faster-whisper, hosted APIs) requires implementing one i
 rewriting the pipeline. Every supported backend ships with documentation covering how to use
 it and what it requires.
 
+Each transcript segment carries the language actually spoken and, optionally, who spoke it. That
+matters for the team's own audio, which is mostly English with Spanish speakers who switch
+languages mid-conversation. Transcription quality is measured, not assumed: an evaluation harness
+scores backends against a Spanish-English reference corpus.
+
 ## Problem Statement
 
 ### The Problem
@@ -105,7 +110,8 @@ Number of transcription backends usable interchangeably with zero pipeline chang
 ### Future Considerations
 
 - HTTP API in front of the pipeline
-- Side-by-side model comparison / benchmarking reports
+- Making per-chunk language detection the default, once a larger corpus supports it
+- Language labels below utterance granularity (word-level language ID)
 - Shared storage for transcripts if multiple consumers appear
 
 ### Non-Goals

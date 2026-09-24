@@ -46,6 +46,17 @@ Or, once installed, as `audio-transcriber`.
 | `--quiet`, `-q` | off | Report only the final summary |
 | `--list-backends` | — | List installed backends and exit |
 
+For bilingual audio, detect language per speech chunk rather than once per file, and label
+speakers. Both are opt-in; see the
+[`faster-whisper` doc page](docs/backends/faster-whisper.md) for what each costs and needs:
+
+```bash
+.venv/bin/python -m audio_transcriber -i ./audio -b faster-whisper \
+  --option model=large-v3 \
+  --option language_detection=chunked --option 'languages=["en","es"]' \
+  --option diarization=true
+```
+
 Backend options are passed through and recorded in the manifest. Values are read as JSON, so
 types are preserved:
 
@@ -125,6 +136,9 @@ Every backend must pass the shared contract suite:
 .venv/bin/pytest -k conformance
 ```
 
+To measure whether a change improves transcription quality, run the evaluation harness against
+the Spanish-English reference corpus — see [`docs/evaluation.md`](docs/evaluation.md).
+
 ## Adding a backend
 
 Implement one interface, register it by name, and write its doc page. See
@@ -135,4 +149,5 @@ Implement one interface, register it by name, and write its doc page. See
 
 - [Backend interface contract](docs/backend-interface.md)
 - [Per-backend documentation](docs/backends/)
+- [Evaluation harness](docs/evaluation.md)
 - Project context, tracks, and workflow: [`conductor/`](conductor/)

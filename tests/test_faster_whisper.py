@@ -31,6 +31,13 @@ class _NativeSegment:
     text: str
 
 
+class _Weights:
+    """Stands in for the CTranslate2 model a WhisperModel wraps."""
+
+    def unload_model(self):
+        pass
+
+
 @pytest.fixture
 def backend() -> FasterWhisperBackend:
     return FasterWhisperBackend(model="tiny")
@@ -291,3 +298,347 @@ def test_normalize_without_a_duration_keeps_everything(backend):
     )
 
     assert len(segments) == 2
+
+
+# --- Reproducibility ---
+#
+# "The same input plus the same config produces the same output" is a product
+# principle, and it did not hold: transcribing one recording twice produced 689
+# vs 642 segments and a WER of 0.409 vs 0.441. faster-whisper defaults
+# temperature to [0.0, 0.2, ..., 1.0] and falls back up that ladder when a decode
+# trips its quality thresholds. Above 0.0 it samples, so the output is not
+# reproducible — and condition_on_previous_text then carries the divergence into
+# every later segment.
+
+
+def test_decoding_options_are_recorded_in_the_effective_config():
+    """A run is only reproducible if the manifest says what produced it."""
+    config = FasterWhisperBackend().effective_config()
+
+    for key in ("temperature", "condition_on_previous_text", "beam_size"):
+        assert key in config
+
+
+def test_temperature_is_forwarded_to_the_engine(backend, monkeypatch, tmp_path):
+    """Recording the value is not enough; it has to reach the decoder."""
+    seen = {}
+
+    class _Model:
+        model = _Weights()
+
+        def transcribe(self, audio, **kwargs):
+            seen.update(kwargs)
+
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    stub = _Model()
+    monkeypatch.setattr(backend, "_model", stub)
+    monkeypatch.setattr(backend, "_build_model", lambda device: stub)
+    backend._resolved_device = "cpu"
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert (
+        seen["temperature"] == FasterWhisperBackend().effective_config()["temperature"]
+    )
+    assert seen["condition_on_previous_text"] is True
+
+
+def test_greedy_decoding_can_be_selected_by_config():
+    """The ladder is the default, not a cage: greedy stays available."""
+    assert (
+        FasterWhisperBackend(temperature=0.0).effective_config()["temperature"] == 0.0
+    )
+
+
+# --- Config that reaches the decoder ---
+#
+# The backend accepted any keyword, stored it, and recorded it in the manifest,
+# while transcribe() forwarded only the handful it knew about. A run configured
+# with no_repeat_ngram_size=3 produced byte-identical output to one without it,
+# and the manifest claimed the option had been used. A manifest that records
+# options which were never applied is worse than one that records nothing.
+
+
+def test_an_unknown_option_is_rejected():
+    """Silently ignoring it would put a false claim in the manifest."""
+    with pytest.raises(BackendRequirementError, match="unknown option"):
+        FasterWhisperBackend(no_such_option=1)
+
+
+def test_the_rejection_lists_the_options_that_do_exist():
+    with pytest.raises(BackendRequirementError) as caught:
+        FasterWhisperBackend(beem_size=5)
+
+    assert "beam_size" in str(caught.value)
+
+
+def test_every_recorded_option_reaches_the_decoder(monkeypatch, tmp_path):
+    """Whatever the manifest records must actually have been applied."""
+    seen = {}
+
+    class _Model:
+        model = _Weights()
+
+        def transcribe(self, audio, **kwargs):
+            seen.update(kwargs)
+
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        lambda value: None,
+    )
+    backend = FasterWhisperBackend(model="tiny", seed=None)
+    monkeypatch.setattr(backend, "_model", _Model())
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    from audio_transcriber.backends.faster_whisper import _NON_DECODE_OPTIONS
+
+    recorded = set(backend.effective_config())
+    assert (recorded - _NON_DECODE_OPTIONS) <= set(seen), (
+        "recorded but never forwarded: "
+        f"{sorted((recorded - _NON_DECODE_OPTIONS) - set(seen))}"
+    )
+
+
+def test_repetition_controls_are_forwarded(monkeypatch, tmp_path):
+    """These are the deterministic alternative to temperature sampling."""
+    seen = {}
+
+    class _Model:
+        model = _Weights()
+
+        def transcribe(self, audio, **kwargs):
+            seen.update(kwargs)
+
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        lambda value: None,
+    )
+    backend = FasterWhisperBackend(
+        repetition_penalty=1.1, no_repeat_ngram_size=3, seed=None
+    )
+    monkeypatch.setattr(backend, "_model", _Model())
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert seen["repetition_penalty"] == 1.1
+    assert seen["no_repeat_ngram_size"] == 3
+
+
+# --- Seeded decoding ---
+#
+# The temperature ladder re-decodes segments that trip Whisper's quality
+# thresholds, and it is worth keeping: on one recording it scored WER 0.434
+# against 0.619 for the best deterministic configuration. Its sampling is what
+# made runs unreproducible — but CTranslate2's RNG takes a seed, so seeding it
+# gives both. Verified: the same seed produced byte-identical transcripts, and a
+# different seed produced different ones.
+
+
+def test_temperature_defaults_to_the_fallback_ladder():
+    """Quality needs it: 14.5% of segments fall back, and some need 1.0."""
+    temperature = FasterWhisperBackend().effective_config()["temperature"]
+
+    assert isinstance(temperature, list)
+    assert temperature[0] == 0.0
+    assert max(temperature) > 0.0
+
+
+def test_seed_is_recorded_in_the_effective_config():
+    """The seed is part of what reproduces a run, so the manifest needs it."""
+    assert FasterWhisperBackend().effective_config()["seed"] == 0
+
+
+def test_a_seed_rebuilds_the_model_for_every_file(monkeypatch, tmp_path):
+    """The seed binds when the model is built, so applying it means rebuilding.
+
+    An earlier version called `set_random_seed` between decodes on one model and
+    asserted only that the call happened. It happened, and it did nothing: the
+    same recording still scored 0.375 alone and 0.476 as the fifth file of a run.
+    """
+    builds = []
+
+    class _Model:
+        model = _Weights()
+
+        def transcribe(self, audio, **kwargs):
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    backend = FasterWhisperBackend(seed=7)
+    backend._resolved_device = "cpu"
+    monkeypatch.setattr(backend, "_model", _Model())
+    monkeypatch.setattr(
+        backend, "_build_model", lambda device: builds.append(device) or _Model()
+    )
+
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+    backend.transcribe(tmp_path / "b.wav", "b.wav")
+
+    assert builds == ["cpu", "cpu"]
+
+
+def test_the_previous_model_is_unloaded_before_the_next_is_built(monkeypatch):
+    """Two copies of the weights must never be resident at once.
+
+    Dropping the Python reference was assumed to free the old model. It did not
+    — something still held it — so every seeded run peaked at twice the model:
+    7.9 GB for large-v3 on an 8 GB card. Adding diarization overflowed that,
+    WSL2 paged GPU memory to system RAM, and a 57 s diarization took over 20
+    minutes. Unloading frees the weights whatever else refers to the object.
+    """
+    events = []
+
+    class _Weights:
+        def unload_model(self):
+            events.append("unload")
+
+    class _Model:
+        def __init__(self):
+            self.model = _Weights()
+
+    backend = FasterWhisperBackend(seed=0)
+    backend._resolved_device = "cpu"
+    backend._model = _Model()
+
+    def _build(device):
+        events.append("build")
+        return _Model()
+
+    monkeypatch.setattr(backend, "_build_model", _build)
+
+    backend._model_for_file()
+    backend._model_for_file()
+
+    assert events == ["unload", "build", "unload", "build"]
+
+
+def test_no_seed_reuses_the_loaded_model(monkeypatch, tmp_path):
+    """Opting out of reproducibility should also opt out of its cost."""
+    builds = []
+
+    class _Model:
+        model = _Weights()
+
+        def transcribe(self, audio, **kwargs):
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    backend = FasterWhisperBackend(seed=None)
+    monkeypatch.setattr(backend, "_model", _Model())
+    monkeypatch.setattr(
+        backend, "_build_model", lambda device: builds.append(device) or _Model()
+    )
+
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert builds == []
+
+
+def test_build_model_seeds_before_construction(monkeypatch):
+    """Seeding after construction is too late, which is the whole bug."""
+    order = []
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        lambda value: order.append(f"seed:{value}"),
+    )
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.WhisperModel",
+        lambda *args, **kwargs: order.append("build"),
+    )
+
+    FasterWhisperBackend(seed=99, model="tiny")._build_model("cpu")
+
+    assert order == ["seed:99", "build"]
+
+
+def test_the_seed_is_not_passed_to_the_decoder(monkeypatch, tmp_path):
+    """It is applied to the RNG; transcribe() would reject it as a keyword."""
+    seen = {}
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.ctranslate2.set_random_seed",
+        lambda value: None,
+    )
+
+    class _Model:
+        model = _Weights()
+
+        def transcribe(self, audio, **kwargs):
+            seen.update(kwargs)
+
+            class _Info:
+                language = "en"
+                duration = 1.0
+
+            return iter(()), _Info()
+
+    backend = FasterWhisperBackend(seed=None)
+    monkeypatch.setattr(backend, "_model", _Model())
+    backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert "seed" not in seen
+
+
+# --- Implausibly dense segments ---
+
+
+def test_normalize_drops_a_hallucination_squashed_by_the_end_clamp(backend):
+    """Observed with large-v3: eight words clamped into the last 15 ms of audio.
+
+    The segment was a hallucination running past the end of the recording.
+    Starting just inside the audio, it was clamped rather than dropped, which
+    left a stock YouTube outro claiming to have been said in 15 ms.
+    """
+    segments = backend._normalize(
+        [
+            _NativeSegment(0.0, 5.0, "and that was the whole story"),
+            _NativeSegment(
+                10.42, 14.0, "For more info, see the links in the description."
+            ),
+        ],
+        "en",
+        duration=10.435,
+    )
+
+    assert [s.text for s in segments] == ["and that was the whole story"]
+
+
+def test_normalize_keeps_fast_but_real_speech(backend):
+    """Fast conversational speech runs around 4-5 words per second."""
+    segments = backend._normalize(
+        [_NativeSegment(0.0, 2.0, "no no I told you that already")], "en"
+    )
+
+    assert len(segments) == 1
+
+
+def test_normalize_keeps_a_short_single_word(backend):
+    """A lone backchannel is short, and its timestamps are coarse.
+
+    One word in a tenth of a second is a density no sentence reaches, but it is
+    what "yeah" looks like when the decoder places it tightly. Density is only
+    evidence of hallucination when there is enough text for it to mean anything.
+    """
+    segments = backend._normalize([_NativeSegment(3.0, 3.1, "Yeah.")], "en")
+
+    assert len(segments) == 1

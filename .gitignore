@@ -52,3 +52,8 @@ models/
 .vscode/
 .DS_Store
 *.swp
+
+# Evaluation: reports are committed as the numbers to beat, hypothesis
+# transcripts are regenerable output and the corpus is not ours to vendor.
+eval/transcripts/
+eval/*.local.json

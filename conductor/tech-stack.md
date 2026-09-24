@@ -46,13 +46,14 @@ consumers need to query results.
 
 ### Additional Backend Libraries
 
-Pinned by the `core-pipeline_20260922` track.
+Pinned by the `core-pipeline_20260922` track; extended by `codeswitch-diarization_20260922`.
 
 **Core dependencies** — the pipeline and its CLI, nothing else:
 
 | Library | Purpose                       | Version          |
 | ------- | ----------------------------- | ---------------- |
 | Typer   | CLI entry point               | `>=0.12,<0.20`   |
+| python-dotenv | Read credentials (`HF_TOKEN`) from a `.env` beside the project | `>=1.0,<2.0` |
 
 **Development dependencies:**
 
@@ -66,6 +67,17 @@ Pinned by the `core-pipeline_20260922` track.
 | Extra            | Library          | Version        |
 | ---------------- | ---------------- | -------------- |
 | `faster-whisper` | faster-whisper   | `>=1.0,<2.0`   |
+| `diarization`    | pyannote.audio (brings torch), pyannote.metrics | `>=4.0,<5.0` each |
+
+**Tooling extras** — never a dependency of the core or of a backend:
+
+| Extra  | Library          | Purpose                                   | Version      |
+| ------ | ---------------- | ----------------------------------------- | ------------ |
+| `eval` | jiwer            | Word error rate                           | `>=3.0,<5.0` |
+| `eval` | pyarrow          | Reading the Hugging Face reference corpus | `>=15.0`     |
+
+Scoring speakers against TalkBank (`evaluation --talkbank`) also needs the `diarization` extra,
+for `pyannote.metrics`.
 
 Backend-specific dependencies are installed as **optional extras**, never as required
 dependencies of the core package — installing the pipeline must not pull in every engine.
@@ -251,6 +263,72 @@ violation becomes a reported per-file failure.
 
 ---
 
+### Diarization uses pyannote `speaker-diarization-community-1`
+
+**Date:** 2026-09-23
+**Status:** Accepted
+
+**Context:**
+Every full diarization pipeline available was either gated or non-commercial. Internal company
+use counts as commercial, which ruled out NVIDIA's Sortformer (CC BY-NC-4.0) despite it being
+ungated.
+
+**Decision:**
+pyannote.audio 4.x with `speaker-diarization-community-1` (MIT, gated), as an optional
+`diarization` extra, off by default, on the same device transcription resolves to.
+
+**Consequences:**
+
+- Users must accept one Hugging Face gate and supply `HF_TOKEN`; the requirement check names the page
+- Measured on four two-speaker conversations: about 94% of labelled speech goes to the right speaker
+- On CPU it runs under 2x realtime, slower than transcription; a GPU matters most here
+
+---
+
+### Transcription quality is measured, and the reports are committed
+
+**Date:** 2026-09-22
+**Status:** Accepted
+
+**Context:**
+A change to a backend was otherwise judged by inspection. The prototype of chunked language
+detection improved one recording by 23% and worsened another by 36%.
+
+**Decision:**
+An evaluation harness (`python -m audio_transcriber.evaluation`) scores backends against the
+Bangor Miami Spanish-English corpus, per recording, never on the mean. Reports are committed as
+the numbers to beat. Dropped content is guarded by deletions (`retained`), not by length, because
+invented words mask dropped ones. Decoding is seeded so runs are byte-reproducible.
+
+**Consequences:**
+
+- A claimed improvement needs a report showing it on every recording, against a known noise floor
+- Absolute scores are pessimistic: the references keep `xxx` markers and fillers no transcriber matches
+- The corpus is downloaded on demand and never committed
+
+---
+
+### TalkBank reference data stays on the local device
+
+**Date:** 2026-09-23
+**Status:** Accepted
+
+**Context:**
+Speaker and word-level language annotations exist only in TalkBank's original CHAT transcripts,
+which are CC BY-NC-SA 3.0 and must stay on the downloading device.
+
+**Decision:**
+The harness reads the TalkBank zip from a local cache (`~/.cache/audio-transcriber/talkbank/`),
+never the repo, test fixtures included. Only aggregate scores are committed, with the corpus
+citation. Using the data was the user's decision under those terms.
+
+**Consequences:**
+
+- Anyone re-running speaker or language scoring needs their own TalkBank account
+- Tests use hand-written CHAT, never corpus text
+
+---
+
 ## Version Compatibility Matrix
 
 | Component      | Min Version | Max Version | Notes                                          |
@@ -261,3 +339,8 @@ violation becomes a reported per-file failure.
 | Typer          | 0.12        | <0.20       | Core dependency                                |
 | pytest         | 8.0         | <9.0        | Dev dependency                                 |
 | faster-whisper | 1.0         | <2.0        | Optional extra; verified with 1.2.1            |
+| pyannote.audio | 4.0         | <5.0        | `diarization` extra; verified with 4.0.7, torch 2.14.0 |
+| pyannote.metrics | 4.0       | <5.0        | `diarization` extra; verified with 4.1         |
+| python-dotenv  | 1.0         | <2.0        | Core dependency; verified with 1.2.3           |
+| jiwer          | 3.0         | <5.0        | `eval` extra; verified with 4.0.0              |
+| pyarrow        | 15.0        | —           | `eval` extra; verified with 25.0.1             |

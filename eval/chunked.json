@@ -1,0 +1,343 @@
+{
+  "label": "chunked",
+  "created_at": "2026-09-24T00:57:31.942262+00:00",
+  "tool_version": "0.1.0",
+  "backend": "faster-whisper",
+  "model_version": "faster-whisper-1.2.1/large-v3",
+  "config": {
+    "model": "large-v3",
+    "device": "cuda",
+    "compute_type": "default",
+    "language": null,
+    "beam_size": 5,
+    "vad_filter": true,
+    "temperature": "[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]",
+    "seed": 0,
+    "language_detection": "chunked",
+    "languages": "['en', 'es']",
+    "language_threshold": 0.5,
+    "chunk_seconds": 15.0,
+    "diarization": true,
+    "diarization_model": "pyannote/speaker-diarization-community-1",
+    "hf_token": null,
+    "num_speakers": null,
+    "min_speakers": null,
+    "max_speakers": null,
+    "condition_on_previous_text": true,
+    "repetition_penalty": 1.0,
+    "no_repeat_ngram_size": 0,
+    "best_of": 5,
+    "patience": 1.0,
+    "length_penalty": 1.0,
+    "compression_ratio_threshold": 2.4,
+    "log_prob_threshold": -1.0,
+    "no_speech_threshold": 0.6,
+    "diarization_version": "pyannote.audio-4.0.7"
+  },
+  "corpus": {
+    "dataset": "BrunoHays/Bangor-Miami-Spanish-English-Corpus",
+    "license": "CC BY-SA 3.0",
+    "annotations": "Deuchar, M., & Parafita Couto, M. (2011). The Bangor Miami Corpus. TalkBank. doi:10.21415/T5J01D"
+  },
+  "summary": {
+    "recordings": 5,
+    "scored": 5,
+    "mean_wer": 0.3434,
+    "mean_retained": 0.8501,
+    "mean_coverage": 0.8971,
+    "mean_language_mix_error": 0.0438,
+    "talkbank": {
+      "mean_der": 0.2487,
+      "mean_speaker_confusion": 0.0553,
+      "mean_language_accuracy": 0.8201,
+      "mean_mixed_share": 0.1842
+    }
+  },
+  "recordings": [
+    {
+      "name": "herring17",
+      "duration_s": 1801.3,
+      "elapsed_s": 420.8,
+      "realtime_factor": 4.3,
+      "segments": 591,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.4158,
+        "retained": 0.7656,
+        "coverage": 0.7802,
+        "language_mix_error": 0.0962,
+        "reference_spanish_share": 0.5751,
+        "hypothesis_spanish_share": 0.4789,
+        "substitutions": 1008,
+        "deletions": 1416,
+        "insertions": 88,
+        "hits": 3618,
+        "reference_words": 6042,
+        "hypothesis_words": 4714
+      },
+      "talkbank": {
+        "diarization": {
+          "der": 0.1863,
+          "missed": 0.1321,
+          "false_alarm": 0.0169,
+          "confusion": 0.0373,
+          "reference_seconds": 1137.493
+        },
+        "language": {
+          "accuracy": 0.7776,
+          "recall": {
+            "en": 0.8844,
+            "es": 0.6023
+          },
+          "mixed_share": 0.0919,
+          "scored_seconds": 1569.056,
+          "confusion": {
+            "en": {
+              "en": 862.116,
+              "es": 112.633
+            },
+            "es": {
+              "en": 236.356,
+              "es": 357.951
+            },
+            "mixed": {
+              "en": 105.374,
+              "es": 53.434
+            }
+          }
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "maria20",
+      "duration_s": 1914.6,
+      "elapsed_s": 250.4,
+      "realtime_factor": 7.6,
+      "segments": 259,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.4111,
+        "retained": 0.8588,
+        "coverage": 0.9858,
+        "language_mix_error": 0.0189,
+        "reference_spanish_share": 0.5523,
+        "hypothesis_spanish_share": 0.5335,
+        "substitutions": 231,
+        "deletions": 228,
+        "insertions": 205,
+        "hits": 1156,
+        "reference_words": 1615,
+        "hypothesis_words": 1592
+      },
+      "talkbank": {
+        "diarization": null,
+        "language": {
+          "accuracy": 0.8165,
+          "recall": {
+            "en": 0.8444,
+            "es": 0.7424
+          },
+          "mixed_share": 0.2437,
+          "scored_seconds": 293.396,
+          "confusion": {
+            "mixed": {
+              "es": 40.143,
+              "en": 54.388
+            },
+            "en": {
+              "es": 33.154,
+              "en": 179.928
+            },
+            "es": {
+              "en": 20.692,
+              "es": 59.622
+            }
+          }
+        },
+        "diarization_skipped": "speaker(s) OSE have no timed utterances"
+      },
+      "error": null
+    },
+    {
+      "name": "sastre8",
+      "duration_s": 2003.1,
+      "elapsed_s": 372.9,
+      "realtime_factor": 5.4,
+      "segments": 844,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.2911,
+        "retained": 0.8888,
+        "coverage": 0.9251,
+        "language_mix_error": 0.0495,
+        "reference_spanish_share": 0.5659,
+        "hypothesis_spanish_share": 0.5164,
+        "substitutions": 832,
+        "deletions": 644,
+        "insertions": 210,
+        "hits": 4315,
+        "reference_words": 5791,
+        "hypothesis_words": 5357
+      },
+      "talkbank": {
+        "diarization": {
+          "der": 0.2179,
+          "missed": 0.1303,
+          "false_alarm": 0.0049,
+          "confusion": 0.0827,
+          "reference_seconds": 1371.963
+        },
+        "language": {
+          "accuracy": 0.7622,
+          "recall": {
+            "en": 0.8937,
+            "es": 0.5038
+          },
+          "mixed_share": 0.2604,
+          "scored_seconds": 1318.709,
+          "confusion": {
+            "en": {
+              "en": 781.051,
+              "es": 92.892
+            },
+            "es": {
+              "en": 220.677,
+              "es": 224.089
+            },
+            "mixed": {
+              "en": 273.982,
+              "es": 190.266
+            }
+          }
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "zeledon14",
+      "duration_s": 1984.9,
+      "elapsed_s": 410.0,
+      "realtime_factor": 4.8,
+      "segments": 925,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.2473,
+        "retained": 0.9173,
+        "coverage": 0.9504,
+        "language_mix_error": 0.0099,
+        "reference_spanish_share": 0.9063,
+        "hypothesis_spanish_share": 0.8964,
+        "substitutions": 888,
+        "deletions": 559,
+        "insertions": 224,
+        "hits": 5311,
+        "reference_words": 6758,
+        "hypothesis_words": 6423
+      },
+      "talkbank": {
+        "diarization": {
+          "der": 0.2079,
+          "missed": 0.1577,
+          "false_alarm": 0.009,
+          "confusion": 0.0412,
+          "reference_seconds": 1337.781
+        },
+        "language": {
+          "accuracy": 0.8854,
+          "recall": {
+            "en": 0.2411,
+            "es": 0.977
+          },
+          "mixed_share": 0.2086,
+          "scored_seconds": 1345.099,
+          "confusion": {
+            "es": {
+              "es": 1150.669,
+              "en": 27.145
+            },
+            "en": {
+              "es": 126.945,
+              "en": 40.34
+            },
+            "mixed": {
+              "es": 311.398,
+              "en": 43.072
+            }
+          }
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "zeledon4",
+      "duration_s": 1310.9,
+      "elapsed_s": 309.5,
+      "realtime_factor": 4.2,
+      "segments": 582,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.3515,
+        "retained": 0.8201,
+        "coverage": 0.844,
+        "language_mix_error": 0.0445,
+        "reference_spanish_share": 0.6055,
+        "hypothesis_spanish_share": 0.5611,
+        "substitutions": 624,
+        "deletions": 760,
+        "insertions": 101,
+        "hits": 2841,
+        "reference_words": 4225,
+        "hypothesis_words": 3566
+      },
+      "talkbank": {
+        "diarization": {
+          "der": 0.3826,
+          "missed": 0.3154,
+          "false_alarm": 0.007,
+          "confusion": 0.0602,
+          "reference_seconds": 1061.455
+        },
+        "language": {
+          "accuracy": 0.8586,
+          "recall": {
+            "en": 0.8989,
+            "es": 0.8042
+          },
+          "mixed_share": 0.1164,
+          "scored_seconds": 1051.509,
+          "confusion": {
+            "mixed": {
+              "es": 79.001,
+              "en": 59.462
+            },
+            "es": {
+              "es": 360.754,
+              "en": 87.806
+            },
+            "en": {
+              "en": 542.021,
+              "es": 60.928
+            }
+          }
+        }
+      },
+      "error": null
+    }
+  ]
+}

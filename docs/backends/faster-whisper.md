@@ -8,10 +8,10 @@ real engine to run against.
 | --- | --- |
 | **Name** | `faster-whisper` |
 | **Extra** | `.[faster-whisper]` |
-| **Credentials** | None |
+| **Credentials** | None, unless diarization is enabled — then a Hugging Face token |
 | **Network** | Only on first use, to download model weights |
-| **Diarization** | No |
-| **Language detection** | Yes |
+| **Diarization** | Opt-in (`diarization=true`), via pyannote; needs the `diarization` extra |
+| **Language detection** | Per file by default; per chunk with `language_detection=chunked` |
 | **Word timestamps** | Yes (not surfaced by the pipeline yet) |
 | **Translation** | Yes (not surfaced by the pipeline yet) |
 
@@ -24,10 +24,43 @@ real engine to run against.
 This pulls in `ctranslate2`, `onnxruntime`, `av`, `tokenizers`, and `huggingface_hub`. It is not
 part of the core install: the pipeline does not depend on any engine.
 
+### For diarization
+
+```bash
+.venv/bin/pip install -e ".[faster-whisper,diarization]"
+```
+
+The `diarization` extra adds `pyannote.audio` 4.x, which brings `torch`. It is loaded only when
+`diarization=true`.
+
+pyannote's models are MIT-licensed but **gated** on the Hugging Face Hub:
+
+1. Accept the conditions at
+   [`pyannote/speaker-diarization-community-1`](https://huggingface.co/pyannote/speaker-diarization-community-1)
+   with your Hugging Face account. With `diarization_model=pyannote/speaker-diarization-3.1`,
+   also accept [`pyannote/segmentation-3.0`](https://huggingface.co/pyannote/segmentation-3.0) —
+   that pipeline fetches it separately.
+2. Create a read token at <https://huggingface.co/settings/tokens>.
+3. Export it as `HF_TOKEN`, or put `HF_TOKEN=...` in a `.env` file beside the project. An
+   exported variable wins over the file.
+
+A missing token or an unaccepted gate is reported by `check_requirements()`, before any file is
+transcribed, with the pages to visit for the configured pipeline. The token is written to the
+manifest as `<redacted>`.
+
 ## Usage
 
 ```bash
 .venv/bin/python -m audio_transcriber --input ./audio --backend faster-whisper --out ./out
+```
+
+Bilingual audio, with speakers:
+
+```bash
+.venv/bin/python -m audio_transcriber -i ./audio -b faster-whisper --out ./out \
+  --option model=large-v3 \
+  --option language_detection=chunked --option 'languages=["en","es"]' \
+  --option diarization=true
 ```
 
 Programmatically:
@@ -42,16 +75,101 @@ transcript = backend.transcribe(decoded_wav_path, "audio/meeting.m4a")
 
 ## Configuration
 
-Every option is recorded in the run manifest.
+Pass options with `--option key=value` on the CLI, or as keywords to `registry.create`. Every
+option is recorded in the run manifest, and an option the backend does not recognize is
+**rejected**, not ignored — so the manifest cannot claim a setting that was never applied.
+
+### Model and device
 
 | Option | Default | Meaning |
 | ------ | ------- | ------- |
 | `model` | `base` | A size from `KNOWN_MODELS`, or a path to converted weights |
 | `device` | `auto` | `auto`, `cpu`, or `cuda` |
 | `compute_type` | `default` | CTranslate2 compute type, e.g. `int8`, `float16` |
+
+### Decoding
+
+| Option | Default | Meaning |
+| ------ | ------- | ------- |
 | `language` | `None` | Force a language code instead of detecting one |
 | `beam_size` | `5` | Beam search width. `1` is greedy and faster |
 | `vad_filter` | `True` | Drop non-speech with Silero VAD before decoding |
+| `temperature` | `[0.0, 0.2, …, 1.0]` | A single temperature, or a fallback ladder: a decode that trips the thresholds below is retried one step up |
+| `seed` | `0` | Seeds CTranslate2's RNG so the ladder is reproducible. `None` disables it |
+| `condition_on_previous_text` | `True` | Feed each window the previous text. Turning it off can break a repetition loop |
+| `repetition_penalty` | `1.0` | Penalize repeated tokens; `1.0` is none |
+| `no_repeat_ngram_size` | `0` | Forbid repeating an n-gram of this size; `0` is no restriction |
+| `best_of`, `patience`, `length_penalty` | `5`, `1.0`, `1.0` | Beam search shape |
+| `compression_ratio_threshold` | `2.4` | Above this, a decode is judged repetitive |
+| `log_prob_threshold` | `-1.0` | Below this average log-probability, a decode is judged unreliable |
+| `no_speech_threshold` | `0.6` | Above this no-speech probability (with low log-probability), a window is judged silent |
+
+**Keep the temperature ladder.** Removing it (`temperature=0.0`) was measured on the reference
+corpus: 14.5% of segments on one recording fall back, some all the way to 1.0 to escape repetition
+loops, and greedy-only decoding cost 0.185 WER and 15 points of coverage.
+
+**`seed` makes runs reproducible, not better.** The same input, config and seed produce
+byte-identical transcripts. A different seed produces a different, equally valid one — on one
+recording seeds 42 and 7 scored WER 0.259 and 0.394. Do not tune it. Applying the seed means
+rebuilding the model for each file, about 1.7 s for `large-v3`; `seed=None` skips that, at the
+cost of reproducibility and of a file's transcript depending on which files preceded it.
+
+### Language detection
+
+| Option | Default | Meaning |
+| ------ | ------- | ------- |
+| `language_detection` | `file` | `file`: one language for the whole recording, as Whisper does natively. `chunked`: detect per speech chunk |
+| `languages` | `None` | Languages detection may choose between, e.g. `["en","es"]` or `en,es`. `None` allows all |
+| `language_threshold` | `0.5` | In `chunked` mode, a chunk whose best allowed language scores below this keeps the file-level language |
+| `chunk_seconds` | `15` | In `chunked` mode, the maximum length of a detection chunk |
+
+`language` forces one language for the whole file and is **rejected** with
+`language_detection=chunked`, which would otherwise overwrite it per chunk. Likewise `languages`,
+`language_threshold` and `chunk_seconds` are rejected in `file` mode, which never reads them.
+
+**How `chunked` works.** Silero VAD finds speech and groups it into chunks of at most
+`chunk_seconds`, split at the best silence available. Each chunk's language is detected among
+`languages`, taking the best *allowed* language rather than the model's overall first choice — on
+Spanish-English audio the model sometimes ranks Portuguese or Galician first. A chunk scoring
+below `language_threshold` keeps the file-level language. Consecutive chunks that agree are then
+decoded as one span: every decode boundary costs content, because a word cut across two decodes
+is transcribed badly in both. Segment times are shifted back onto the recording's timeline, so
+they mean the same in either mode.
+
+**The defaults are measured.** Each was compared against an alternative over the whole evaluation
+corpus, against a seed noise floor of 0.022 WER per recording:
+
+- `language_threshold=0.7` instead of 0.5 was worse: falling back more often to the file-level
+  language — decided from the recording's first 30 s — doubled to quintupled language-mix error
+  on four of five recordings.
+- `chunk_seconds=15` instead of 25 improved WER on four of five recordings, three beyond noise, at
+  the same speed. Consecutive chunks that agree on a language are decoded as one span, so finer
+  detection adds few decode boundaries. One recording was worse by 0.048.
+
+**When to use it.** On the Spanish-English evaluation corpus, `chunked` reported both languages
+on every recording, where `file` reported one. It raised per-segment language accuracy on all
+five recordings, from 0.67 to 0.82 on average, measured against TalkBank's annotations, and cut
+language-mix error from 0.164 to 0.044. Detection still leans toward each recording's majority
+language: on English-base recordings it labels 50–80% of Spanish speech correctly, against
+84–90% of English. It improved WER on four of five recordings (mean −0.034). The fifth, whose language `file`
+mode had already guessed right, got worse by 0.045 WER. It stays opt-in: use it for audio you
+know is bilingual. See
+[`docs/evaluation.md`](../evaluation.md) and the track plan for the numbers.
+
+### Diarization
+
+| Option | Default | Meaning |
+| ------ | ------- | ------- |
+| `diarization` | `False` | Label each segment's `speaker` |
+| `diarization_model` | `pyannote/speaker-diarization-community-1` | The pyannote pipeline to use |
+| `hf_token` | `None` | Hugging Face token. Falls back to `HF_TOKEN` in the environment, then a `.env` file. Redacted in the manifest |
+| `num_speakers` | `None` | Exact speaker count, when known |
+| `min_speakers`, `max_speakers` | `None` | Bounds on the speaker count |
+
+Each segment takes the speaker whose turns overlap most of it. A segment overlapping no turn keeps
+`speaker: null` rather than being assigned a guess. Labels (`SPEAKER_00`, …) are stable within one
+transcript, not across files. The pipeline runs on the device transcription resolved to. The
+pyannote version is recorded in the manifest as `diarization_version`.
 
 ### How `device: auto` resolves
 
@@ -121,9 +239,30 @@ On an RTX 3060 (8 GB, WSL2), CUDA 12 libraries from the wheels above, measured w
 An 8 GB card runs `large-v3` at `float16` with room to spare. Use `int8_float16` to halve the
 memory when sharing the GPU with something else.
 
-Throughput is not tabulated here on purpose: a meaningful figure needs real speech, and the
-project has no licensed audio fixture yet. Expect roughly an order of magnitude over CPU for the
-same model.
+**With diarization**, pyannote shares the device: `large-v3` plus `speaker-diarization-community-1`
+peaked at 6.7 GB on a full 21.8-minute recording. That fits an 8 GB card; on a smaller one, use
+`int8_float16` or a smaller Whisper model.
+
+### Measured throughput
+
+`large-v3`, RTX 3060, over the 150 minutes of real bilingual conversation in the evaluation
+corpus (five recordings, 22–33 min each):
+
+| Mode | Wall-clock | Realtime factor | Per recording |
+| ---- | ---------- | --------------- | ------------- |
+| `language_detection=file` | 20.5 min | 7.3x | 5.5x–21.9x |
+| `language_detection=chunked` | 23.3 min | 6.4x | 5.1x–11.0x |
+| Diarization alone, CUDA | — | 22.9x | measured on one 21.8-min recording |
+| Diarization alone, CPU | — | 1.8x | same recording |
+
+- **`chunked` costs about 14% overall.** The per-chunk detection pass took 219 s summed across
+  the corpus at 15 s chunks — most of the difference. Per recording it varies both ways: a
+  recording that decodes more cleanly under the right language can come out faster.
+- **Diarization on GPU adds about 4% of the audio's duration** — 57 s for 21.8 minutes. On CPU it
+  took 724 s for the same recording, longer than transcribing it, so a GPU matters more for
+  diarization than for anything else here. Speaker turns were identical on both devices.
+- **Silence is cheap.** `maria20` is mostly silence, which VAD skips, so it runs 21x realtime in
+  `file` mode.
 
 **Memory** scales with model size. Plan for roughly the download size in RAM with `int8`, more
 with `float32`.
@@ -134,10 +273,23 @@ magnitude, not a benchmark — it scales down substantially with larger models.
 
 ## Known limits
 
-- **No diarization.** `speaker` is always `null`. Pair with a diarization pass, or use a backend
-  that provides it, if you need speaker labels.
-- **One language per file.** The model detects a single language and every segment carries it, so
-  `spoken_language` will not vary within a transcript even when the audio switches language.
+- **Speaker labels are right about 94% of the time, measured on four recordings.** Against
+  TalkBank's annotations of the Spanish-English evaluation corpus, 3.7–9.7% of labelled speech went
+  to the wrong speaker (mean 5.5% in `chunked` mode). The fifth recording could not be scored: its
+  reference times only one of its two speakers. That is four two-speaker conversations. It says
+  the labels are usable, not how the pipeline handles three or more speakers, which was not
+  measured. See [`docs/evaluation.md`](../evaluation.md#speakers-and-languages-talkbank).
+- **Diarization needs a gated model and a token.** See [For diarization](#for-diarization).
+- **One language per file, by default.** In `file` mode the model detects a single language and
+  every segment carries it, so `spoken_language` will not vary even when the audio switches. Use
+  `language_detection=chunked` for bilingual audio.
+- **No switching below chunk granularity.** In `chunked` mode each chunk — up to `chunk_seconds`
+  of speech, several utterances — gets one language. A switch mid-sentence, or between two
+  utterances in one chunk, is labelled and decoded as whichever language dominated the chunk. On
+  the evaluation corpus, TalkBank's word-level annotations put 9–26% of speech time (18% on average)
+  in utterances that mix both languages. No segment label can be right for those.
+- **`chunked` is not a free win.** On a recording whose language `file` mode already guessed
+  right, it adds overhead and can cost a little WER. That is why it is opt-in.
 - **Word timestamps and translation are not exposed.** The engine supports both and the
   capability flags say so, but the pipeline has no config for either yet.
 - **Hallucination on silence and noise.** Whisper can emit plausible text for audio containing no
@@ -149,7 +301,15 @@ magnitude, not a benchmark — it scales down substantially with larger models.
   air-gapped environment, pre-populate the Hugging Face cache or pass a path to converted weights
   as `model`.
 - **Timestamps are approximate.** Segment boundaries come from the decoder and drift on long
-  audio. Overlaps of a few milliseconds are clamped during normalization.
+  audio. Overlaps of a few milliseconds are clamped during normalization. Timestamps also collapse
+  at times into uniform one-second slots whatever the segment's length; the text is usually right
+  and the times are not.
+- **Implausibly dense segments are dropped.** A segment of four or more words claiming more than
+  50 words per second is a hallucination squashed by clamping — observed as a stock YouTube outro
+  in the last 15 ms of a recording — and is discarded during normalization.
+- **Repeated short segments.** Whisper occasionally emits a segment of one to three words at the
+  minimum 20 ms duration, repeating its neighbour ("No." seven times in a row). Too short for the
+  density check to judge; they reach the transcript.
 - **Rate limits.** Unauthenticated Hub downloads are rate-limited; set `HF_TOKEN` if you hit them.
 
 ## Conformance
@@ -158,4 +318,5 @@ magnitude, not a benchmark — it scales down substantially with larger models.
 .venv/bin/pytest -k conformance
 ```
 
-Passing as of 2026-09-22 with `faster-whisper` 1.2.1 and `ctranslate2` 4.8.2.
+Passing as of 2026-09-23 with `faster-whisper` 1.2.1, `ctranslate2` 4.8.2 and `pyannote.audio` 4.0.7, in four
+configurations: the default, `language_detection=chunked`, `diarization=true`, and both together.

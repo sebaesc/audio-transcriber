@@ -2,16 +2,37 @@
   "id": "codeswitch-diarization_20260922",
   "title": "Code-Switching Language Detection and Speaker Diarization",
   "type": "feature",
-  "status": "pending",
+  "status": "complete",
   "created": "2026-09-22T00:00:00Z",
-  "updated": "2026-09-22T00:00:00Z",
-  "depends_on": ["core-pipeline_20260922"],
+  "updated": "2026-09-23T00:00:00Z",
+  "depends_on": [
+    "core-pipeline_20260922"
+  ],
   "phases": {
     "total": 5,
-    "completed": 0
+    "completed": 5
   },
   "tasks": {
-    "total": 31,
-    "completed": 0
-  }
+    "total": 38,
+    "completed": 38
+  },
+  "current_phase": 5,
+  "current_task": null,
+  "commits": [
+    "68722ce: docs(conductor): record intra-sentential switching as a known limit",
+    "f231b77: fix(backends): reject options the detection mode would silently ignore",
+    "27fc6ed: feat(eval): keep each hypothesis as segments, not only as text",
+    "4a35e01: fix(eval): guard against dropped content with deletions, not length",
+    "446233c: docs(eval): document the evaluation harness",
+    "1beb1c1: fix(normalize): drop segments too dense to have been spoken",
+    "d65c010: fix(backends): run diarization on the device transcription resolved to",
+    "4e7e35e: fix(backends): unload the previous model before rebuilding for a seed",
+    "8c6d389: test(conformance): check every mode, not only each backend's defaults",
+    "542c005: test(eval): record the final baseline and chunked reports",
+    "7689717: docs(backends): document chunked detection, diarization, cost and limits",
+    "b4dd62c: feat(eval): read TalkBank's CHAT annotations of the Bangor Miami corpus",
+    "f3fbb98: feat(eval): score speakers and segment languages against TalkBank",
+    "3efd9b3: docs(eval): document TalkBank speaker and language scoring",
+    "7c4de2c: fix(eval): skip diarization scoring when a speaker has no timed speech"
+  ]
 }
