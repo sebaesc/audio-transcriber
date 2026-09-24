@@ -192,7 +192,44 @@ file at the API's 10 h limit would take about 14 min. The SDK's own default is 2
 Both runs of the 30 s clip used the same seed and temperature 0, and they came back with 13 and
 14 segments. That is the best-effort determinism described under [Known limits](#known-limits).
 
-<!-- Task 4.4 adds the evaluation against faster-whisper below. -->
+### Against faster-whisper on Bangor Miami
+
+Report: [`eval/scribe.json`](../../eval/scribe.json), run 2026-09-24 with the default options
+(no diarization) and `--talkbank`. Baseline: [`eval/chunked.json`](../../eval/chunked.json),
+faster-whisper `large-v3` with `language_detection=chunked`. See
+[the evaluation harness](../evaluation.md) for what each score means.
+
+**Three of the five recordings were scored.** The account's free-tier quota ran out during the
+run, so `zeledon14` and `zeledon4` failed with `quota_exceeded`. Their failures stay in the
+report. For the same reason there is no repeat run to measure Scribe's noise floor, and no
+diarized run, so Scribe's speaker labels have not been scored against TalkBank.
+
+| Recording | WER | Retained | Coverage | Language mix error | Language accuracy (TalkBank) |
+| --- | --- | --- | --- | --- | --- |
+| `herring17` | **0.307** / 0.416 | **0.903** / 0.766 | 0.992 / 0.780 | **0.049** / 0.096 | 0.635 / **0.778** |
+| `maria20` | **0.224** / 0.411 | **0.903** / 0.859 | 0.951 / 0.986 | **0.011** / 0.019 | 0.301 / **0.817** |
+| `sastre8` | **0.160** / 0.291 | **0.970** / 0.889 | 1.014 / 0.925 | **0.007** / 0.050 | 0.655 / **0.762** |
+
+Each cell is Scribe / faster-whisper; bold is better.
+
+- **Scribe transcribes much better.** WER is 0.11–0.19 lower on every recording, and more of
+  the reference is kept (`retained`). faster-whisper's run-to-run spread on this corpus is at
+  most 0.022 WER per recording. Scribe's was not measured, but it would have to be about five
+  times larger to change this result.
+- **Its words are in the right language, but its labels are not.** Scribe writes Spanish
+  stretches as Spanish, so its language mix error is lower than faster-whisper's. But every
+  segment carries the file's single language: `en` for `herring17` and `sastre8`, `es` for
+  `maria20`. Per-language recall is 1.0 for that language and 0.0 for the other, which is why
+  TalkBank language accuracy is 0.11–0.52 worse. Use faster-whisper's chunked detection when
+  per-segment language matters.
+- **It is fast.** 28–59x realtime end to end, including upload, against 4–8x for faster-whisper
+  on an RTX 3060.
+
+`maria20`'s reference is sparse and 8% unintelligible markers (see
+[Known biases](../evaluation.md#known-biases)), so it is the least reliable of the three.
+
+TalkBank scores cite: Deuchar, M., & Parafita Couto, M. (2011). The Bangor Miami Corpus.
+TalkBank. doi:10.21415/T5J01D
 
 ## Conformance
 
