@@ -32,8 +32,8 @@ faster-whisper using the evaluation harness, without changing pipeline code.
       runtime schema validation and the shared conformance tests
 - [x] `check_requirements()` fails up front, with a fix-it message, when the `elevenlabs` SDK or
       `ELEVENLABS_API_KEY` is missing; the key is read from `.env` the same way `HF_TOKEN` is, and
-      is redacted from the manifest. (Deviation: a missing SDK unregisters the backend, so the
-      CLI says "unknown backend"; see plan note 1.6.)
+      is redacted from the manifest. (A missing SDK is reported by the registry at selection,
+      before `check_requirements()` can run; see plan Task 4.6.)
 - [x] Speaker labels come from Scribe's own diarization when enabled; every segment's
       `spoken_language` is Scribe's file-level language, mapped to the schema's code format;
       capabilities are declared to match; the pinned model id is recorded in the manifest
