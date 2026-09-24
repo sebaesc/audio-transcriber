@@ -83,6 +83,10 @@ for `pyannote.metrics`.
 
 Backend-specific dependencies are installed as **optional extras**, never as required
 dependencies of the core package — installing the pipeline must not pull in every engine.
+A built-in backend whose extra is missing is skipped until it is selected. Then the run stops
+before any file is processed, with the `pip install` command for that extra. Each built-in's
+name, module and extra are declared in `_BUILTINS` in `registry.py`, and a test keeps them in
+line with the classes and `pyproject.toml`.
 
 Audio decode and resample is **ffmpeg invoked as a subprocess**, not a Python binding: it is the
 same tool the docs tell users to install, and its absence is reported with the command that fixes
@@ -354,7 +358,15 @@ then the environment, then `.env`.
 - A key in `.env` never makes a plain `pytest` spend money or need the network
 - Live conformance for a hosted backend is a deliberate, occasional step, not part of the default gate
 - Transcripts from this backend carry one `spoken_language` per file
-- Its evaluation runs are not byte-reproducible; a repeat run measures the noise floor instead
+- Its evaluation runs are not byte-reproducible. A repeat run would measure the noise floor; none
+  has been made yet
+- A free-tier key (10,000 credits a month, about 150 min of audio) covers about one full corpus
+  run, so live runs are budgeted per recording
+
+**Outcome (2026-09-24):** on the three Bangor Miami recordings scored before the quota ran out,
+Scribe's WER was 0.11–0.19 lower than faster-whisper `large-v3` chunked. Its TalkBank language
+accuracy was 0.11–0.52 lower, because it labels each file with one language. faster-whisper
+stays the default where per-segment language matters. See `docs/backends/elevenlabs-scribe.md`.
 
 ---
 
