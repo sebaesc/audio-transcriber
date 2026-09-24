@@ -151,3 +151,78 @@ def test_comparison_of_nothing_is_not_an_improvement():
     result = compare(_report("base", {}), _report("cand", {}))
 
     assert result["improved_everywhere"] is False
+
+
+# --- TalkBank reference scores ---
+
+
+def _talkbank(confusion=0.05, accuracy=0.75, der=0.4):
+    return {
+        "diarization": {
+            "der": der,
+            "missed": der - confusion,
+            "false_alarm": 0.0,
+            "confusion": confusion,
+            "reference_seconds": 100.0,
+        }
+        if confusion is not None
+        else None,
+        "language": {
+            "accuracy": accuracy,
+            "recall": {"en": 0.9, "es": 0.6},
+            "mixed_share": 0.1,
+            "scored_seconds": 90.0,
+            "confusion": {},
+        },
+    }
+
+
+def test_a_report_without_talkbank_scores_has_no_talkbank_summary():
+    data = _report("base", {"a": _score(0.4)}).to_dict()
+
+    assert "talkbank" not in data["summary"]
+    assert data["recordings"][0]["talkbank"] is None
+
+
+def test_talkbank_scores_are_averaged_across_recordings():
+    report = _report("base", {"a": _score(0.4), "b": _score(0.5)})
+    report.results[0].talkbank = _talkbank(confusion=0.04, accuracy=0.7)
+    report.results[1].talkbank = _talkbank(confusion=0.08, accuracy=0.9)
+
+    summary = report.to_dict()["summary"]["talkbank"]
+
+    assert summary["mean_speaker_confusion"] == pytest.approx(0.06)
+    assert summary["mean_language_accuracy"] == pytest.approx(0.8)
+
+
+def test_diarization_is_averaged_only_where_it_ran():
+    """A run without diarization has no speaker labels to score."""
+    report = _report("base", {"a": _score(0.4)})
+    report.results[0].talkbank = _talkbank(confusion=None, accuracy=0.7)
+
+    summary = report.to_dict()["summary"]["talkbank"]
+
+    assert summary["mean_speaker_confusion"] is None
+    assert summary["mean_language_accuracy"] == pytest.approx(0.7)
+
+
+def test_comparison_reports_talkbank_deltas_when_both_have_them():
+    baseline = _report("base", {"a": _score(0.4)})
+    candidate = _report("cand", {"a": _score(0.4)})
+    baseline.results[0].talkbank = _talkbank(accuracy=0.6)
+    candidate.results[0].talkbank = _talkbank(accuracy=0.75)
+
+    result = compare(baseline, candidate)
+
+    assert result["mean_language_accuracy_delta"] == pytest.approx(0.15)
+
+
+def test_talkbank_scores_survive_the_report_round_trip(tmp_path: Path):
+    from audio_transcriber.evaluation.__main__ import _load
+
+    report = _report("base", {"a": _score(0.4)})
+    report.results[0].talkbank = _talkbank(accuracy=0.7)
+
+    loaded = _load(report.write(tmp_path / "r.json"))
+
+    assert loaded.results[0].talkbank["language"]["accuracy"] == 0.7

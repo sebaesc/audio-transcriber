@@ -45,6 +45,12 @@ def main(argv: list[str] | None = None) -> int:
         "--out", "-o", type=Path, default=Path("eval"), help="Report directory."
     )
     parser.add_argument(
+        "--talkbank",
+        action="store_true",
+        help="Also score speakers and per-segment language against TalkBank's "
+        "annotations. Needs the transcripts archive; see docs/evaluation.md.",
+    )
+    parser.add_argument(
         "--compare",
         nargs=2,
         metavar=("BASELINE", "CANDIDATE"),
@@ -72,6 +78,7 @@ def main(argv: list[str] | None = None) -> int:
             backend_config=config,
             only=args.only,
             transcript_dir=args.out / "transcripts",
+            with_talkbank=args.talkbank,
         )
     except AudioTranscriberError as error:
         print(f"error: {error}", file=sys.stderr)
@@ -118,6 +125,7 @@ def _load(path: Path) -> Report:
                 )
                 if raw
                 else None,
+                talkbank=item.get("talkbank"),
                 error=item.get("error"),
             )
         )

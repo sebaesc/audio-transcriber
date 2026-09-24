@@ -37,6 +37,9 @@ faster-whisper = [
 # their conditions on the Hugging Face Hub and setting HF_TOKEN is required.
 diarization = [
     "pyannote.audio>=4.0,<5.0",
+    # Scores diarization against reference speakers (evaluation --talkbank).
+    # Already pulled in by pyannote.audio; declared because the harness uses it.
+    "pyannote.metrics>=4.0,<5.0",
 ]
 
 # Measuring transcription quality against a reference corpus. Not needed to run
