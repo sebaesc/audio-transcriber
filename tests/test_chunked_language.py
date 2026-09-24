@@ -23,8 +23,13 @@ from audio_transcriber.errors import BackendRequirementError  # noqa: E402
 
 
 class _NativeSegment:
-    def __init__(self, start, end, text):
-        self.start, self.end, self.text = start, end, text
+    def __init__(self, start, end, text, words=None):
+        self.start, self.end, self.text, self.words = start, end, text, words
+
+
+class _NativeWord:
+    def __init__(self, start, end, word):
+        self.start, self.end, self.word = start, end, word
 
 
 class _Model:
@@ -157,7 +162,7 @@ def test_span_times_are_shifted_onto_the_recording_timeline(monkeypatch):
 
             return iter([_NativeSegment(0.0, 2.0, "hello")]), _Info()
 
-    transcript = backend._transcribe_chunked(_Alternating(), Path("a.wav"), "a.wav")
+    transcript, _ = backend._transcribe_chunked(_Alternating(), Path("a.wav"), "a.wav")
 
     assert [s.start_time for s in transcript.segments] == [0.0, 25.0, 50.0]
 
@@ -167,7 +172,7 @@ def test_segments_stay_ordered_and_non_overlapping(monkeypatch):
     _patch_audio(monkeypatch, 60.0, [(0, 25), (20, 45)])
     model = _Model([("en", 0.9)], {"en": [_NativeSegment(0.0, 10.0, "overlapping")]})
 
-    transcript = backend._transcribe_chunked(model, Path("a.wav"), "a.wav")
+    transcript, _ = backend._transcribe_chunked(model, Path("a.wav"), "a.wav")
 
     for earlier, later in zip(
         transcript.segments, transcript.segments[1:], strict=False
@@ -180,7 +185,7 @@ def test_segments_never_run_past_the_recording(monkeypatch):
     _patch_audio(monkeypatch, 30.0, [(0, 25)])
     model = _Model([("en", 0.9)], {"en": [_NativeSegment(0.0, 60.0, "too long")]})
 
-    transcript = backend._transcribe_chunked(model, Path("a.wav"), "a.wav")
+    transcript, _ = backend._transcribe_chunked(model, Path("a.wav"), "a.wav")
 
     assert max(s.end_time for s in transcript.segments) <= 30.0
 
@@ -222,7 +227,7 @@ def test_the_transcript_records_the_whole_recording_duration(monkeypatch):
     _patch_audio(monkeypatch, 90.0, [(0, 25)])
     model = _Model([("en", 0.9)])
 
-    transcript = backend._transcribe_chunked(model, Path("a.wav"), "a.wav")
+    transcript, _ = backend._transcribe_chunked(model, Path("a.wav"), "a.wav")
 
     assert transcript.duration == pytest.approx(90.0)
 
@@ -232,7 +237,7 @@ def test_the_original_source_path_is_preserved(monkeypatch):
     _patch_audio(monkeypatch, 30.0, [(0, 25)])
     model = _Model([("en", 0.9)])
 
-    transcript = backend._transcribe_chunked(
+    transcript, _ = backend._transcribe_chunked(
         model, Path("/tmp/decoded.wav"), "audio/meeting.m4a"
     )
 
@@ -345,7 +350,7 @@ def test_a_segment_squashed_onto_the_span_end_is_dropped(monkeypatch):
                 ]
             ), None
 
-    transcript = backend._transcribe_chunked(_Squashing(), Path("a.wav"), "a.wav")
+    transcript, _ = backend._transcribe_chunked(_Squashing(), Path("a.wav"), "a.wav")
 
     assert [s.text for s in transcript.segments] == ["a real sentence here"]
 
@@ -384,3 +389,35 @@ def test_chunks_default_to_fifteen_seconds():
     config = FasterWhisperBackend(language_detection="chunked").effective_config()
 
     assert config["chunk_seconds"] == 15.0
+
+
+def test_word_times_are_shifted_onto_the_recording_timeline(monkeypatch):
+    """Words move with their segment, or per-word speakers would be misplaced."""
+    backend = _backend()
+    _patch_audio(monkeypatch, 60.0, [(0, 20), (20, 40)])
+
+    class _TwoLanguages(_Model):
+        def __init__(self):
+            super().__init__([])
+            self.calls = 0
+
+        def detect_language(self, audio=None):
+            self.calls += 1
+            code = {1: "en", 2: "en", 3: "es"}.get(self.calls, "es")
+            return code, 0.95, [(code, 0.95)]
+
+        def transcribe(self, audio, **kwargs):
+            self.transcribe_calls.append(kwargs)
+            words = [_NativeWord(1.0, 1.5, " hola"), _NativeWord(1.5, 2.0, " qué")]
+
+            class _Info:
+                pass
+
+            return iter([_NativeSegment(1.0, 2.0, " hola qué", words)]), _Info()
+
+    transcript, words = backend._transcribe_chunked(
+        _TwoLanguages(), Path("a.wav"), "a.wav"
+    )
+
+    assert len(words) == len(transcript.segments) == 2
+    assert [(w.start, w.end) for w in words[1]] == [(21.0, 21.5), (21.5, 22.0)]

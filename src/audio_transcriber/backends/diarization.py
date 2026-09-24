@@ -70,6 +70,25 @@ class SpeakerTurn:
         return max(0.0, min(self.end, end) - max(self.start, start))
 
 
+@dataclass(frozen=True, slots=True)
+class Word:
+    """One transcribed word and when it was spoken.
+
+    Internal to the backends that assign speakers per word: the transcript
+    schema carries segments, not words.
+
+    Attributes:
+        start: Start of the word, in seconds.
+        end: End of the word, in seconds.
+        text: The word as the engine spelled it, including any leading space
+            and attached punctuation, so words join back into segment text.
+    """
+
+    start: float
+    end: float
+    text: str
+
+
 def find_token(explicit: str | None = None) -> str | None:
     """Return the Hugging Face token.
 
