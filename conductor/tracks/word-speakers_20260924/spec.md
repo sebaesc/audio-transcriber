@@ -3,7 +3,7 @@
 **Track ID:** word-speakers_20260924
 **Type:** Feature
 **Created:** 2026-09-24
-**Status:** Implemented, awaiting sign-off. Default changed to `word` by Task 4.6; see plan
+**Status:** Complete, signed off 2026-09-24. Default changed to `word` by Task 4.6; see plan
 
 ## Summary
 

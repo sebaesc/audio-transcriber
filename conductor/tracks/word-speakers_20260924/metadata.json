@@ -2,9 +2,9 @@
   "id": "word-speakers_20260924",
   "title": "Per-Word Speaker Assignment",
   "type": "feature",
-  "status": "in_progress",
+  "status": "complete",
   "created": "2026-09-24T14:37:55Z",
-  "updated": "2026-09-24T18:00:00Z",
+  "updated": "2026-09-24T19:00:00Z",
   "depends_on": [
     "codeswitch-diarization_20260922"
   ],

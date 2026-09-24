@@ -3,7 +3,7 @@
 **Track ID:** word-speakers_20260924
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-09-24
-**Status:** [~] In Progress
+**Status:** [x] Complete
 
 ## Overview
 
@@ -196,7 +196,7 @@ default is now `word`.**
 - [x] `faster-whisper` doc page current
 - [x] Manifest records `speaker_assignment`
 - [x] A real run over sample audio produces the expected output
-- [ ] Manual sign-off recorded here — awaiting the user
+- [x] Manual sign-off recorded here — signed off by the user on 2026-09-24, including the switch of the default to `word`
 
 ---
 

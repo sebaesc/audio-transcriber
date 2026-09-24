@@ -15,7 +15,6 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
-| `[~]` | [word-speakers_20260924](./tracks/word-speakers_20260924/index.md) | Per-Word Speaker Assignment | 2026-09-24 | 2026-09-24 |
 
 <!-- Tracks registered by /conductor:new-track -->
 
@@ -28,6 +27,7 @@ represents a distinct body of work with its own spec and implementation plan.
 | `[x]` | [core-pipeline_20260922](./tracks/core-pipeline_20260922/index.md) | Core Pipeline and Backend Interface | 2026-09-22 | 2026-09-22 |
 | `[x]` | [codeswitch-diarization_20260922](./tracks/codeswitch-diarization_20260922/index.md) | Code-Switching Language Detection and Speaker Diarization | 2026-09-22 | 2026-09-23 |
 | `[x]` | [default-large-v3_20260923](./tracks/default-large-v3_20260923/index.md) | Default Whisper Model to large-v3 | 2026-09-23 | 2026-09-23 |
+| `[x]` | [word-speakers_20260924](./tracks/word-speakers_20260924/index.md) | Per-Word Speaker Assignment | 2026-09-24 | 2026-09-24 |
 
 <!-- Move completed tracks here -->
 
