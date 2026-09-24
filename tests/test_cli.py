@@ -49,7 +49,8 @@ class _StubBackend(TranscriptionBackend):
 @pytest.fixture(autouse=True)
 def stub_environment(monkeypatch):
     monkeypatch.setattr(registry, "_REGISTRY", {"stub": _StubBackend})
-    monkeypatch.setattr(registry, "_BUILTIN_MODULES", ())
+    monkeypatch.setattr(registry, "_BUILTINS", ())
+    monkeypatch.setattr(registry, "_unavailable", {})
     monkeypatch.setattr(registry, "_builtins_loaded", True)
     monkeypatch.setattr(pipeline.audio, "check_ffmpeg", lambda: None)
 
@@ -110,6 +111,26 @@ def test_unknown_backend_exits_with_config_error(audio_dir, tmp_path):
     assert result.exit_code == ExitCode.CONFIG_ERROR
     assert "unknown backend" in result.output
     assert "stub" in result.output
+
+
+def test_a_backend_without_its_extra_says_what_to_install(
+    monkeypatch, audio_dir, tmp_path
+):
+    monkeypatch.setattr(
+        registry,
+        "_unavailable",
+        {
+            "ghost": "needs 'ghost_engine'. Install it: pip install -e \".[ghost-extra]\""
+        },
+    )
+
+    result = _run(
+        "--input", str(audio_dir), "--backend", "ghost", "--out", str(tmp_path / "o")
+    )
+
+    assert result.exit_code == ExitCode.CONFIG_ERROR
+    assert 'pip install -e ".[ghost-extra]"' in result.output
+    assert not (tmp_path / "o").exists()
 
 
 def test_missing_input_exits_with_config_error(tmp_path):
@@ -259,6 +280,21 @@ def test_list_backends_prints_them(tmp_path):
 
     assert result.exit_code == ExitCode.SUCCESS
     assert "stub" in result.output
+
+
+def test_list_backends_notes_uninstalled_ones_on_stderr(monkeypatch):
+    """stdout stays one installed name per line, for scripts."""
+    monkeypatch.setattr(
+        registry,
+        "_unavailable",
+        {"ghost": 'not installed. Install its extra: pip install -e ".[ghost-extra]"'},
+    )
+
+    result = _run("--list-backends")
+
+    assert result.exit_code == ExitCode.SUCCESS
+    assert result.stdout.split() == ["stub"]
+    assert "ghost is not installed. Install its extra: pip" in result.stderr
 
 
 def test_list_backends_with_none_installed_says_how_to_get_one(monkeypatch):

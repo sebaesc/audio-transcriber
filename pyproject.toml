@@ -33,6 +33,11 @@ faster-whisper = [
     "faster-whisper>=1.0,<2.0",
 ]
 
+# ElevenLabs' hosted Scribe v2. Needs ELEVENLABS_API_KEY; audio is uploaded.
+elevenlabs = [
+    "elevenlabs>=2.0,<3.0",
+]
+
 # Speaker diarization. pyannote's models are MIT-licensed but gated: accepting
 # their conditions on the Hugging Face Hub and setting HF_TOKEN is required.
 diarization = [

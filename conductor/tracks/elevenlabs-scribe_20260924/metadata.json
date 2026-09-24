@@ -1,0 +1,30 @@
+{
+  "id": "elevenlabs-scribe_20260924",
+  "title": "ElevenLabs Scribe v2 Backend",
+  "type": "feature",
+  "status": "complete",
+  "created": "2026-09-24T03:42:14Z",
+  "updated": "2026-09-24T20:20:00Z",
+  "phases": {
+    "total": 4,
+    "completed": 4
+  },
+  "tasks": {
+    "total": 20,
+    "completed": 20
+  },
+  "current_phase": 4,
+  "current_task": null,
+  "commits": [
+    "bfafdf4: refactor(backends): share .env credential lookup across backends",
+    "69d8091: feat(backends): add elevenlabs-scribe options, key check and normalization",
+    "c5569c4: feat(backends): call Scribe v2 and map API failures to per-file errors",
+    "a285b5e: test(conformance): run hosted backends live only on opt-in",
+    "98d77e4: docs(backends): document the elevenlabs-scribe backend",
+    "a5f4e93: docs(backends): measure Scribe throughput and explain the timeout",
+    "f8ff85f: fix(backends): report an exhausted Scribe quota as such, not as a bad key",
+    "8c21f1d: test(eval): record Scribe against faster-whisper on Bangor Miami",
+    "49ca9fe: fix(backends): close the Scribe connection after each file",
+    "92462a2: feat(registry): name the extra to install when a built-in backend is missing"
+  ]
+}

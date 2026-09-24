@@ -8,17 +8,45 @@ discovery can replace the internals later without changing this interface.
 from __future__ import annotations
 
 import importlib
-from typing import Any
+from typing import Any, NamedTuple
 
 from audio_transcriber.backend import TranscriptionBackend
-from audio_transcriber.errors import ConfigError, UnknownBackendError
+from audio_transcriber.errors import (
+    BackendNotInstalledError,
+    ConfigError,
+    UnknownBackendError,
+)
 
 _REGISTRY: dict[str, type[TranscriptionBackend]] = {}
 
-#: Modules registering a built-in backend, imported on first lookup. A backend
-#: whose optional extra is not installed is skipped, not an error: a missing
-#: engine only matters when it is the one selected.
-_BUILTIN_MODULES = ("audio_transcriber.backends.faster_whisper",)
+_PACKAGE = __name__.partition(".")[0]
+
+
+class _Builtin(NamedTuple):
+    """A backend shipped with this package, behind an optional extra."""
+
+    name: str
+    module: str
+    extra: str
+
+
+#: Built-in backends, imported on first lookup. A backend whose optional extra
+#: is not installed is skipped, not an error: a missing engine only matters when
+#: it is the one selected. The name and extra are declared here because the
+#: module cannot be imported to ask; a test checks they match.
+_BUILTINS = (
+    _Builtin(
+        "faster-whisper", "audio_transcriber.backends.faster_whisper", "faster-whisper"
+    ),
+    _Builtin(
+        "elevenlabs-scribe",
+        "audio_transcriber.backends.elevenlabs_scribe",
+        "elevenlabs",
+    ),
+)
+
+#: Built-ins that failed to import: name to why, with the fix when there is one.
+_unavailable: dict[str, str] = {}
 
 _builtins_loaded = False
 
@@ -60,17 +88,42 @@ def _load_builtins() -> None:
     if _builtins_loaded:
         return
     _builtins_loaded = True
-    for module in _BUILTIN_MODULES:
+    for builtin in _BUILTINS:
         try:
-            importlib.import_module(module)
-        except ImportError:
-            continue
+            importlib.import_module(builtin.module)
+        except ImportError as error:
+            _unavailable[builtin.name] = _why_unavailable(builtin, error)
+
+
+def _why_unavailable(builtin: _Builtin, error: ImportError) -> str:
+    """Say why a built-in failed to import, completing "backend X is ...".
+
+    A missing third-party module means the extra is not installed. Anything else,
+    including a missing module of this package, is a bug, and telling the user
+    to install the extra would send them the wrong way.
+    """
+    missing = error.name if isinstance(error, ModuleNotFoundError) else None
+    if missing and missing.partition(".")[0] != _PACKAGE:
+        return (
+            f"not installed: it needs {missing!r}. Install its extra: "
+            f'pip install -e ".[{builtin.extra}]"'
+        )
+    return (
+        f"broken: importing {builtin.module} failed ({error}). "
+        "This is not a missing extra."
+    )
 
 
 def available() -> tuple[str, ...]:
     """Return the names of registered backends, sorted."""
     _load_builtins()
     return tuple(sorted(_REGISTRY))
+
+
+def unavailable() -> dict[str, str]:
+    """Return built-ins that failed to import, by name, with why and the fix."""
+    _load_builtins()
+    return dict(sorted(_unavailable.items()))
 
 
 def get(name: str) -> type[TranscriptionBackend]:
@@ -81,12 +134,18 @@ def get(name: str) -> type[TranscriptionBackend]:
 
     Raises:
         UnknownBackendError: If no backend is registered under that name. The
-            error lists the names that are available.
+            error lists the names that are available. It is a
+            `BackendNotInstalledError` when the name is a built-in that could
+            not be imported, saying what to install.
     """
     _load_builtins()
     try:
         return _REGISTRY[name]
     except KeyError:
+        if name in _unavailable:
+            raise BackendNotInstalledError(
+                name, _unavailable[name], available()
+            ) from None
         raise UnknownBackendError(name, available()) from None
 
 
@@ -107,4 +166,5 @@ def _clear() -> None:
     """Reset the registry. For tests only."""
     global _builtins_loaded
     _REGISTRY.clear()
+    _unavailable.clear()
     _builtins_loaded = False

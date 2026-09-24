@@ -53,7 +53,8 @@ class _StubBackend(TranscriptionBackend):
 def stub_environment(monkeypatch, tmp_path):
     """Register the stub backend and stub out ffmpeg for every test here."""
     monkeypatch.setattr(registry, "_REGISTRY", {"stub": _StubBackend})
-    monkeypatch.setattr(registry, "_BUILTIN_MODULES", ())
+    monkeypatch.setattr(registry, "_BUILTINS", ())
+    monkeypatch.setattr(registry, "_unavailable", {})
     monkeypatch.setattr(registry, "_builtins_loaded", True)
     monkeypatch.setattr(pipeline.audio, "check_ffmpeg", lambda: None)
 

@@ -112,6 +112,8 @@ def _list_backends_callback(requested: bool) -> None:
     if not requested:
         return
     names = registry.available()
+    for name, detail in registry.unavailable().items():
+        _echo(f"{name} is {detail}")
     if not names:
         _echo(
             "No backends installed. Install one as an extra: "

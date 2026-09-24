@@ -1,0 +1,207 @@
+{
+  "label": "scribe",
+  "created_at": "2026-09-24T17:50:21.451278+00:00",
+  "tool_version": "0.1.0",
+  "backend": "elevenlabs-scribe",
+  "model_version": "elevenlabs-2.68.0/scribe_v2",
+  "config": {
+    "api_key": null,
+    "language": null,
+    "diarization": false,
+    "max_speakers": null,
+    "diarization_threshold": null,
+    "seed": 0,
+    "temperature": 0.0,
+    "timeout": 900.0
+  },
+  "corpus": {
+    "dataset": "BrunoHays/Bangor-Miami-Spanish-English-Corpus",
+    "license": "CC BY-SA 3.0",
+    "annotations": "Deuchar, M., & Parafita Couto, M. (2011). The Bangor Miami Corpus. TalkBank. doi:10.21415/T5J01D"
+  },
+  "summary": {
+    "recordings": 5,
+    "scored": 3,
+    "mean_wer": 0.2303,
+    "mean_retained": 0.9252,
+    "mean_coverage": 0.9854,
+    "mean_language_mix_error": 0.0224,
+    "talkbank": {
+      "mean_der": null,
+      "mean_speaker_confusion": null,
+      "mean_language_accuracy": 0.5303,
+      "mean_mixed_share": 0.2016
+    }
+  },
+  "recordings": [
+    {
+      "name": "herring17",
+      "duration_s": 1801.3,
+      "elapsed_s": 65.4,
+      "realtime_factor": 27.6,
+      "segments": 850,
+      "detected_languages": [
+        "en"
+      ],
+      "score": {
+        "wer": 0.3067,
+        "retained": 0.9025,
+        "coverage": 0.9922,
+        "language_mix_error": 0.0491,
+        "reference_spanish_share": 0.5751,
+        "hypothesis_spanish_share": 0.526,
+        "substitutions": 722,
+        "deletions": 589,
+        "insertions": 542,
+        "hits": 4731,
+        "reference_words": 6042,
+        "hypothesis_words": 5995
+      },
+      "talkbank": {
+        "diarization": null,
+        "language": {
+          "accuracy": 0.6349,
+          "recall": {
+            "en": 1.0,
+            "es": 0.0
+          },
+          "mixed_share": 0.0912,
+          "scored_seconds": 1446.455,
+          "confusion": {
+            "en": {
+              "en": 918.311
+            },
+            "es": {
+              "en": 528.144,
+              "es": 0.0
+            },
+            "mixed": {
+              "en": 145.212
+            }
+          }
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "maria20",
+      "duration_s": 1914.6,
+      "elapsed_s": 32.3,
+      "realtime_factor": 59.3,
+      "segments": 228,
+      "detected_languages": [
+        "es"
+      ],
+      "score": {
+        "wer": 0.2241,
+        "retained": 0.9034,
+        "coverage": 0.9505,
+        "language_mix_error": 0.011,
+        "reference_spanish_share": 0.5523,
+        "hypothesis_spanish_share": 0.5414,
+        "substitutions": 130,
+        "deletions": 156,
+        "insertions": 76,
+        "hits": 1329,
+        "reference_words": 1615,
+        "hypothesis_words": 1535
+      },
+      "talkbank": {
+        "diarization": null,
+        "language": {
+          "accuracy": 0.3007,
+          "recall": {
+            "en": 0.0,
+            "es": 1.0
+          },
+          "mixed_share": 0.253,
+          "scored_seconds": 280.517,
+          "confusion": {
+            "mixed": {
+              "es": 95.021
+            },
+            "en": {
+              "es": 196.175,
+              "en": 0.0
+            },
+            "es": {
+              "es": 84.342
+            }
+          }
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "sastre8",
+      "duration_s": 2003.1,
+      "elapsed_s": 50.4,
+      "realtime_factor": 39.7,
+      "segments": 731,
+      "detected_languages": [
+        "en"
+      ],
+      "score": {
+        "wer": 0.1601,
+        "retained": 0.9698,
+        "coverage": 1.0135,
+        "language_mix_error": 0.0072,
+        "reference_spanish_share": 0.5659,
+        "hypothesis_spanish_share": 0.5731,
+        "substitutions": 499,
+        "deletions": 175,
+        "insertions": 253,
+        "hits": 5117,
+        "reference_words": 5791,
+        "hypothesis_words": 5869
+      },
+      "talkbank": {
+        "diarization": null,
+        "language": {
+          "accuracy": 0.6553,
+          "recall": {
+            "en": 1.0,
+            "es": 0.0
+          },
+          "mixed_share": 0.2605,
+          "scored_seconds": 1310.958,
+          "confusion": {
+            "en": {
+              "en": 859.033
+            },
+            "es": {
+              "en": 451.925,
+              "es": 0.0
+            },
+            "mixed": {
+              "en": 461.784
+            }
+          }
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "zeledon14",
+      "duration_s": 1984.9,
+      "elapsed_s": 25.3,
+      "realtime_factor": 78.6,
+      "segments": 0,
+      "detected_languages": [],
+      "score": null,
+      "talkbank": null,
+      "error": "TranscriptionError: /home/seba/.cache/audio-transcriber/bangor-miami/zeledon14.mp3: elevenlabs-scribe failed to transcribe it. HTTP 401: ElevenLabs rejected the API key or its permissions. Check ELEVENLABS_API_KEY, and that the key may use speech-to-text. Detail: {\"detail\": {\"type\": \"invalid_request\", \"code\": \"quota_exceeded\", \"message\": \"This request exceeds your quota of 10000. You have 1370 credits remaining, while 2202 credits are required for this request.\", \"status\": \"quota_exceeded\", \"request_id\": \"e4e01ea13e01dd691d67bdc6e461b504\"}}"
+    },
+    {
+      "name": "zeledon4",
+      "duration_s": 1310.9,
+      "elapsed_s": 16.5,
+      "realtime_factor": 79.5,
+      "segments": 0,
+      "detected_languages": [],
+      "score": null,
+      "talkbank": null,
+      "error": "TranscriptionError: /home/seba/.cache/audio-transcriber/bangor-miami/zeledon4.mp3: elevenlabs-scribe failed to transcribe it. HTTP 401: ElevenLabs rejected the API key or its permissions. Check ELEVENLABS_API_KEY, and that the key may use speech-to-text. Detail: {\"detail\": {\"type\": \"invalid_request\", \"code\": \"quota_exceeded\", \"message\": \"This request exceeds your quota of 10000. You have 1370 credits remaining, while 1454 credits are required for this request.\", \"status\": \"quota_exceeded\", \"request_id\": \"d0f390857573f6aef6c309323da37f0a\"}}"
+    }
+  ]
+}

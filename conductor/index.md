@@ -39,6 +39,7 @@ A modular audio transcription pipeline with swappable model backends.
 | [Code-Switching Language Detection and Speaker Diarization](./tracks/codeswitch-diarization_20260922/index.md) | In Progress | High | [spec](./tracks/codeswitch-diarization_20260922/spec.md) | [plan](./tracks/codeswitch-diarization_20260922/plan.md) |
 | [Default Whisper Model to large-v3](./tracks/default-large-v3_20260923/index.md) | Complete | Low | [spec](./tracks/default-large-v3_20260923/spec.md) | [plan](./tracks/default-large-v3_20260923/plan.md) |
 | [Per-Word Speaker Assignment](./tracks/word-speakers_20260924/index.md) | Complete | Medium | [spec](./tracks/word-speakers_20260924/spec.md) | [plan](./tracks/word-speakers_20260924/plan.md) |
+| [ElevenLabs Scribe v2 Backend](./tracks/elevenlabs-scribe_20260924/index.md) | Complete | Medium | [spec](./tracks/elevenlabs-scribe_20260924/spec.md) | [plan](./tracks/elevenlabs-scribe_20260924/plan.md) |
 
 ## Recent Activity
 
@@ -54,6 +55,8 @@ A modular audio transcription pipeline with swappable model backends.
 | 2026-09-23 | default-large-v3_20260923 | Track complete (2 phases, 5 tasks, all gates passed) |
 | 2026-09-24 | word-speakers_20260924 | Track created (4 phases, 21 tasks) |
 | 2026-09-24 | word-speakers_20260924 | Track complete (4 phases, 21 tasks, all gates passed); default `speaker_assignment` now `word` |
+| 2026-09-24 | elevenlabs-scribe_20260924 | Track created (4 phases, 19 tasks) |
+| 2026-09-24 | elevenlabs-scribe_20260924 | Track complete (4 phases, 20 tasks, all gates passed; evaluation scored 3 of 5 recordings, free-tier quota) |
 
 ## Project Status
 

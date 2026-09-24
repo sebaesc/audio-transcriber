@@ -4,11 +4,20 @@ Backend selection is configuration, not code, so the registry's error messages
 are part of the CLI's contract with the user.
 """
 
+import importlib
+import sys
+import tomllib
+from pathlib import Path
+
 import pytest
 
 from audio_transcriber import registry
 from audio_transcriber.backend import TranscriptionBackend
-from audio_transcriber.errors import ConfigError, UnknownBackendError
+from audio_transcriber.errors import (
+    BackendNotInstalledError,
+    ConfigError,
+    UnknownBackendError,
+)
 from audio_transcriber.schema import Transcript
 
 
@@ -31,7 +40,8 @@ class _StubBackend(TranscriptionBackend):
 def empty_registry(monkeypatch):
     """Give each test its own registry, isolated from the built-ins."""
     monkeypatch.setattr(registry, "_REGISTRY", {})
-    monkeypatch.setattr(registry, "_BUILTIN_MODULES", ())
+    monkeypatch.setattr(registry, "_BUILTINS", ())
+    monkeypatch.setattr(registry, "_unavailable", {})
     monkeypatch.setattr(registry, "_builtins_loaded", False)
     return registry
 
@@ -110,10 +120,101 @@ def test_registering_the_same_class_twice_is_allowed(empty_registry):
     assert empty_registry.available() == ("stub",)
 
 
-def test_missing_builtin_extra_is_skipped_not_raised(monkeypatch):
-    """A backend whose extra is not installed only matters if it is selected."""
-    monkeypatch.setattr(registry, "_REGISTRY", {})
-    monkeypatch.setattr(registry, "_BUILTIN_MODULES", ("audio_transcriber.nope",))
-    monkeypatch.setattr(registry, "_builtins_loaded", False)
+# --- Built-ins whose extra is not installed ---
 
-    assert registry.available() == ()
+
+@pytest.fixture
+def ghost_builtin(empty_registry, monkeypatch, tmp_path):
+    """Declare one built-in, `ghost`, whose module is written by each test."""
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setattr(
+        registry,
+        "_BUILTINS",
+        (registry._Builtin("ghost", "ghost_backend", "ghost-extra"),),
+    )
+
+    def write(source: str):
+        (tmp_path / "ghost_backend.py").write_text(source)
+        return empty_registry
+
+    yield write
+    sys.modules.pop("ghost_backend", None)
+
+
+def test_missing_builtin_extra_is_skipped_not_raised(ghost_builtin):
+    """A backend whose extra is not installed only matters if it is selected."""
+    reg = ghost_builtin("import ghost_engine_not_installed\n")
+
+    assert reg.available() == ()
+
+
+def test_selecting_a_builtin_without_its_extra_names_the_extra(ghost_builtin):
+    reg = ghost_builtin("import ghost_engine_not_installed\n")
+
+    with pytest.raises(BackendNotInstalledError) as caught:
+        reg.get("ghost")
+
+    message = str(caught.value)
+    assert "ghost_engine_not_installed" in message
+    assert 'pip install -e ".[ghost-extra]"' in message
+    assert "unknown backend" not in message
+
+
+def test_a_missing_extra_is_still_an_unknown_backend_to_callers(ghost_builtin):
+    """`get` documents UnknownBackendError; the subclass keeps that true."""
+    reg = ghost_builtin("import ghost_engine_not_installed\n")
+
+    with pytest.raises(UnknownBackendError):
+        reg.create("ghost")
+
+
+def test_a_broken_backend_module_is_not_blamed_on_the_extra(ghost_builtin):
+    """An import error inside this package is a bug, not a missing install."""
+    reg = ghost_builtin("import audio_transcriber.no_such_module\n")
+
+    with pytest.raises(BackendNotInstalledError) as caught:
+        reg.get("ghost")
+
+    message = str(caught.value)
+    assert "audio_transcriber.no_such_module" in message
+    assert "pip install" not in message
+
+
+def test_unavailable_lists_what_is_missing_and_why(ghost_builtin):
+    reg = ghost_builtin("import ghost_engine_not_installed\n")
+
+    missing = reg.unavailable()
+
+    assert list(missing) == ["ghost"]
+    assert 'pip install -e ".[ghost-extra]"' in missing["ghost"]
+
+
+def test_an_unrelated_name_is_still_simply_unknown(ghost_builtin):
+    reg = ghost_builtin("import ghost_engine_not_installed\n")
+
+    with pytest.raises(UnknownBackendError) as caught:
+        reg.get("nope")
+
+    assert not isinstance(caught.value, BackendNotInstalledError)
+
+
+def test_builtins_declare_their_real_names_and_extras():
+    """The declared name and extra are what the error tells a user to install."""
+    extras = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text())[
+        "project"
+    ]["optional-dependencies"]
+
+    for builtin in registry._BUILTINS:
+        assert builtin.extra in extras, builtin
+        try:
+            module = importlib.import_module(builtin.module)
+        except ImportError:
+            continue  # Extra not installed here; nothing to compare against.
+        defined = {
+            value.name
+            for value in vars(module).values()
+            if isinstance(value, type)
+            and issubclass(value, TranscriptionBackend)
+            and value.__module__ == builtin.module
+        }
+        assert builtin.name in defined, builtin

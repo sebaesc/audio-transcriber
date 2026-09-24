@@ -10,13 +10,11 @@ check here reports exactly which pages to visit rather than surfacing a bare 401
 
 from __future__ import annotations
 
-import os
 import warnings
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from dotenv import find_dotenv, load_dotenv
-
+from audio_transcriber.backends import credentials
 from audio_transcriber.errors import BackendRequirementError
 from audio_transcriber.schema import Segment
 
@@ -54,8 +52,6 @@ def gates_for(model: str) -> tuple[str, ...]:
 MAX_FOLDED_WORDS = 1
 
 _TOKEN_VARIABLES = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_TOKEN")
-
-_dotenv_loaded = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,33 +96,9 @@ def find_token(explicit: str | None = None) -> str | None:
     """Return the Hugging Face token.
 
     Looked up in order: the backend config, then the environment, then a `.env`
-    beside the project. Putting the token in a `.env` is the obvious thing to do,
-    and Python does not read one on its own, so it would otherwise be ignored in
-    silence with the credential sitting right there.
+    beside the project, as every backend credential is (see `credentials`).
     """
-    if explicit:
-        return explicit
-    _load_dotenv_once()
-    for name in _TOKEN_VARIABLES:
-        value = os.environ.get(name)
-        if value:
-            return value
-    return None
-
-
-def _load_dotenv_once() -> None:
-    """Load a `.env` into the environment, at most once per process.
-
-    `override=False` keeps an exported variable winning over the file, so
-    setting one for a single run does what it looks like it does.
-    """
-    global _dotenv_loaded
-    if _dotenv_loaded:
-        return
-    _dotenv_loaded = True
-    path = find_dotenv(usecwd=True)
-    if path:
-        load_dotenv(path, override=False)
+    return credentials.find_credential(explicit, _TOKEN_VARIABLES)
 
 
 def _gate_instructions(model: str = DEFAULT_MODEL) -> str:

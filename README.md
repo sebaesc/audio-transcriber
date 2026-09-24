@@ -26,6 +26,12 @@ every engine:
 .venv/bin/pip install -e ".[dev,faster-whisper]"
 ```
 
+| Backend | Extra | Runs | Needs |
+| ------- | ----- | ---- | ----- |
+| [`faster-whisper`](docs/backends/faster-whisper.md) | `faster-whisper` | Locally, CPU or GPU | Nothing; `HF_TOKEN` for diarization |
+| [`elevenlabs-scribe`](docs/backends/elevenlabs-scribe.md) | `elevenlabs` | Hosted by ElevenLabs; audio is uploaded, $0.22/h | `ELEVENLABS_API_KEY` |
+
+Credentials go in a `.env` beside the project; copy [`.env.example`](.env.example) to start.
 See [`docs/backends/`](docs/backends/) for what each backend needs.
 
 ## Usage
@@ -138,6 +144,9 @@ Every backend must pass the shared contract suite:
 ```bash
 .venv/bin/pytest -k conformance
 ```
+
+Hosted backends run against a fake client by default, so a key in `.env` never turns a plain
+`pytest` into paid API calls. `AUDIO_TRANSCRIBER_LIVE_TESTS=1` runs them against the real API too.
 
 To measure whether a change improves transcription quality, run the evaluation harness against
 the Spanish-English reference corpus — see [`docs/evaluation.md`](docs/evaluation.md).
