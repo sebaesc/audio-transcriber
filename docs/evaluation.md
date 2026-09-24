@@ -32,9 +32,9 @@ The 116 MB parquet downloads on first use into `~/.cache/audio-transcriber/bango
 checked for size and format, and is never committed. Set `AUDIO_TRANSCRIBER_EVAL_CACHE` to use a
 different directory, e.g. one shared between users on a machine.
 
-**No speaker labels.** The published dataset strips CHAT speaker tiers, so diarization cannot be
-evaluated against it. See the Task 1.7 and 4.7 notes in the
-[track plan](../conductor/tracks/codeswitch-diarization_20260922/plan.md).
+**No speaker labels in this copy.** The Hugging Face dataset strips CHAT speaker tiers and
+language marks. TalkBank's original annotations keep both; see
+[Speakers and languages: TalkBank](#speakers-and-languages-talkbank).
 
 ## Running
 
@@ -148,3 +148,86 @@ configurations. They do mean absolute numbers are pessimistic.
   trustworthy of the five.
 - **`no` counts as Spanish** in the language measure, though it is equally common in English.
   It inflates both shares, so the mix *error* is less affected than either share.
+
+## Speakers and languages: TalkBank
+
+`--talkbank` adds two scores per recording, taken against TalkBank's original annotations of the
+same five recordings: **who spoke** (diarization) and **which language each stretch of speech is
+in**. The Hugging Face copy cannot answer either. TalkBank's timestamps align with the Hugging Face
+audio: matching transcript words against our segments peaks at a 0 s offset on all five.
+
+```bash
+.venv/bin/python -m audio_transcriber.evaluation -b faster-whisper -l chunked --talkbank \
+    --option model=large-v3 --option diarization=true \
+    --option language_detection=chunked --option 'languages=["en","es"]'
+```
+
+### Access and licence
+
+1. Create a free TalkBank account: the green **Login** button at <https://talkbank.org/biling/>,
+   then **New User**.
+2. While logged in, download the transcripts: <https://talkbank.org/data/biling/Bangor/Miami?f=zip>
+   (3 MB, 56 CHAT files). The audio is not needed; the harness already has it.
+3. Save the zip as `~/.cache/audio-transcriber/talkbank/Miami.zip`, or point
+   `AUDIO_TRANSCRIBER_TALKBANK_ARCHIVE` at it.
+
+TalkBank data is **CC BY-NC-SA 3.0**, and its [ground rules](https://talkbank.org/0share/rules.html)
+keep downloaded data on the local device and forbid passing it on. So the archive is never
+committed and never copied into the repo, test fixtures included. Only aggregate scores go into
+reports. Anyone re-running this needs their own account. Any use must cite:
+
+> Deuchar, M., & Parafita Couto, M. (2011). The Bangor Miami Corpus. TalkBank.
+> doi:10.21415/T5J01D
+
+Reports carry this citation whenever TalkBank scores are present.
+
+### What it scores
+
+Each CHAT utterance has a speaker, a timestamp, and a language derived from the file's base
+language, `[- spa]` precodes and `@s` word switches: `en`, `es`, or `mixed` when it holds both.
+
+**Diarization** (`talkbank.diarization`, only when the run diarized):
+
+| Field | Meaning |
+| ----- | ------- |
+| `confusion` | Reference speech attributed to the wrong speaker. **The number to read for speaker-label quality** |
+| `missed` | Reference speech with no labelled segment over it |
+| `false_alarm` | Labelled segments over no reference speech |
+| `der` | The sum: diarization error rate |
+| `reference_seconds` | Reference speech scored |
+
+Our labels (`SPEAKER_00`) are mapped onto the reference speakers by best agreement, as standard. A
+0.25 s collar either side of each reference boundary is forgiven. What is scored is the
+transcript's segments, the labels a user receives, not the diarizer's raw turns. So `missed` and
+`false_alarm` mostly measure where Whisper's segments start and stop: TalkBank's utterance times
+span pauses that Whisper's segments do not. They also count speech Whisper never transcribed.
+That makes `der` pessimistic, and why `confusion` is the diarization-quality number.
+
+**Language** (`talkbank.language`, always):
+
+| Field | Meaning |
+| ----- | ------- |
+| `accuracy` | Share of English and Spanish reference speech whose overlapping segment carries the right `spoken_language`, by time |
+| `recall.en`, `recall.es` | The same, per reference language: how much of each language was labelled as itself |
+| `mixed_share` | Share of speech in utterances that mix both languages. No single label is right for them, so they are left out of accuracy |
+| `confusion` | Seconds, as reference language → segment language |
+
+This is stronger than `language_mix_error`. That compares aggregate Spanish share, so a transcript
+whose segments are individually wrong can still score well as long as the totals balance.
+`accuracy` cannot be fooled that way.
+
+`mixed_share` measures the limit that chunk-level detection cannot cross: speech in utterances
+holding both languages. Per recording it runs from 9% to 25% of speech time.
+
+### Limits
+
+- **`maria20` is partly timed.** 255 of its 380 utterances carry timestamps. The gaps holding the
+  untimed ones are left out of diarization scoring rather than counted as false alarms, so its
+  scores cover part of the recording.
+- **Overlapping speech** is scored against whichever speakers TalkBank timed there. Crosstalk is
+  common in this corpus and slightly inflates `confusion`.
+- **Five recordings, two speakers each.** Enough to judge whether speaker labels are usable, not
+  to rank diarization models finely.
+- **Utterances with no known language** (only `xxx`, fillers) count as speech for diarization and
+  are ignored for language.
+
