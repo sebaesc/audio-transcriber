@@ -1,0 +1,19 @@
+{
+  "id": "elevenlabs-scribe_20260924",
+  "title": "ElevenLabs Scribe v2 Backend",
+  "type": "feature",
+  "status": "pending",
+  "created": "2026-09-24T03:42:14Z",
+  "updated": "2026-09-24T03:42:14Z",
+  "phases": {
+    "total": 4,
+    "completed": 0
+  },
+  "tasks": {
+    "total": 19,
+    "completed": 0
+  },
+  "current_phase": null,
+  "current_task": null,
+  "commits": []
+}

@@ -15,6 +15,7 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
+| `[ ]` | [elevenlabs-scribe_20260924](./tracks/elevenlabs-scribe_20260924/index.md) | ElevenLabs Scribe v2 Backend | 2026-09-24 | 2026-09-24 |
 
 <!-- Tracks registered by /conductor:new-track -->
 
