@@ -3,7 +3,7 @@
 **Track ID:** codeswitch-diarization_20260922
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-09-22
-**Status:** [ ] Not Started
+**Status:** [x] Complete — signed off 2026-09-23
 
 ## Overview
 
@@ -524,8 +524,9 @@ next is built.
 ## Final Verification
 
 - [ ] All acceptance criteria in [spec.md](./spec.md) met — **one not met:** WER does not improve on
-  all five recordings (2 of 5), and Spanish share is not within 0.05 on every one. See Phase 3 and
-  Task 5.6: inherent to the approach, which is why `chunked` stays opt-in
+  all five recordings (4 of 5 at the 15 s default; `sastre8` +0.045), and Spanish share is within
+  0.05 on 3 of 5. See Task 5.6: chunked costs where file-level detection already guessed right,
+  which is why `chunked` stays opt-in. Accepted at sign-off
 - [x] Gate 1 — `pytest` passing
 - [x] Gate 2 — detection, chunking, and normalization covered by tests
 - [x] Gate 3 — `pytest -k conformance` passing in every mode
@@ -533,9 +534,20 @@ next is built.
 - [x] Gate 5 — `ruff format --check .` clean
 - [x] Gate 6 — the `faster-whisper` doc page covers every new option
 - [x] Gate 7 — manifest records detection mode, threshold, languages, and diarization model
-- [x] Eval report committed, showing the improvement over the recorded baseline — language-mix
-  error improves on all five; WER on two
-- [ ] Manual sign-off recorded here
+- [x] Eval report committed, showing the improvement over the recorded baseline — per-segment
+  language accuracy and language-mix error improve on all five; WER on four
+- [x] Manual sign-off recorded here — **signed off 2026-09-23 by the user**, accepting the one
+  unmet acceptance criterion as documented above, the TalkBank data used under the licence terms
+  recorded in Task 4.7, and the follow-ups below
+
+**Follow-ups, not in this track:**
+
+- Consider making `chunked` the default. Per-segment language accuracy now improves on every
+  recording; WER improves on 4 of 5. Needs a larger corpus to decide.
+- Deduplicate 20 ms segments that repeat a neighbour (Task 5.7 follow-up).
+- Detection leans toward each recording's majority language (minority recall 0.24–0.80).
+- Check with licensing whether the Hugging Face copy's CC BY-SA label matches TalkBank's
+  CC BY-NC-SA source.
 
 ---
 

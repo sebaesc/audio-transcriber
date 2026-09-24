@@ -3,7 +3,7 @@
 **Track ID:** codeswitch-diarization_20260922
 **Type:** Feature
 **Created:** 2026-09-22
-**Status:** Implemented — one acceptance criterion not met, see below
+**Status:** Complete, signed off 2026-09-23 — one acceptance criterion not met and accepted, see below
 
 ## Summary
 
