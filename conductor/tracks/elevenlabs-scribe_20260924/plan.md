@@ -159,15 +159,15 @@ Document the backend and measure it against faster-whisper.
 - [x] Task 4.1: Measure the `timeout` default. Time real requests on a short clip and on the
       longest Bangor Miami recording (`sastre8`, 33.4 min), then set the default with headroom and
       record the measurement in the doc page
-- [~] Task 4.2: Write `docs/backends/elevenlabs-scribe.md`: usage and options; the extra; the
+- [x] Task 4.2: Write `docs/backends/elevenlabs-scribe.md`: usage and options; the extra; the
       credential and `.env`; cost ($0.22/h, about $0.55 per Bangor Miami run); limits (5 GB,
       10 h, 100 ms minimum, 32 speakers); per-file language only; best-effort seed; the
       difference between `max_speakers` and pyannote's count; data retention (audio leaves the
       machine and ElevenLabs stores it; zero retention is enterprise only); errors and retries
-- [~] Task 4.3: Update `README.md` backend list, `docs/backend-interface.md` if it lists
+- [x] Task 4.3: Update `README.md` backend list, `docs/backend-interface.md` if it lists
       backends, and `conductor/tech-stack.md` (extras table, version matrix, a decision-log entry
       on the first hosted backend covering retention and live-test gating)
-- [ ] Task 4.4: Evaluate on Bangor Miami. Run `elevenlabs-scribe` without diarization, run it
+- [x] Task 4.4: Evaluate on Bangor Miami. Run `elevenlabs-scribe` without diarization, run it
       again to measure the noise floor, and run once with diarization and `--talkbank` for speaker
       and language scores. Compare with the committed faster-whisper report per recording, and
       commit the reports and the comparison. Note where per-file language costs accuracy on
@@ -184,6 +184,20 @@ Document the backend and measure it against faster-whisper.
   which applies it per operation, so it bounds the wait for the response, not upload plus
   response. The spec, the docstring and the doc page are corrected. The clip gave 13 and then 14
   segments with the same seed, which is early evidence that output is not deterministic.
+- **4.4 (deviation):** the key is a free account with 10,000 credits a month, about 150 min of
+  audio at 66.7 credits per minute. It ran out during the first evaluation run. `eval/scribe.json`
+  scores `herring17`, `maria20` and `sastre8`; `zeledon14` and `zeledon4` failed with
+  `quota_exceeded`, and those failures stay in the report. The repeat run (noise floor) and the
+  diarized run got no credits and were dropped with the user's agreement. Their reports held only
+  failures and were deleted. The doc page states all three gaps. The result does not depend on
+  the noise floor: Scribe's WER is 0.11–0.19 lower on every scored recording, against
+  faster-whisper's measured spread of 0.022. Scribe's TalkBank language accuracy is 0.11–0.52
+  lower, because it labels each file with one language.
+- **4.4 (bug found):** ElevenLabs returns `quota_exceeded` as HTTP 401, and the error mapping
+  blamed the key. Fixed with a test first (`f8ff85f`).
+- **4.4 (follow-up, eval harness):** `--compare` averages each report over whichever recordings
+  it scored, so its mean deltas mislead when two reports scored different sets. The
+  per-recording deltas are unaffected. Not fixed here.
 - **Key:** the `.env` key authenticates for speech-to-text but lacks `user_read`, so account
   endpoints such as subscription return 401. The backend does not use them.
 
