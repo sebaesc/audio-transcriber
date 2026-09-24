@@ -5,6 +5,7 @@ requirement check that tells a user how to get access, the overlap arithmetic
 that assigns a speaker to a segment, and the token handling.
 """
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -415,3 +416,178 @@ def test_the_assignment_mode_is_not_passed_to_the_decoder():
     backend = FasterWhisperBackend(diarization=True, speaker_assignment="word")
 
     assert "speaker_assignment" not in backend._decode_options()
+
+
+# --- Per-word assignment and splitting ---
+
+
+def words(*spans) -> list[diarization.Word]:
+    return [diarization.Word(start=a, end=b, text=t) for a, b, t in spans]
+
+
+def split(segment, segment_words, speaker_turns):
+    return diarization.split_by_speaker(segment, segment_words, speaker_turns)
+
+
+def test_each_word_takes_the_speaker_holding_most_of_it():
+    found = diarization.word_speakers(
+        turns((0.0, 1.0, "A"), (1.0, 3.0, "B")),
+        words((0.0, 0.9, " one"), (0.8, 1.9, " two"), (2.0, 3.0, " three")),
+    )
+
+    assert found == ["A", "B", "B"]
+
+
+def test_a_word_of_no_length_takes_the_turn_it_falls_in():
+    """Whisper collapses some words to an instant; overlap is zero for those."""
+    found = diarization.word_speakers(
+        turns((0.0, 1.0, "A"), (1.0, 2.0, "B")),
+        words((0.5, 1.0, " one"), (1.5, 1.5, " two")),
+    )
+
+    assert found == ["A", "B"]
+
+
+def test_a_word_in_a_gap_takes_the_previous_speaker():
+    found = diarization.word_speakers(
+        turns((0.0, 1.0, "A"), (3.0, 4.0, "B")),
+        words((0.0, 1.0, " one"), (1.5, 2.0, " two"), (3.0, 4.0, " three")),
+    )
+
+    assert found == ["A", "A", "B"]
+
+
+def test_a_leading_word_in_a_gap_takes_the_next_speaker():
+    found = diarization.word_speakers(
+        turns((1.0, 4.0, "B")),
+        words((0.0, 0.5, " one"), (1.0, 2.0, " two")),
+    )
+
+    assert found == ["B", "B"]
+
+
+def test_words_overlapping_no_turn_have_no_speaker():
+    found = diarization.word_speakers(
+        turns((10.0, 11.0, "A")), words((0.0, 0.5, " one"), (1.0, 2.0, " two"))
+    )
+
+    assert found == [None, None]
+
+
+def test_a_lone_word_between_two_of_another_speaker_is_folded_in():
+    """One word flipping at a turn boundary is usually timing drift."""
+    assert diarization.smooth(["A", "A", "B", "A"]) == ["A", "A", "A", "A"]
+
+
+def test_a_lone_word_at_the_edge_is_kept():
+    """A reply that ends a segment is exactly what per-word assignment is for."""
+    assert diarization.smooth(["A", "A", "A", "B"]) == ["A", "A", "A", "B"]
+    assert diarization.smooth(["B", "A", "A", "A"]) == ["B", "A", "A", "A"]
+
+
+def test_two_words_of_another_speaker_are_a_real_change():
+    assert diarization.smooth(["A", "B", "B", "A"]) == ["A", "B", "B", "A"]
+
+
+def test_a_lone_word_between_two_different_speakers_is_kept():
+    assert diarization.smooth(["A", "B", "C"]) == ["A", "B", "C"]
+
+
+def test_a_segment_is_split_where_the_speaker_changes():
+    segment = Segment(
+        start_time=0.0, end_time=4.0, text="I think so. Yeah.", spoken_language="en"
+    )
+    segment_words = words(
+        (0.0, 0.5, " I"),
+        (0.5, 1.0, " think"),
+        (1.0, 1.5, " so."),
+        (2.5, 3.9, " Yeah."),
+    )
+
+    pieces = split(segment, segment_words, turns((0.0, 2.0, "A"), (2.2, 4.0, "B")))
+
+    assert [(p.start_time, p.end_time, p.text, p.speaker) for p in pieces] == [
+        (0.0, 2.5, "I think so.", "A"),
+        (2.5, 4.0, "Yeah.", "B"),
+    ]
+    assert all(p.spoken_language == "en" for p in pieces)
+
+
+def test_split_pieces_are_ordered_and_contiguous():
+    segment = Segment(start_time=0.0, end_time=6.0, text="a b c d e f")
+    segment_words = words(
+        (0.0, 1.0, " a"),
+        (1.0, 2.0, " b"),
+        (2.0, 3.0, " c"),
+        (3.0, 4.0, " d"),
+        (4.0, 5.0, " e"),
+        (5.0, 6.0, " f"),
+    )
+
+    pieces = split(
+        segment,
+        segment_words,
+        turns((0.0, 2.0, "A"), (2.0, 4.0, "B"), (4.0, 6.0, "A")),
+    )
+
+    assert [p.speaker for p in pieces] == ["A", "B", "A"]
+    assert pieces[0].start_time == segment.start_time
+    assert pieces[-1].end_time == segment.end_time
+    for before, after in zip(pieces, pieces[1:], strict=False):
+        assert before.end_time == after.start_time
+    Transcript(source="a.wav", segments=tuple(pieces))
+
+
+def test_a_segment_with_one_speaker_matches_segment_assignment():
+    segment = Segment(
+        start_time=1.0, end_time=3.0, text="all mine", spoken_language="es"
+    )
+    speaker_turns = turns((0.0, 5.0, "A"))
+
+    pieces = split(
+        segment, words((1.0, 2.0, " all"), (2.0, 3.0, " mine")), speaker_turns
+    )
+
+    assert pieces == [replace(segment, speaker="A")]
+
+
+def test_a_segment_without_words_falls_back_to_segment_assignment():
+    segment = Segment(start_time=0.0, end_time=3.0, text="no timings")
+
+    pieces = split(segment, [], turns((0.0, 1.0, "A"), (1.0, 3.0, "B")))
+
+    assert pieces == [replace(segment, speaker="B")]
+
+
+def test_a_segment_whose_words_overlap_nothing_falls_back_too():
+    segment = Segment(start_time=0.0, end_time=3.0, text="all silence")
+
+    pieces = split(segment, words((0.0, 1.0, " all")), turns((5.0, 6.0, "A")))
+
+    assert pieces == [replace(segment, speaker=None)]
+
+
+@pytest.mark.parametrize(
+    ("text", "pieces"),
+    [
+        (" Hi, there.", [" Hi,", " there."]),
+        (" ¿Por qué no?", [" ¿Por", " qué", " no?"]),
+        (
+            " Me lo hago, if I have a party.",
+            [" Me", " lo", " hago,", " if", " I", " have", " a", " party."],
+        ),
+        (" El niño—bueno, sí.", [" El", " niño—bueno,", " sí."]),
+    ],
+)
+def test_split_text_joins_back_into_the_segment_text(text, pieces):
+    """faster-whisper keeps each word's leading space and attached punctuation."""
+    segment = Segment(start_time=0.0, end_time=float(len(pieces)), text=text.strip())
+    segment_words = words(*[(i, i + 1.0, w) for i, w in enumerate(pieces)])
+    half = len(pieces) // 2
+    speaker_turns = turns(
+        (0.0, float(half), "A"), (float(half), float(len(pieces)), "B")
+    )
+
+    split_pieces = split(segment, segment_words, speaker_turns)
+
+    assert " ".join(p.text for p in split_pieces) == segment.text

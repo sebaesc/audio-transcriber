@@ -12,12 +12,13 @@ from __future__ import annotations
 
 import os
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from dotenv import find_dotenv, load_dotenv
 
 from audio_transcriber.errors import BackendRequirementError
+from audio_transcriber.schema import Segment
 
 #: pyannote 4.x's recommended pipeline. It bundles its embedding and scoring
 #: weights, so only its own gate has to be accepted.
@@ -45,6 +46,12 @@ def gates_for(model: str) -> tuple[str, ...]:
     """
     return GATES.get(model, (model,))
 
+
+#: The longest run of words, flanked on both sides by one other speaker, that is
+#: folded into that speaker rather than split out. Word timings drift by tens of
+#: milliseconds, so a single word flipping at a turn boundary is more often
+#: timing error than a one-word turn.
+MAX_FOLDED_WORDS = 1
 
 _TOKEN_VARIABLES = ("HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HUGGINGFACE_TOKEN")
 
@@ -305,3 +312,142 @@ def speaker_for(turns: list[SpeakerTurn], start: float, end: float) -> str | Non
         if shared > best_overlap:
             best, best_overlap = turn.speaker, shared
     return best
+
+
+def word_speakers(turns: list[SpeakerTurn], words: list[Word]) -> list[str | None]:
+    """Return a speaker for each word.
+
+    Each word takes the speaker holding most of it, as a segment does. A word
+    that overlaps no turn — pyannote leaves short gaps, and Whisper's word times
+    drift into them — takes the previous word's speaker, or the next word's at
+    the start. Only when no word overlaps any turn is the result all None.
+
+    Args:
+        turns: Speaker turns for the recording, in time order.
+        words: One segment's words, in order.
+
+    Returns:
+        One label per word, or None for every word if none overlaps a turn.
+    """
+    found = [_word_speaker(turns, word) for word in words]
+    known = next((speaker for speaker in found if speaker is not None), None)
+    filled: list[str | None] = []
+    for speaker in found:
+        known = speaker or known
+        filled.append(known)
+    return filled
+
+
+def _word_speaker(turns: list[SpeakerTurn], word: Word) -> str | None:
+    """Return the speaker for one word.
+
+    Whisper collapses some words to an instant, which overlaps nothing, so
+    those take the turn they fall inside.
+    """
+    if word.end > word.start:
+        return speaker_for(turns, word.start, word.end)
+    for turn in turns:
+        if turn.start > word.start:
+            break
+        if word.start < turn.end:
+            return turn.speaker
+    return None
+
+
+def smooth(
+    speakers: list[str | None], max_folded: int = MAX_FOLDED_WORDS
+) -> list[str | None]:
+    """Fold short runs flanked on both sides by one other speaker into it.
+
+    A run at either edge is kept, since nothing on its other side confirms it
+    is noise: a short reply ending a segment is what per-word assignment is
+    for. So is a run between two different speakers.
+
+    Args:
+        speakers: One label per word, in order.
+        max_folded: The longest run that is folded.
+
+    Returns:
+        The labels, with short flanked runs relabelled.
+    """
+    runs = _runs(speakers)
+    smoothed: list[str | None] = []
+    for index, (speaker, length) in enumerate(runs):
+        if 0 < index < len(runs) - 1 and length <= max_folded:
+            before, after = runs[index - 1][0], runs[index + 1][0]
+            if before == after:
+                speaker = before
+        smoothed.extend([speaker] * length)
+    return smoothed
+
+
+def _runs(speakers: list[str | None]) -> list[tuple[str | None, int]]:
+    """Return consecutive equal labels as (label, count) runs."""
+    runs: list[tuple[str | None, int]] = []
+    for speaker in speakers:
+        if runs and runs[-1][0] == speaker:
+            runs[-1] = (speaker, runs[-1][1] + 1)
+        else:
+            runs.append((speaker, 1))
+    return runs
+
+
+def split_by_speaker(
+    segment: Segment, words: list[Word], turns: list[SpeakerTurn]
+) -> list[Segment]:
+    """Split a segment wherever its speaker changes, word by word.
+
+    The pieces are contiguous and cover exactly the segment's span: the first
+    starts where the segment starts, the last ends where it ends, and each
+    boundary falls where the next speaker's first word starts. Each piece
+    keeps the segment's language. Its text is its words joined, which
+    reproduces the segment's text because each word carries its own leading
+    space and punctuation.
+
+    A segment that stays with one speaker comes back whole, with its own text
+    and times. One without word timings, or whose words overlap no turn, takes
+    the speaker holding most of it, as in segment assignment.
+
+    Args:
+        segment: One transcript segment.
+        words: Its words, clamped to its span.
+        turns: Speaker turns for the recording, in time order.
+
+    Returns:
+        The segment's pieces, in order, each with a speaker.
+    """
+    # A blank word would become a piece with no text.
+    words = [word for word in words if word.text.strip()]
+    speakers = smooth(word_speakers(turns, words))
+    if not speakers or speakers[0] is None:
+        speaker = speaker_for(turns, segment.start_time, segment.end_time)
+        return [replace(segment, speaker=speaker)]
+
+    groups: list[tuple[str | None, list[Word]]] = []
+    for word, speaker in zip(words, speakers, strict=True):
+        if groups and groups[-1][0] == speaker:
+            groups[-1][1].append(word)
+        else:
+            groups.append((speaker, [word]))
+    if len(groups) == 1:
+        return [replace(segment, speaker=groups[0][0])]
+
+    pieces: list[Segment] = []
+    start = segment.start_time
+    for index, (speaker, group) in enumerate(groups):
+        if index + 1 < len(groups):
+            next_start = groups[index + 1][1][0].start
+            end = min(max(next_start, start), segment.end_time)
+        else:
+            end = segment.end_time
+        pieces.append(
+            replace(
+                segment,
+                start_time=start,
+                end_time=end,
+                text="".join(word.text for word in group).strip(),
+                speaker=speaker,
+            )
+        )
+        start = end
+    return pieces
