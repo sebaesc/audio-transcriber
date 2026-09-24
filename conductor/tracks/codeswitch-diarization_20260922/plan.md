@@ -191,7 +191,12 @@ qualitative evaluation only, and says so plainly in the doc page.
 - [x] Task 4.4: Assign speaker labels to segments, stable within a transcript
 - [x] Task 4.5: Make `capabilities.diarization` reflect whether it is actually active, rather than what the engine could do
 - [x] Task 4.6: Record the diarization model and its version in the manifest, so a transcript's speaker labels are traceable
-- [-] Task 4.7: Evaluate against whatever Task 1.7 settled on, and write the result down — **deferred, see below**
+- [x] Task 4.7: Evaluate against whatever Task 1.7 settled on, and write the result down — **done 2026-09-23 against TalkBank, see below**
+  - [x] 4.7a: CHAT loader — timed utterances, speaker, per-utterance language from `@Languages`, `@s` and `[- lang]`; choose the right file per recording
+  - [x] 4.7b: DER scoring via `pyannote.metrics`, 0.25 s collar, excluding regions that hold untimed reference speech
+  - [x] 4.7c: Per-segment language accuracy — time-weighted confusion against reference utterances, mixed speech reported separately
+  - [x] 4.7d: Harness option `--talkbank`, results in the same JSON reports; docs with access, licence and citation
+  - [x] 4.7e: Run file and chunked with diarization on; record DER and language accuracy
 
 ### Task 4.1 decision — diarization model
 
@@ -224,7 +229,66 @@ two. The required gates are therefore per model rather than a fixed list.
 this phase is built and tested against that; the requirement check names the pages for whichever
 pipeline is configured.
 
-### Task 4.7 — deferred 2026-09-23
+### Task 4.7 — reopened 2026-09-23 against TalkBank
+
+TalkBank access was obtained (option 1 below). The original CHAT transcripts of the Bangor Miami
+corpus carry speaker tiers, per-utterance timestamps and word-level language marks, and their
+timestamps align with the Hugging Face audio already in use: matching transcript words against
+our own segments peaks at a 0 s offset on all five recordings (0.56–0.84 of words), falling to
+about 0.1 at ±30 s. So diarization and per-segment language can be scored on this project's own
+bilingual audio, and VoxConverse is no longer needed.
+
+**Licence, decided by the user:** TalkBank data is CC BY-NC-SA 3.0; its ground rules keep
+downloaded data on the local device, forbid redistribution, and require citing Deuchar & Parafita
+Couto (2011), doi:10.21415/T5J01D. Proceeding was the user's decision. The data lives only in
+`~/.cache/audio-transcriber/talkbank/`, is never committed, and only aggregate scores are.
+
+### Task 4.7 result — TalkBank
+
+Both committed reports (`eval/baseline.json`, `eval/chunked.json`) now carry TalkBank scores. They
+were run with `diarization=true`. Their text scores are identical to the runs without it, as they
+should be: diarization changes no text.
+
+**Speakers.** Speaker confusion, the share of reference speech labelled with the wrong speaker:
+
+| recording | file | chunked | DER (chunked) |
+| --------- | ---- | ------- | ------------- |
+| herring17 | 0.038 | 0.037 | 0.186 |
+| maria20   | — | — | — |
+| sastre8   | 0.086 | 0.083 | 0.218 |
+| zeledon14 | 0.056 | 0.041 | 0.208 |
+| zeledon4  | 0.097 | 0.060 | 0.383 |
+
+About 94% of labelled speech goes to the right speaker. DER is 19–38%, mostly `missed` speech:
+TalkBank's utterance times span pauses that Whisper's segments do not, so DER measures
+segmentation as much as speaker attribution. `maria20` cannot be scored: its reference times only
+one of its two speakers. That first read as 46% confusion, which led to the scorability rule.
+
+**Languages.** Per-segment language accuracy, by time, against TalkBank's word-level annotation:
+
+| recording | file | chunked | chunked en / es recall | mixed speech |
+| --------- | ---- | ------- | ---------------------- | ------------ |
+| herring17 | 0.629 | 0.778 | 0.88 / 0.60 | 9% |
+| maria20   | 0.732 | 0.817 | 0.84 / 0.74 | 24% |
+| sastre8   | 0.662 | 0.762 | 0.89 / 0.50 | 26% |
+| zeledon14 | 0.872 | 0.885 | 0.24 / 0.98 | 21% |
+| zeledon4  | 0.436 | 0.859 | 0.90 / 0.80 | 12% |
+
+- **Chunked labels segments more correctly on all five**, mean 0.666 → 0.820. That includes
+  `sastre8`, whose WER got worse: its loss is in decoding, not labelling. This is the first
+  measure on which chunked mode improves every recording.
+- **Detection leans toward the majority language.** Minority-language recall is 0.50–0.80 on
+  English-base recordings, and 0.24 for English on the Spanish-base `zeledon14`.
+- **18% of speech is in mixed utterances** on average (9–26%), which no chunk-level label can get
+  right. That replaces the 5.7% function-word estimate from Task 5.5, which undercounted.
+
+**How the reports were produced.** Both runs used the code as of `f3fbb98`. The scorability rule
+(`7c4de2c`) landed while the chunked run was in progress, so both reports' TalkBank sections were
+recomputed from the saved segment files with the committed code. The scores are pure functions of
+transcript and reference, so this is exact. Transcripts were checked byte-identical to the
+committed runs.
+
+### Task 4.7 — deferred 2026-09-23 (superseded above)
 
 **Not done, and deliberately so.** Task 1.7 settled on `diarizers-community/voxconverse` for DER,
 because the Bangor Miami dataset used everywhere else in this track has no speaker labels: the
@@ -264,8 +328,8 @@ the backend doc page must say so rather than cite pyannote's published benchmark
   report differs from Phase 3's only by the one segment Task 5.7 drops
 - [x] `pytest -k conformance` passes with diarization both on and off — four configurations, 2026-09-23
 
-> **Phase 4 closes with Task 4.7 deferred.** The capability is built and verified working; its
-> quality is unmeasured. Track completion must not read as though diarization was evaluated.
+> **Phase 4 closes with Task 4.7 done against TalkBank.** Speaker labels are measured on four
+> two-speaker recordings of this project's own kind of audio; see the Task 4.7 result.
 
 ## Phase 5: Tuning and Documentation
 

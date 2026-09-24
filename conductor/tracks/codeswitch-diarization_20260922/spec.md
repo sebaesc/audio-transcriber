@@ -77,7 +77,8 @@ correctly attributed text instead of one language's guess applied to the whole f
 
 - [x] Language detection runs per chunk, not per file, and is restricted to `{en, es}`
 - [x] `spoken_language` varies within a transcript when the audio switches language
-- [x] `speaker` is populated with stable labels within a run's transcript (met; **quality unmeasured** — Task 4.7 deferred)
+- [x] `speaker` is populated with stable labels within a run's transcript — quality measured against
+      TalkBank (Task 4.7): 3.7–9.7% speaker confusion on the four scorable recordings
 - [x] A reproducible eval harness reports WER and language-mix error against the Bangor Miami
       ground truth, and is runnable on demand
 - [ ] Measured WER improves on the recorded baseline across **all five** `mixed` recordings, not
@@ -131,6 +132,11 @@ External:
   because it is common in both. That is a floor, not an estimate: switches carried only by
   content words are missed — "para *if I have a party*" counts, but "es eso es *homeopathic*"
   from `herring17` does not, because its only English word is a content word.
+
+  **Measured properly (2026-09-23, TalkBank):** TalkBank's word-level language marks put **9–26%
+  of speech time, 18% on average**, in utterances that mix both languages. The function-word figure
+  above undercounts by roughly half. That share is a ceiling on per-segment language accuracy for
+  any chunk-level approach.
 
   Shrinking chunks does not fix this. Language detection needs a few seconds of audio to be
   confident, and an utterance-length chunk is still coarser than a switch mid-utterance. Closing
