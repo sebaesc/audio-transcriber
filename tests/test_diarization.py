@@ -369,3 +369,49 @@ def test_diarization_runs_on_the_device_transcription_resolved(monkeypatch):
     backend._diarize(Path("a.wav"))
 
     assert seen["device"] == "cuda"
+
+
+# --- Speaker assignment mode ---
+
+
+def test_speakers_are_assigned_per_segment_by_default():
+    assert FasterWhisperBackend().config["speaker_assignment"] == "segment"
+
+
+@pytest.mark.parametrize("mode", ["segment", "word"])
+def test_either_assignment_mode_is_accepted_with_diarization(mode):
+    backend = FasterWhisperBackend(diarization=True, speaker_assignment=mode)
+
+    assert backend.config["speaker_assignment"] == mode
+
+
+def test_word_assignment_without_diarization_is_rejected():
+    """There would be no speakers to assign, so the option would do nothing."""
+    with pytest.raises(BackendRequirementError, match="diarization=true"):
+        FasterWhisperBackend(speaker_assignment="word")
+
+
+def test_segment_assignment_without_diarization_is_accepted():
+    """It is the default, so stating it contradicts nothing."""
+    backend = FasterWhisperBackend(speaker_assignment="segment")
+
+    assert backend.config["speaker_assignment"] == "segment"
+
+
+def test_an_unknown_assignment_mode_is_rejected_with_the_valid_ones():
+    with pytest.raises(BackendRequirementError, match="segment, word"):
+        FasterWhisperBackend(diarization=True, speaker_assignment="sentence")
+
+
+def test_the_assignment_mode_is_recorded_in_the_manifest():
+    config = FasterWhisperBackend(
+        diarization=True, speaker_assignment="word"
+    ).effective_config()
+
+    assert config["speaker_assignment"] == "word"
+
+
+def test_the_assignment_mode_is_not_passed_to_the_decoder():
+    backend = FasterWhisperBackend(diarization=True, speaker_assignment="word")
+
+    assert "speaker_assignment" not in backend._decode_options()

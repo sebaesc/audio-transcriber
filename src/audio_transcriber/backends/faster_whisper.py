@@ -162,6 +162,12 @@ _DEFAULTS: dict[str, Any] = {
     "num_speakers": None,
     "min_speakers": None,
     "max_speakers": None,
+    # How diarized speakers reach the transcript. `segment` gives each segment
+    # whoever speaks most of it. `word` gives each word its speaker and splits a
+    # segment where the speaker changes, so an interruption inside a segment is
+    # attributed to whoever made it. `word` decodes with word timestamps, which
+    # costs time and moves segment boundaries, so it is only enabled on request.
+    "speaker_assignment": "segment",
     # Conditioning on previous text helps context, but it also carries any
     # divergence into every later segment. Exposed because it is the lever to
     # reach for when a recording falls into a repetition loop.
@@ -194,8 +200,12 @@ _PIPELINE_OPTIONS = frozenset(
         "num_speakers",
         "min_speakers",
         "max_speakers",
+        "speaker_assignment",
     }
 )
+
+#: Values `speaker_assignment` accepts.
+_SPEAKER_ASSIGNMENTS = ("segment", "word")
 
 #: Options only `language_detection=chunked` reads.
 _CHUNKED_ONLY_OPTIONS = frozenset({"languages", "language_threshold", "chunk_seconds"})
@@ -243,6 +253,9 @@ class FasterWhisperBackend(TranscriptionBackend):
     - `diarization`: label segments by speaker. Off by default; needs the
       `diarization` extra and accepted Hugging Face gates.
     - `diarization_model`: the pyannote pipeline to use.
+    - `speaker_assignment`: `segment` (default) labels each segment with its
+      majority speaker; `word` labels each word and splits segments where the
+      speaker changes. `word` needs `diarization=true`.
     - `hf_token`: Hugging Face token. Falls back to `HF_TOKEN` in the environment,
       and is redacted from the manifest.
     - `num_speakers`, `min_speakers`, `max_speakers`: constrain the speaker count
@@ -291,16 +304,35 @@ class FasterWhisperBackend(TranscriptionBackend):
             self.capabilities = replace(type(self).capabilities, diarization=True)
 
     def _reject_contradictions(self, config: dict[str, Any]) -> None:
-        """Reject options the chosen detection mode would silently ignore.
+        """Reject options the chosen modes would silently ignore.
 
         Checked against the options as given, before defaults are applied: a
         default is not a choice the caller made, so it cannot contradict one.
 
         Raises:
             BackendRequirementError: If `language` is forced in chunked mode,
-                where detection would overwrite it, or a chunked-only option is
-                given in file mode, which never reads it.
+                where detection would overwrite it; a chunked-only option is
+                given in file mode, which never reads it; or
+                `speaker_assignment` is unknown, or set to `word` without
+                diarization, which would leave nothing to assign.
         """
+        assignment = config.get("speaker_assignment", _DEFAULTS["speaker_assignment"])
+        if assignment not in _SPEAKER_ASSIGNMENTS:
+            raise BackendRequirementError(
+                self.name,
+                f"unknown speaker_assignment {assignment!r}.",
+                f"Use one of: {', '.join(_SPEAKER_ASSIGNMENTS)}.",
+            )
+        if assignment != _DEFAULTS["speaker_assignment"] and not config.get(
+            "diarization", _DEFAULTS["diarization"]
+        ):
+            raise BackendRequirementError(
+                self.name,
+                f"speaker_assignment={assignment} assigns diarized speakers, but "
+                "diarization is off, so there are none to assign.",
+                "Add diarization=true, or drop speaker_assignment.",
+            )
+
         mode = config.get("language_detection", _DEFAULTS["language_detection"])
         if mode == "chunked" and config.get("language"):
             raise BackendRequirementError(
