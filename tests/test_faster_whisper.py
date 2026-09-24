@@ -23,12 +23,22 @@ from audio_transcriber.errors import BackendRequirementError  # noqa: E402
 
 
 @dataclass
+class _NativeWord:
+    """Stands in for one word as faster-whisper yields it with word timestamps."""
+
+    start: float
+    end: float
+    word: str
+
+
+@dataclass
 class _NativeSegment:
     """Stands in for one segment as faster-whisper yields it."""
 
     start: float
     end: float
     text: str
+    words: list[_NativeWord] | None = None
 
 
 class _Weights:
@@ -642,3 +652,126 @@ def test_normalize_keeps_a_short_single_word(backend):
     segments = backend._normalize([_NativeSegment(3.0, 3.1, "Yeah.")], "en")
 
     assert len(segments) == 1
+
+
+# --- Word timings, for per-word speaker assignment ---
+
+
+@pytest.mark.parametrize(
+    "config",
+    [{"diarization": True}, {"diarization": True, "speaker_assignment": "word"}],
+)
+def test_word_timestamps_are_requested_for_word_assignment(config):
+    backend = FasterWhisperBackend(**config)
+
+    assert backend._decode_options()["word_timestamps"] is True
+
+
+@pytest.mark.parametrize(
+    "config", [{}, {"diarization": True, "speaker_assignment": "segment"}]
+)
+def test_word_timestamps_are_left_alone_otherwise(config):
+    """They move segment boundaries, so turning them on would change output."""
+    assert "word_timestamps" not in FasterWhisperBackend(**config)._decode_options()
+
+
+def test_words_are_kept_with_their_segment(backend):
+    normalized = backend._normalize_with_words(
+        [
+            _NativeSegment(
+                0.0,
+                2.0,
+                " Hi there.",
+                [_NativeWord(0.0, 0.5, " Hi"), _NativeWord(0.6, 2.0, " there.")],
+            ),
+            _NativeSegment(2.0, 3.0, " ¿Sí?", [_NativeWord(2.1, 2.9, " ¿Sí?")]),
+        ],
+        "en",
+    )
+
+    assert [segment.text for segment, _ in normalized] == ["Hi there.", "¿Sí?"]
+    assert [[(w.start, w.end, w.text) for w in words] for _, words in normalized] == [
+        [(0.0, 0.5, " Hi"), (0.6, 2.0, " there.")],
+        [(2.1, 2.9, " ¿Sí?")],
+    ]
+
+
+def test_a_segment_without_word_timings_has_no_words(backend):
+    normalized = backend._normalize_with_words([_NativeSegment(0.0, 1.0, "a")], "en")
+
+    assert normalized[0][1] == ()
+
+
+def test_words_are_clamped_into_their_clamped_segment(backend):
+    """A segment pulled forward by overlap clamping takes its words with it."""
+    normalized = backend._normalize_with_words(
+        [
+            _NativeSegment(0.0, 2.0, "first", [_NativeWord(0.0, 2.0, " first")]),
+            _NativeSegment(
+                1.8,
+                4.0,
+                "second one",
+                [_NativeWord(1.8, 2.5, " second"), _NativeWord(2.5, 4.0, " one")],
+            ),
+        ],
+        "en",
+    )
+
+    segment, words = normalized[1]
+    assert segment.start_time == 2.0
+    assert [(w.start, w.end) for w in words] == [(2.0, 2.5), (2.5, 4.0)]
+
+
+def test_words_past_the_end_of_audio_are_dropped(backend):
+    normalized = backend._normalize_with_words(
+        [
+            _NativeSegment(
+                9.0,
+                30.0,
+                "trails off into nothing",
+                [
+                    _NativeWord(9.0, 10.0, " trails"),
+                    _NativeWord(10.0, 10.8, " off"),
+                    _NativeWord(12.0, 13.0, " into"),
+                    _NativeWord(13.0, 14.0, " nothing"),
+                ],
+            )
+        ],
+        "en",
+        duration=10.44,
+    )
+
+    _, words = normalized[0]
+    assert [(w.text, w.end) for w in words] == [(" trails", 10.0), (" off", 10.44)]
+
+
+def test_a_dense_hallucination_is_dropped_with_its_words(backend):
+    normalized = backend._normalize_with_words(
+        [
+            _NativeSegment(0.0, 5.0, "real", [_NativeWord(0.0, 5.0, " real")]),
+            _NativeSegment(
+                10.42,
+                14.0,
+                "For more info, see the links in the description.",
+                [_NativeWord(10.42 + i * 0.3, 10.7 + i * 0.3, " x") for i in range(9)],
+            ),
+        ],
+        "en",
+        duration=10.435,
+    )
+
+    assert [segment.text for segment, _ in normalized] == ["real"]
+
+
+def test_normalize_and_its_word_form_agree_on_segments(backend):
+    """Segment mode's output must not depend on whether words were kept."""
+    native = [
+        _NativeSegment(0.0, 2.0, " a b", [_NativeWord(0.0, 1.0, " a")]),
+        _NativeSegment(1.5, 3.0, "c"),
+        _NativeSegment(12.0, 14.0, "past the end"),
+    ]
+
+    assert backend._normalize(native, "en", duration=10.0) == tuple(
+        segment
+        for segment, _ in backend._normalize_with_words(native, "en", duration=10.0)
+    )

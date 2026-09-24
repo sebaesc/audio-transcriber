@@ -172,11 +172,50 @@ know is bilingual. See
 | `hf_token` | `None` | Hugging Face token. Falls back to `HF_TOKEN` in the environment, then a `.env` file. Redacted in the manifest |
 | `num_speakers` | `None` | Exact speaker count, when known |
 | `min_speakers`, `max_speakers` | `None` | Bounds on the speaker count |
+| `speaker_assignment` | `word` | `word` labels each word and splits segments where the speaker changes; `segment` labels each segment whole. Only applies with `diarization=true` |
 
-Each segment takes the speaker whose turns overlap most of it. A segment overlapping no turn keeps
-`speaker: null` rather than being assigned a guess. Labels (`SPEAKER_00`, …) are stable within one
+With `speaker_assignment=word`, the default, the model decodes with word timestamps and each word
+takes the speaker whose turns overlap most of it. A word falling in a gap between turns takes its
+neighbour's speaker, and a single word flanked on both sides by one other speaker is folded into
+it, since word timings drift at turn boundaries. Where the speaker changes, the segment is split
+into contiguous pieces that cover its original span. Each piece keeps the segment's language.
+
+With `speaker_assignment=segment`, each segment takes the speaker whose turns overlap most of it,
+and no word timestamps are decoded.
+
+Either way, a segment overlapping no turn keeps `speaker: null` rather than being assigned a guess. Labels (`SPEAKER_00`, …) are stable within one
 transcript, not across files. The pipeline runs on the device transcription resolved to. The
 pyannote version is recorded in the manifest as `diarization_version`.
+
+#### `word` against `segment`, measured
+
+Scored against TalkBank's annotations of the four scorable recordings of the evaluation corpus
+(see [`docs/evaluation.md`](../evaluation.md#speakers-and-languages-talkbank)), `large-v3`,
+seed 0:
+
+| | `file`, `segment` | `file`, `word` | `chunked`, `segment` | `chunked`, `word` |
+| --- | --- | --- | --- | --- |
+| Speaker confusion, mean | 6.9% | **4.5%** | 5.5% | **4.6%** |
+| Recordings improved | | 4 of 4 | | 4 of 4 |
+| DER, mean | 23.0% | 27.4% | 24.9% | 27.3% |
+| WER, mean of five | 0.377 | 0.310 | 0.343 | 0.341 |
+| Wall-clock, five recordings | 1599 s | 1885 s | 1764 s | 1742 s |
+
+- **Most of the gain comes from word timestamps, not from splitting.** Decoding with word
+  timestamps but labelling each segment whole brought `file` mode to 4.7%. Word timestamps make
+  Whisper's segments hug the speech more tightly, so fewer segments straddle a speaker change.
+  Splitting takes it the rest of the way, to 4.5%.
+- **DER rises** because TalkBank's utterance times are looser than the tighter segments, and the
+  difference counts as missed speech. Confusion is the number to read for speaker-label quality;
+  as a share of the speech that is labelled, it fell on every recording too.
+- **The WER change is a side effect of decoding with word timestamps**, not of splitting. In
+  `file` mode WER fell on all five recordings, three beyond the 0.022 noise floor, mostly through
+  fewer deletions; in `chunked` mode it did not move beyond noise. That is one seed, and seeds
+  alone have moved one recording by 0.135, so treat it as no regression rather than a reason to
+  choose `word`.
+- **Other split rules did no better.** Folding runs of two or three words, snapping changes to
+  nearby punctuation, and one speaker per sentence all landed within 0.1 points of the one-word
+  fold.
 
 ### How `device: auto` resolves
 
@@ -280,13 +319,20 @@ magnitude, not a benchmark — it scales down substantially with larger models.
 
 ## Known limits
 
-- **Speaker labels are right about 94% of the time, measured on four recordings.** Against
-  TalkBank's annotations of the Spanish-English evaluation corpus, 3.7–9.7% of labelled speech went
-  to the wrong speaker (mean 5.5% in `chunked` mode). The fifth recording could not be scored: its
+- **Speaker labels are right about 95% of the time, measured on four recordings.** Against
+  TalkBank's annotations of the Spanish-English evaluation corpus, 2.6–7.6% of labelled speech went
+  to the wrong speaker with the default `speaker_assignment=word` (mean 4.5% in `file` mode, 4.6%
+  in `chunked`). The fifth recording could not be scored: its
   reference times only one of its two speakers. That is four two-speaker conversations. It says
   the labels are usable, not how the pipeline handles three or more speakers, which was not
   measured. See [`docs/evaluation.md`](../evaluation.md#speakers-and-languages-talkbank).
 - **Diarization needs a gated model and a token.** See [For diarization](#for-diarization).
+- **Per-word speakers split some phrases a word early or late.** Word timings and pyannote's turn
+  boundaries both drift, so a split can land inside a phrase ("If you have | a party.") or hand a
+  speaker's last word to the next one. Measured by time these slips are small, which is why
+  confusion still falls, but they are visible when reading the text. Overlapping speech makes them
+  more common. `speaker_assignment=segment` avoids them at the cost of whole segments going to
+  the wrong speaker.
 - **One language per file, by default.** In `file` mode the model detects a single language and
   every segment carries it, so `spoken_language` will not vary even when the audio switches. Use
   `language_detection=chunked` for bilingual audio.
@@ -298,7 +344,9 @@ magnitude, not a benchmark — it scales down substantially with larger models.
 - **`chunked` is not a free win.** On a recording whose language `file` mode already guessed
   right, it adds overhead and can cost a little WER. That is why it is opt-in.
 - **Word timestamps and translation are not exposed.** The engine supports both and the
-  capability flags say so, but the pipeline has no config for either yet.
+  capability flags say so, but the transcript schema has no field for words and the pipeline has
+  no config for translation. `speaker_assignment=word` uses word timestamps internally, and only
+  the resulting segments reach the transcript.
 - **Hallucination on silence and noise.** Whisper can emit plausible text for audio containing no
   speech. `vad_filter` is on by default because it removes most of this; turning it off makes the
   problem noticeably worse.
@@ -325,5 +373,6 @@ magnitude, not a benchmark — it scales down substantially with larger models.
 .venv/bin/pytest -k conformance
 ```
 
-Passing as of 2026-09-23 with `faster-whisper` 1.2.1, `ctranslate2` 4.8.2 and `pyannote.audio` 4.0.7, in four
-configurations: the default, `language_detection=chunked`, `diarization=true`, and both together.
+Passing as of 2026-09-24 with `faster-whisper` 1.2.1, `ctranslate2` 4.8.2 and `pyannote.audio` 4.0.7, in six
+configurations: the default, `language_detection=chunked`, `diarization=true`, both together,
+and `speaker_assignment=word` in each detection mode.

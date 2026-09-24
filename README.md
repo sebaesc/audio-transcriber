@@ -57,6 +57,9 @@ speakers. Both are opt-in; see the
   --option diarization=true
 ```
 
+Speakers are assigned per word, and a segment is split where the speaker changes. Add
+`--option speaker_assignment=segment` to label each segment whole instead.
+
 Backend options are passed through and recorded in the manifest. Values are read as JSON, so
 types are preserved:
 

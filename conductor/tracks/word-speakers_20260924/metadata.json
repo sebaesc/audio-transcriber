@@ -1,0 +1,29 @@
+{
+  "id": "word-speakers_20260924",
+  "title": "Per-Word Speaker Assignment",
+  "type": "feature",
+  "status": "complete",
+  "created": "2026-09-24T14:37:55Z",
+  "updated": "2026-09-24T19:00:00Z",
+  "depends_on": [
+    "codeswitch-diarization_20260922"
+  ],
+  "phases": {
+    "total": 4,
+    "completed": 4
+  },
+  "tasks": {
+    "total": 21,
+    "completed": 21
+  },
+  "current_phase": 4,
+  "current_task": null,
+  "commits": [
+    "6ae345a: feat(backends): add the speaker_assignment option to faster-whisper",
+    "f1b80e8: feat(backends): carry word timings through faster-whisper normalization",
+    "174620f: feat(backends): assign speakers per word and split segments at changes",
+    "570c3d5: feat(backends): wire per-word speaker assignment into faster-whisper",
+    "8ba00dc: feat(backends): assign speakers per word by default",
+    "315d245: docs(backends): document per-word speaker assignment and its measurements"
+  ]
+}

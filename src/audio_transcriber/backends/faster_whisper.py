@@ -162,6 +162,18 @@ _DEFAULTS: dict[str, Any] = {
     "num_speakers": None,
     "min_speakers": None,
     "max_speakers": None,
+    # How diarized speakers reach the transcript. `word` gives each word its
+    # speaker and splits a segment where the speaker changes, so an interruption
+    # inside a segment is attributed to whoever made it. `segment` gives each
+    # segment whoever speaks most of it, as before this option existed.
+    #
+    # `word` is the default because it measured better: against TalkBank, mean
+    # speaker confusion fell from 6.9% to 4.5% in file mode and from 5.5% to
+    # 4.6% in chunked mode, lower on all four scorable recordings in both, with
+    # no WER regression. Most of that comes from the word timestamps it decodes
+    # with, which tighten segment boundaries; splitting adds the rest. It costs
+    # up to 18% more time. Only read when diarization is on.
+    "speaker_assignment": "word",
     # Conditioning on previous text helps context, but it also carries any
     # divergence into every later segment. Exposed because it is the lever to
     # reach for when a recording falls into a repetition loop.
@@ -194,8 +206,12 @@ _PIPELINE_OPTIONS = frozenset(
         "num_speakers",
         "min_speakers",
         "max_speakers",
+        "speaker_assignment",
     }
 )
+
+#: Values `speaker_assignment` accepts.
+_SPEAKER_ASSIGNMENTS = ("segment", "word")
 
 #: Options only `language_detection=chunked` reads.
 _CHUNKED_ONLY_OPTIONS = frozenset({"languages", "language_threshold", "chunk_seconds"})
@@ -212,6 +228,39 @@ def _implausibly_dense(text: str, seconds: float) -> bool:
     """Return whether `text` has more words than `seconds` could have held."""
     words = len(text.split())
     return words >= _DENSITY_MIN_WORDS and words > _MAX_WORDS_PER_SECOND * seconds
+
+
+#: One normalized segment, with the words it was decoded from. The words are
+#: empty unless word timestamps were requested.
+_Normalized = tuple[Segment, tuple[diarization.Word, ...]]
+
+
+def _clamp_words(
+    words: Any, start: float, end: float, shift: float = 0.0
+) -> tuple[diarization.Word, ...]:
+    """Move words onto a segment's final bounds.
+
+    Normalization shifts and clamps segments; their words have to follow, or a
+    word would be assigned a speaker for a moment its segment no longer claims.
+    A word starting after the segment's end is dropped, as the segment's own
+    overhang past the audio is.
+
+    Args:
+        words: Anything with `start`, `end`, and `word` or `text`.
+        start: The segment's final start.
+        end: The segment's final end.
+        shift: Seconds to add to each word before clamping.
+    """
+    clamped: list[diarization.Word] = []
+    for word in words or ():
+        word_start = float(word.start) + shift
+        if word_start > end:
+            continue
+        word_start = min(max(word_start, start), end)
+        word_end = min(max(float(word.end) + shift, word_start), end)
+        text = word.text if isinstance(word, diarization.Word) else word.word
+        clamped.append(diarization.Word(start=word_start, end=word_end, text=text))
+    return tuple(clamped)
 
 
 @register
@@ -243,6 +292,9 @@ class FasterWhisperBackend(TranscriptionBackend):
     - `diarization`: label segments by speaker. Off by default; needs the
       `diarization` extra and accepted Hugging Face gates.
     - `diarization_model`: the pyannote pipeline to use.
+    - `speaker_assignment`: `word` (default) labels each word and splits
+      segments where the speaker changes; `segment` labels each segment with
+      its majority speaker. Only applies with `diarization=true`.
     - `hf_token`: Hugging Face token. Falls back to `HF_TOKEN` in the environment,
       and is redacted from the manifest.
     - `num_speakers`, `min_speakers`, `max_speakers`: constrain the speaker count
@@ -291,16 +343,35 @@ class FasterWhisperBackend(TranscriptionBackend):
             self.capabilities = replace(type(self).capabilities, diarization=True)
 
     def _reject_contradictions(self, config: dict[str, Any]) -> None:
-        """Reject options the chosen detection mode would silently ignore.
+        """Reject options the chosen modes would silently ignore.
 
         Checked against the options as given, before defaults are applied: a
         default is not a choice the caller made, so it cannot contradict one.
 
         Raises:
             BackendRequirementError: If `language` is forced in chunked mode,
-                where detection would overwrite it, or a chunked-only option is
-                given in file mode, which never reads it.
+                where detection would overwrite it; a chunked-only option is
+                given in file mode, which never reads it; or
+                `speaker_assignment` is unknown, or set without diarization,
+                which leaves no speakers to assign.
         """
+        assignment = config.get("speaker_assignment", _DEFAULTS["speaker_assignment"])
+        if assignment not in _SPEAKER_ASSIGNMENTS:
+            raise BackendRequirementError(
+                self.name,
+                f"unknown speaker_assignment {assignment!r}.",
+                f"Use one of: {', '.join(_SPEAKER_ASSIGNMENTS)}.",
+            )
+        if assignment != _DEFAULTS["speaker_assignment"] and not config.get(
+            "diarization", _DEFAULTS["diarization"]
+        ):
+            raise BackendRequirementError(
+                self.name,
+                f"speaker_assignment={assignment} only applies with "
+                "diarization=true, and would be ignored.",
+                "Add diarization=true, or drop speaker_assignment.",
+            )
+
         mode = config.get("language_detection", _DEFAULTS["language_detection"])
         if mode == "chunked" and config.get("language"):
             raise BackendRequirementError(
@@ -544,7 +615,7 @@ class FasterWhisperBackend(TranscriptionBackend):
 
     def _transcribe_chunked(
         self, model: WhisperModel, audio_path: Path, source: str
-    ) -> Transcript:
+    ) -> tuple[Transcript, tuple[tuple[diarization.Word, ...], ...]]:
         """Transcribe by detecting the language of each speech chunk.
 
         Whisper decides one language per file and decodes everything under it,
@@ -554,6 +625,10 @@ class FasterWhisperBackend(TranscriptionBackend):
 
         Chunk-relative timings are shifted back onto the recording's own
         timeline, so segment times mean the same thing in either mode.
+
+        Returns:
+            The transcript, and each segment's words in segment order. The words
+            are empty unless word timestamps were requested.
         """
         samples = decode_audio(str(audio_path), sampling_rate=SAMPLE_RATE)
         duration = len(samples) / SAMPLE_RATE
@@ -574,6 +649,7 @@ class FasterWhisperBackend(TranscriptionBackend):
         spans = self._language_spans(model, samples, chunks, file_language, threshold)
 
         segments: list[Segment] = []
+        words: list[tuple[diarization.Word, ...]] = []
         previous_end = 0.0
         for start_sample, end_sample, language in spans:
             piece = samples[start_sample:end_sample]
@@ -581,23 +657,27 @@ class FasterWhisperBackend(TranscriptionBackend):
             span_duration = len(piece) / SAMPLE_RATE
             native, _ = model.transcribe(piece, **{**options, "language": language})
 
-            for segment in self._normalize(native, language, duration=span_duration):
+            normalized = self._normalize_with_words(
+                native, language, duration=span_duration
+            )
+            for segment, segment_words in normalized:
                 start = max(segment.start_time + span_start, previous_end)
-                end = max(segment.end_time + span_start, start)
+                end = min(max(segment.end_time + span_start, start), duration)
                 if start >= duration:
                     continue
                 segments.append(
                     Segment(
                         start_time=start,
-                        end_time=min(end, duration),
+                        end_time=end,
                         text=segment.text,
                         speaker=None,
                         spoken_language=segment.spoken_language,
                     )
                 )
-                previous_end = segments[-1].end_time
+                words.append(_clamp_words(segment_words, start, end, span_start))
+                previous_end = end
 
-        return Transcript(
+        transcript = Transcript(
             source=source,
             segments=tuple(segments),
             language=file_language,
@@ -605,6 +685,7 @@ class FasterWhisperBackend(TranscriptionBackend):
             backend=self.name,
             model_version=self.model_version(),
         )
+        return transcript, tuple(words)
 
     def _diarize(self, audio_path: Path) -> list[diarization.SpeakerTurn]:
         """Return the speaker turns for one file, loading the pipeline once.
@@ -627,13 +708,27 @@ class FasterWhisperBackend(TranscriptionBackend):
         )
 
     def _maybe_diarize(
-        self, transcript: Transcript, audio_path: Path, source: str
+        self,
+        transcript: Transcript,
+        audio_path: Path,
+        source: str,
+        words: tuple[tuple[diarization.Word, ...], ...] = (),
     ) -> Transcript:
         """Attach speaker labels to a transcript's segments.
 
-        Each segment takes the speaker holding most of its span. A segment that
-        overlaps no turn keeps `None`: inventing a speaker would be worse than
-        admitting there is not one.
+        With `speaker_assignment=segment`, each segment takes the speaker
+        holding most of its span. With `word`, each word takes its own speaker
+        and a segment is split where the speaker changes. Either way a segment
+        that overlaps no turn keeps `None`: inventing a speaker would be worse
+        than admitting there is not one.
+
+        Args:
+            transcript: The transcript to label.
+            audio_path: The decoded audio, for the diarizer.
+            source: The original input path, for error reports.
+            words: Each segment's words, in segment order. Only read with
+                `speaker_assignment=word`; without them, each segment is
+                labelled whole.
         """
         if not self.config["diarization"]:
             return transcript
@@ -645,6 +740,21 @@ class FasterWhisperBackend(TranscriptionBackend):
             ) from error
         if not turns:
             return transcript
+        if self._assigns_per_word():
+            # A segment without words falls back to segment assignment.
+            words = words or ((),) * len(transcript.segments)
+            return replace(
+                transcript,
+                segments=tuple(
+                    piece
+                    for segment, segment_words in zip(
+                        transcript.segments, words, strict=True
+                    )
+                    for piece in diarization.split_by_speaker(
+                        segment, list(segment_words), turns
+                    )
+                ),
+            )
         return replace(
             transcript,
             segments=tuple(
@@ -674,8 +784,8 @@ class FasterWhisperBackend(TranscriptionBackend):
         model = self._model_for_file()
         if self.config["language_detection"] == "chunked":
             try:
-                transcript = self._transcribe_chunked(model, audio_path, source)
-                return self._maybe_diarize(transcript, audio_path, source)
+                transcript, words = self._transcribe_chunked(model, audio_path, source)
+                return self._maybe_diarize(transcript, audio_path, source, words)
             except TranscriptionError:
                 raise
             except Exception as error:  # noqa: BLE001 - one file failing is not fatal
@@ -684,19 +794,22 @@ class FasterWhisperBackend(TranscriptionBackend):
             native_segments, info = model.transcribe(
                 str(audio_path), **self._decode_options()
             )
-            segments = self._normalize(native_segments, info.language, info.duration)
+            normalized = self._normalize_with_words(
+                native_segments, info.language, info.duration
+            )
         except Exception as error:  # noqa: BLE001 - one file failing is not fatal
             raise TranscriptionError(source, self.name, str(error)) from error
 
         transcript = Transcript(
             source=source,
-            segments=segments,
+            segments=tuple(segment for segment, _ in normalized),
             language=info.language,
             duration=info.duration,
             backend=self.name,
             model_version=self.model_version(),
         )
-        return self._maybe_diarize(transcript, audio_path, source)
+        words = tuple(segment_words for _, segment_words in normalized)
+        return self._maybe_diarize(transcript, audio_path, source, words)
 
     def _decode_options(self) -> dict[str, Any]:
         """Return every config option that is passed to a decode.
@@ -706,11 +819,22 @@ class FasterWhisperBackend(TranscriptionBackend):
         `no_repeat_ngram_size` was accepted, recorded, and silently dropped, and
         two runs configured differently produced byte-identical output.
         """
-        return {
+        options = {
             key: value
             for key, value in self.config.items()
             if key not in _NON_DECODE_OPTIONS
         }
+        # Only when words will be used: word timestamps move segment boundaries,
+        # so requesting them always would change `segment` mode's output.
+        if self._assigns_per_word():
+            options["word_timestamps"] = True
+        return options
+
+    def _assigns_per_word(self) -> bool:
+        """Return whether speakers are assigned per word in this configuration."""
+        return bool(self.config["diarization"]) and (
+            self.config["speaker_assignment"] == "word"
+        )
 
     def _normalize(
         self,
@@ -719,6 +843,23 @@ class FasterWhisperBackend(TranscriptionBackend):
         duration: float | None = None,
     ) -> tuple[Segment, ...]:
         """Map faster-whisper's segments onto the shared schema.
+
+        See `_normalize_with_words`, which this is without the words.
+        """
+        return tuple(
+            segment
+            for segment, _ in self._normalize_with_words(
+                native_segments, language, duration
+            )
+        )
+
+    def _normalize_with_words(
+        self,
+        native_segments: Any,
+        language: str | None,
+        duration: float | None = None,
+    ) -> tuple[_Normalized, ...]:
+        """Map faster-whisper's segments onto the shared schema, keeping words.
 
         Whisper decodes in 30-second windows and pads short audio with silence.
         It regularly hallucinates in that padding: a 10-second recording can come
@@ -742,10 +883,14 @@ class FasterWhisperBackend(TranscriptionBackend):
             duration: Length of the audio in seconds, used to discard
                 hallucinations past its end. None disables that check.
 
+        Each segment's words, when word timestamps were requested, are clamped
+        with it and dropped with it.
+
         Returns:
-            Segments in ascending, non-overlapping order, within the audio.
+            Segments in ascending, non-overlapping order, within the audio, each
+            with its words.
         """
-        segments: list[Segment] = []
+        segments: list[_Normalized] = []
         previous_end = 0.0
         for native in native_segments:
             text = native.text.strip()
@@ -771,14 +916,14 @@ class FasterWhisperBackend(TranscriptionBackend):
                 )
                 continue
 
-            segments.append(
-                Segment(
-                    start_time=start,
-                    end_time=end,
-                    text=text,
-                    speaker=None,
-                    spoken_language=language,
-                )
+            segment = Segment(
+                start_time=start,
+                end_time=end,
+                text=text,
+                speaker=None,
+                spoken_language=language,
             )
+            words = _clamp_words(getattr(native, "words", None), start, end)
+            segments.append((segment, words))
             previous_end = end
         return tuple(segments)
