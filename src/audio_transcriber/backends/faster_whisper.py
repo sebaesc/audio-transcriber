@@ -120,7 +120,7 @@ def _preload_cuda_libraries() -> None:
 
 
 _DEFAULTS: dict[str, Any] = {
-    "model": "base",
+    "model": "large-v3",
     "device": "auto",
     "compute_type": "default",
     "language": None,
@@ -221,7 +221,7 @@ class FasterWhisperBackend(TranscriptionBackend):
     Config options, all recorded in the run manifest:
 
     - `model`: a size from `KNOWN_MODELS`, or a path to converted weights.
-      Defaults to `base`.
+      Defaults to `large-v3`.
     - `device`: `auto`, `cpu`, or `cuda`. Defaults to `auto`.
     - `compute_type`: CTranslate2 compute type, e.g. `int8`, `float16`.
       Defaults to `default`, which lets CTranslate2 choose for the device.
