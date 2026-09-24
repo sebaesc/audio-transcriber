@@ -135,8 +135,8 @@ network.
 - [x] `pytest` passes offline with a key present in `.env`, making no network calls. Run with
       `ELEVENLABS_API_KEY=sk_dummy_not_real`: the 8 hosted conformance cases skip with the opt-in
       message, and everything else passes; ruff is clean
-- [ ] `AUDIO_TRANSCRIBER_LIVE_TESTS=1 pytest -k conformance` passes against the real API. Waiting
-      on a real key. With a dummy key, the live path reached the real endpoint and came back as a
+- [x] `AUDIO_TRANSCRIBER_LIVE_TESTS=1 pytest -k conformance` passes against the real API
+      (2026-09-24, after the connection fix in `49ca9fe`). Before a real key was available: With a dummy key, the live path reached the real endpoint and came back as a
       clean per-file 401 `TranscriptionError` that names `ELEVENLABS_API_KEY` and does not echo the
       key. So the SDK wiring and upload are correct as far as authentication
 
@@ -172,7 +172,7 @@ Document the backend and measure it against faster-whisper.
       and language scores. Compare with the committed faster-whisper report per recording, and
       commit the reports and the comparison. Note where per-file language costs accuracy on
       code-switched recordings
-- [ ] Task 4.5: Real pipeline run on sample audio via
+- [x] Task 4.5: Real pipeline run on sample audio via
       `python -m audio_transcriber --backend elevenlabs-scribe`; check the transcripts and that
       the manifest records the model version, the config with the key redacted, and the timeout
 
@@ -195,23 +195,33 @@ Document the backend and measure it against faster-whisper.
   lower, because it labels each file with one language.
 - **4.4 (bug found):** ElevenLabs returns `quota_exceeded` as HTTP 401, and the error mapping
   blamed the key. Fixed with a test first (`f8ff85f`).
+- **Final verification (bug found):** live conformance failed on `ResourceWarning: unclosed
+  <ssl.SSLSocket>`, which `filterwarnings = error` turns into a failure. Task 3.1 built the
+  client once per backend, and the interface has no close hook, so the connection was never
+  closed. Deviation from 3.1: a client is now opened per file and closed when the file is done,
+  including on failure. Tested first. The fake-client tests never opened a socket, so only a
+  live run could have caught it.
 - **4.4 (follow-up, eval harness):** `--compare` averages each report over whichever recordings
   it scored, so its mean deltas mislead when two reports scored different sets. The
   per-recording deltas are unaffected. Not fixed here.
+- **4.5:** a 10 s MP3 cut of `sastre8` through the CLI: exit 0, 4 segments, and the manifest
+  records `elevenlabs-2.68.0/scribe_v2`, `timeout: 900.0` and `api_key: null`. No output file
+  contains the key. Code-switched speech was transcribed in both languages, with every segment
+  labelled `es`: the per-file language limit, as documented.
 - **Key:** the `.env` key authenticates for speech-to-text but lacks `user_read`, so account
   endpoints such as subscription return 401. The backend does not use them.
 
 ### Verification
 
-- [ ] Doc page complete per workflow Step 8; evaluation reports committed with the TalkBank
+- [x] Doc page complete per workflow Step 8; evaluation reports committed with the TalkBank
       citation where TalkBank scores appear
 
 ## Final Verification
 
-- [ ] All acceptance criteria met
-- [ ] `ruff check . && ruff format --check . && pytest` pass (offline)
-- [ ] `pytest -k conformance` passes, and passes live with `AUDIO_TRANSCRIBER_LIVE_TESTS=1`
-- [ ] Documentation updated: backend doc page, README, tech-stack
+- [x] All acceptance criteria met
+- [x] `ruff check . && ruff format --check . && pytest` pass (offline)
+- [x] `pytest -k conformance` passes, and passes live with `AUDIO_TRANSCRIBER_LIVE_TESTS=1`
+- [x] Documentation updated: backend doc page, README, tech-stack
 - [ ] Manual sign-off recorded in this plan
 
 ---

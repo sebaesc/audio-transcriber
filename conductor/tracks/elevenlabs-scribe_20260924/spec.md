@@ -28,19 +28,21 @@ faster-whisper using the evaluation harness, without changing pipeline code.
 
 ## Acceptance Criteria
 
-- [ ] `--backend elevenlabs-scribe` transcribes audio via ElevenLabs Scribe v2; output passes
+- [x] `--backend elevenlabs-scribe` transcribes audio via ElevenLabs Scribe v2; output passes
       runtime schema validation and the shared conformance tests
-- [ ] `check_requirements()` fails up front, with a fix-it message, when the `elevenlabs` SDK or
+- [x] `check_requirements()` fails up front, with a fix-it message, when the `elevenlabs` SDK or
       `ELEVENLABS_API_KEY` is missing; the key is read from `.env` the same way `HF_TOKEN` is, and
-      is redacted from the manifest
-- [ ] Speaker labels come from Scribe's own diarization when enabled; every segment's
+      is redacted from the manifest. (Deviation: a missing SDK unregisters the backend, so the
+      CLI says "unknown backend"; see plan note 1.6.)
+- [x] Speaker labels come from Scribe's own diarization when enabled; every segment's
       `spoken_language` is Scribe's file-level language, mapped to the schema's code format;
       capabilities are declared to match; the pinned model id is recorded in the manifest
-- [ ] API failures (auth, rate limit, timeout, oversized file) become a per-file
+- [x] API failures (auth, rate limit, timeout, oversized file) become a per-file
       `TranscriptionError` and the batch continues
-- [ ] `docs/backends/elevenlabs-scribe.md` covers usage, the extra, the credential, cost and
+- [x] `docs/backends/elevenlabs-scribe.md` covers usage, the extra, the credential, cost and
       limits (including per-file language only), and an evaluation report comparing it with
-      faster-whisper on Bangor Miami is committed alongside the existing reports
+      faster-whisper on Bangor Miami is committed alongside the existing reports. (Deviation:
+      3 of 5 recordings, as the free-tier quota ran out; see plan note 4.4.)
 
 ## Dependencies
 

@@ -4,22 +4,26 @@
   "type": "feature",
   "status": "in_progress",
   "created": "2026-09-24T03:42:14Z",
-  "updated": "2026-09-24T03:55:59Z",
+  "updated": "2026-09-24T19:40:00Z",
   "phases": {
     "total": 4,
-    "completed": 2
+    "completed": 4
   },
   "tasks": {
     "total": 19,
-    "completed": 14
+    "completed": 19
   },
   "current_phase": 4,
-  "current_task": "4.1",
+  "current_task": "sign-off",
   "commits": [
     "bfafdf4: refactor(backends): share .env credential lookup across backends",
     "69d8091: feat(backends): add elevenlabs-scribe options, key check and normalization",
     "c5569c4: feat(backends): call Scribe v2 and map API failures to per-file errors",
     "a285b5e: test(conformance): run hosted backends live only on opt-in",
-    "98d77e4: docs(backends): document the elevenlabs-scribe backend"
+    "98d77e4: docs(backends): document the elevenlabs-scribe backend",
+    "a5f4e93: docs(backends): measure Scribe throughput and explain the timeout",
+    "f8ff85f: fix(backends): report an exhausted Scribe quota as such, not as a bad key",
+    "8c21f1d: test(eval): record Scribe against faster-whisper on Bangor Miami",
+    "49ca9fe: fix(backends): close the Scribe connection after each file"
   ]
 }
