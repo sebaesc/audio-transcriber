@@ -78,9 +78,11 @@ evaluation harness. No open track blocks this one.
 - **Limits.** Files are limited to 5 GB (raised from 3 GB on 2026-06-01; the capabilities page still
   says 3 GB), 10 hours in standard mode, and a 100 ms minimum. The decoded WAV is about 115 MB per
   hour, so upload size is not a practical constraint.
-- **Timeout.** The SDK's default timeout is 240 s for the whole synchronous request. Bangor Miami
-  recordings run 22–33 min and may exceed it. Add a `timeout` option with a generous default,
-  measured during implementation, and record it in the manifest.
+- **Timeout.** The SDK's default timeout is 240 s. It is an httpx timeout, applied to each network
+  operation (connect, each write, each read), not to the whole request. The wait that matters is
+  the read while Scribe transcribes. Add a `timeout` option with a generous default, measured
+  during implementation, and record it in the manifest. (Corrected in Task 4.1; this spec first
+  called it a limit on the whole request. The measurement is in the plan.)
 - **Retries.** The SDK retries 408/409/429/5xx twice by default with backoff that honors
   `Retry-After`. Timeouts and connection errors are not retried. After that, `ApiError`
   (`status_code`, `body`) and httpx transport errors become a `TranscriptionError`; the message

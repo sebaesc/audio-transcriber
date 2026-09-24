@@ -38,8 +38,10 @@ from audio_transcriber.schema import Segment, Transcript
 #: the model id and the SDK that called it.
 MODEL_ID = "scribe_v2"
 
-#: Seconds allowed for one synchronous request, upload through response.
-#: The SDK's own default is 240 s, which a half-hour recording can exceed.
+#: Seconds httpx waits on any one network operation. The wait that matters is
+#: for the response once the upload is sent, while Scribe transcribes. Measured
+#: 2026-09-24: 47 s end to end for a 33 min recording (sastre8), so this leaves
+#: ample headroom, and extrapolates past the API's 10 h file limit.
 DEFAULT_TIMEOUT = 900.0
 
 #: A silence longer than this between two words starts a new segment. Scribe
@@ -160,7 +162,9 @@ class ElevenLabsScribeBackend(TranscriptionBackend):
       valid with diarization on and no `max_speakers`.
     - `seed`: sent for best-effort determinism. Defaults to 0.
     - `temperature`: 0.0 to 2.0. Defaults to 0.0.
-    - `timeout`: seconds allowed for one request. Defaults to `DEFAULT_TIMEOUT`.
+    - `timeout`: seconds to wait on any one network operation, in practice
+      the wait for the transcript after the upload. Defaults to
+      `DEFAULT_TIMEOUT`.
 
     An option this backend does not recognize is rejected rather than ignored,
     so the manifest cannot record a setting that was never applied. So is an

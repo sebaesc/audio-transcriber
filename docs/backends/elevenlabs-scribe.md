@@ -83,7 +83,7 @@ same-named faster-whisper option.
 | `diarization_threshold` | `null` (API picks, about 0.22) | Higher merges more voices into one speaker. Needs `diarization=true` and no `max_speakers`. |
 | `seed` | `0` | Sent for best-effort determinism; see [Known limits](#known-limits). `null` omits it. |
 | `temperature` | `0.0` | 0.0–2.0. Higher is more varied and less repeatable. `null` omits it. |
-| `timeout` | `900` | Seconds allowed for one request, upload through response. |
+| `timeout` | `900` | Seconds to wait on any one network operation. In practice, the wait for the transcript after the upload. |
 
 ### Speaker counts differ from faster-whisper
 
@@ -172,10 +172,26 @@ the results.
 
 ## Measured
 
-<!-- Filled in by Task 4.1 (timeout / throughput) and Task 4.4 (evaluation). -->
+### Speed and the timeout
 
-Pending: throughput and the timeout default (Task 4.1), and quality against faster-whisper on
-Bangor Miami (Task 4.4).
+Timed on 2026-09-24 from a home connection, uploading the pipeline's 16 kHz mono WAV:
+
+| Audio | Upload | Wall clock | Realtime factor |
+| --- | --- | --- | --- |
+| 30 s clip | 0.96 MB | 2.4 s, 2.6 s | about 12x |
+| `sastre8`, 33.3 min | 64 MB | 46.9 s | about 43x |
+
+`timeout` is not a limit on the whole request. The SDK passes it to httpx, which applies it to
+each network operation separately: connecting, each write of the upload, and each read. The
+longest single wait is for the transcript after the upload finishes. A 33 min recording finished
+in under a minute end to end, so the 900 s default leaves about 19x headroom. Scaled linearly, a
+file at the API's 10 h limit would take about 14 min. The SDK's own default is 240 s. Raise
+`timeout` only on a slow uplink or for files of many hours.
+
+Both runs of the 30 s clip used the same seed and temperature 0, and they came back with 13 and
+14 segments. That is the best-effort determinism described under [Known limits](#known-limits).
+
+<!-- Task 4.4 adds the evaluation against faster-whisper below. -->
 
 ## Conformance
 
