@@ -156,7 +156,7 @@ Document the backend and measure it against faster-whisper.
 
 ### Tasks
 
-- [ ] Task 4.1: Measure the `timeout` default. Time real requests on a short clip and on the
+- [x] Task 4.1: Measure the `timeout` default. Time real requests on a short clip and on the
       longest Bangor Miami recording (`sastre8`, 33.4 min), then set the default with headroom and
       record the measurement in the doc page
 - [~] Task 4.2: Write `docs/backends/elevenlabs-scribe.md`: usage and options; the extra; the
@@ -175,6 +175,17 @@ Document the backend and measure it against faster-whisper.
 - [ ] Task 4.5: Real pipeline run on sample audio via
       `python -m audio_transcriber --backend elevenlabs-scribe`; check the transcripts and that
       the manifest records the model version, the config with the key redacted, and the timeout
+
+### Notes
+
+- **4.1:** Measured 2026-09-24 against the real API: a 30 s clip took 2.4 s and 2.6 s, and
+  `sastre8` (33.3 min, 64 MB WAV) took 46.9 s end to end. `DEFAULT_TIMEOUT` stays at 900 s.
+  Deviation: the spec called `timeout` a limit on the whole request. The SDK passes it to httpx,
+  which applies it per operation, so it bounds the wait for the response, not upload plus
+  response. The spec, the docstring and the doc page are corrected. The clip gave 13 and then 14
+  segments with the same seed, which is early evidence that output is not deterministic.
+- **Key:** the `.env` key authenticates for speech-to-text but lacks `user_read`, so account
+  endpoints such as subscription return 401. The backend does not use them.
 
 ### Verification
 
