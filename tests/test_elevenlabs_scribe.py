@@ -654,6 +654,26 @@ def test_an_auth_failure_says_to_check_the_key(backend, wav_file):
         backend.transcribe(wav_file, "a.wav")
 
 
+def test_an_exhausted_quota_is_not_blamed_on_the_key(backend, wav_file):
+    """ElevenLabs reports an exhausted credit quota as HTTP 401, not 402 or 429."""
+    body = {
+        "detail": {
+            "type": "invalid_request",
+            "code": "quota_exceeded",
+            "message": "This request exceeds your quota of 10000. "
+            "You have 1370 credits remaining, while 2207 credits are required.",
+        }
+    }
+    _with_client(backend, UnauthorizedError(body=body))
+
+    with pytest.raises(TranscriptionError, match="quota") as raised:
+        backend.transcribe(wav_file, "a.wav")
+
+    message = str(raised.value)
+    assert "Check ELEVENLABS_API_KEY" not in message
+    assert "1370 credits remaining" in message
+
+
 def test_rate_limiting_says_the_sdk_already_retried(backend, wav_file):
     _with_client(backend, _api_error(429))
 

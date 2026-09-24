@@ -361,7 +361,14 @@ class ElevenLabsScribeBackend(TranscriptionBackend):
         """Say what an API error means and what to do about it."""
         status = error.status_code
         detail = _excerpt(error.body)
-        if status in (401, 403):
+        if _error_field(error.body, "code") == "quota_exceeded":
+            # Sent as 401, so it must be told apart from a rejected key.
+            hint = (
+                "the ElevenLabs account is out of credits. Wait for the quota to "
+                "reset, add credits, or use another key."
+            )
+            detail = _excerpt(_error_field(error.body, "message")) or detail
+        elif status in (401, 403):
             hint = (
                 "ElevenLabs rejected the API key or its permissions. Check "
                 "ELEVENLABS_API_KEY, and that the key may use speech-to-text."
@@ -502,6 +509,12 @@ def _excerpt(body: Any) -> str:
     if len(text) > _ERROR_BODY_CHARS:
         text = text[: _ERROR_BODY_CHARS - 1] + "…"
     return text
+
+
+def _error_field(body: Any, field: str) -> Any:
+    """Return `body["detail"][field]` from an API error body, or None."""
+    detail = body.get("detail") if isinstance(body, dict) else None
+    return detail.get(field) if isinstance(detail, dict) else None
 
 
 def _wav_duration(path: Path) -> float | None:

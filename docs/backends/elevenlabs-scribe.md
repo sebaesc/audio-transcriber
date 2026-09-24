@@ -125,6 +125,7 @@ next file:
 
 | What happened | Message says |
 | --- | --- |
+| 401, `quota_exceeded` | The account is out of credits, with the API's count of what remains. ElevenLabs sends this as a 401, not a 429 |
 | 401 / 403 | The key or its permissions were rejected; check `ELEVENLABS_API_KEY` |
 | 429 | Rate limited or over the plan's concurrency, even after retries |
 | 5xx | Server error, even after retries |
