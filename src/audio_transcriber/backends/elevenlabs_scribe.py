@@ -16,10 +16,15 @@ installed rather than failing at import time.
 
 from __future__ import annotations
 
+import json
+import wave
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+import httpx
+from elevenlabs.client import ElevenLabs
+from elevenlabs.core.api_error import ApiError
 from elevenlabs.types import SpeechToTextChunkResponseModel
 from elevenlabs.version import __version__ as SDK_VERSION
 
@@ -46,6 +51,9 @@ PAUSE_SECONDS = 1.0
 #: A word ending in one of these closes its segment, so segments read as
 #: sentences, the way Whisper's do.
 _SENTENCE_ENDS = (".", "?", "!", "…")
+
+#: Longest excerpt of an API error body carried into a failure message.
+_ERROR_BODY_CHARS = 300
 
 #: Where the API key is looked up when the config does not give one.
 _KEY_VARIABLES = ("ELEVENLABS_API_KEY",)
@@ -171,6 +179,7 @@ class ElevenLabsScribeBackend(TranscriptionBackend):
         self._reject_unsupported(config)
         super().__init__(**{**_DEFAULTS, **config})
         self._api_key: str | None = None
+        self._client: Any = None
         if self.config["diarization"]:
             # Declared per instance, as faster-whisper does: a consumer reading
             # the capability flag should see what this run actually does.
@@ -273,8 +282,103 @@ class ElevenLabsScribeBackend(TranscriptionBackend):
         self._api_key = key
 
     def transcribe(self, audio_path: Path, source: str) -> Transcript:
-        """Transcribe one decoded file. Implemented in Phase 3."""
-        raise TranscriptionError(source, self.name, "not implemented yet.")
+        """Upload one decoded file to Scribe and normalize the result.
+
+        The request is synchronous. The SDK retries 408, 409, 429 and 5xx twice,
+        honoring `Retry-After`; whatever still fails, and any timeout or
+        connection error, becomes a failure for this file only.
+
+        Args:
+            audio_path: Mono 16 kHz WAV, already decoded by the pipeline.
+            source: The original input path, recorded on the transcript.
+
+        Raises:
+            TranscriptionError: If this file cannot be transcribed.
+        """
+        client = self._client_for_run()
+        try:
+            with audio_path.open("rb") as audio:
+                response = client.speech_to_text.convert(
+                    file=(audio_path.name, audio, "audio/wav"), **self._request()
+                )
+        except ApiError as error:
+            raise self._failure(source, self._describe(error)) from error
+        except httpx.TimeoutException as error:
+            raise self._failure(
+                source,
+                f"no response within timeout={self.config['timeout']:g} s. Raise it "
+                "with --option timeout=SECONDS for long recordings.",
+            ) from error
+        except httpx.HTTPError as error:
+            raise self._failure(
+                source, f"could not reach the ElevenLabs API: {error}"
+            ) from error
+        return self._normalize(response, source, _wav_duration(audio_path))
+
+    def _client_for_run(self) -> Any:
+        """Return the API client, built once with the key and the timeout."""
+        if self._client is None:
+            if self._api_key is None:
+                self.check_requirements()
+            self._client = ElevenLabs(
+                api_key=self._api_key, timeout=float(self.config["timeout"])
+            )
+        return self._client
+
+    def _request(self) -> dict[str, Any]:
+        """Return the request parameters, built from the config.
+
+        An option left as None is not sent, so the API applies its own default
+        rather than receiving an explicit null.
+        """
+        config = self.config
+        diarize = bool(config["diarization"])
+        request: dict[str, Any] = {
+            "model_id": MODEL_ID,
+            "timestamps_granularity": "word",
+            "tag_audio_events": False,
+            "diarize": diarize,
+        }
+        optional = {
+            "language_code": config["language"],
+            "num_speakers": config["max_speakers"] if diarize else None,
+            "diarization_threshold": (
+                config["diarization_threshold"] if diarize else None
+            ),
+            "seed": config["seed"],
+            "temperature": config["temperature"],
+        }
+        request.update(
+            {key: value for key, value in optional.items() if value is not None}
+        )
+        return request
+
+    def _describe(self, error: ApiError) -> str:
+        """Say what an API error means and what to do about it."""
+        status = error.status_code
+        detail = _excerpt(error.body)
+        if status in (401, 403):
+            hint = (
+                "ElevenLabs rejected the API key or its permissions. Check "
+                "ELEVENLABS_API_KEY, and that the key may use speech-to-text."
+            )
+        elif status == 429:
+            hint = (
+                "rate limited or over the plan's concurrency, still after the SDK's "
+                "retries. Try again later, or run fewer files at once."
+            )
+        elif status is not None and status >= 500:
+            hint = "ElevenLabs had a server error, still after the SDK's retries."
+        else:
+            hint = "ElevenLabs rejected the request."
+        message = f"HTTP {status}: {hint}"
+        return f"{message} Detail: {detail}" if detail else message
+
+    def _failure(self, source: str, message: str) -> TranscriptionError:
+        """Build a per-file failure, with the API key scrubbed from it."""
+        if self._api_key:
+            message = message.replace(self._api_key, "<redacted>")
+        return TranscriptionError(source, self.name, message)
 
     def _normalize(
         self, response: Any, source: str, audio_duration: float | None
@@ -383,3 +487,23 @@ class ElevenLabsScribeBackend(TranscriptionBackend):
             and current.end is not None
             and start - current.end > PAUSE_SECONDS
         )
+
+
+def _excerpt(body: Any) -> str:
+    """Return a short, single-line rendering of an API error body."""
+    if body is None:
+        return ""
+    text = body if isinstance(body, str) else json.dumps(body, ensure_ascii=False)
+    text = " ".join(text.split())
+    if len(text) > _ERROR_BODY_CHARS:
+        text = text[: _ERROR_BODY_CHARS - 1] + "…"
+    return text
+
+
+def _wav_duration(path: Path) -> float | None:
+    """Return a WAV file's length in seconds, or None if it cannot be read."""
+    try:
+        with wave.open(str(path), "rb") as handle:
+            return handle.getnframes() / handle.getframerate()
+    except (OSError, wave.Error):
+        return None
