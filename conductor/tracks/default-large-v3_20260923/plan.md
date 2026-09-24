@@ -3,7 +3,7 @@
 **Track ID:** default-large-v3_20260923
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-09-23
-**Status:** [ ] Not Started
+**Status:** [~] In Progress
 
 ## Overview
 
@@ -20,14 +20,14 @@ slower, especially on CPU. This plan leaves the suite as is, so it keeps testing
 
 ### Tasks
 
-- [ ] Task 1.1: Update the default assertion in `tests/test_faster_whisper.py` (currently
+- [x] Task 1.1: Update the default assertion in `tests/test_faster_whisper.py` (currently
       `assert config["model"] == "base"`) to expect `large-v3`; watch it fail
-- [ ] Task 1.2: Set `_DEFAULTS["model"] = "large-v3"` in
+- [x] Task 1.2: Set `_DEFAULTS["model"] = "large-v3"` in
       `src/audio_transcriber/backends/faster_whisper.py`; the test passes
 
 ### Verification
 
-- [ ] `pytest tests/test_faster_whisper.py` passes
+- [x] `pytest tests/test_faster_whisper.py` passes
 
 ## Phase 2: Documentation
 
