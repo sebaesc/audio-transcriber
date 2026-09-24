@@ -591,3 +591,119 @@ def test_split_text_joins_back_into_the_segment_text(text, pieces):
     split_pieces = split(segment, segment_words, speaker_turns)
 
     assert " ".join(p.text for p in split_pieces) == segment.text
+
+
+# --- Per-word assignment, wired into the backend ---
+
+
+class _NativeWord:
+    def __init__(self, start, end, word):
+        self.start, self.end, self.word = start, end, word
+
+
+class _NativeSegment:
+    def __init__(self, start, end, text, words=None):
+        self.start, self.end, self.text, self.words = start, end, text, words
+
+
+class _Weights:
+    def unload_model(self):
+        pass
+
+
+class _Model:
+    """A file-mode engine that returns one two-speaker segment."""
+
+    model = _Weights()
+
+    def __init__(self):
+        self.options = {}
+
+    def transcribe(self, audio, **kwargs):
+        self.options = kwargs
+        native = _NativeSegment(
+            0.0,
+            4.0,
+            " I think so. Yeah.",
+            [
+                _NativeWord(0.0, 0.5, " I"),
+                _NativeWord(0.5, 1.0, " think"),
+                _NativeWord(1.0, 1.5, " so."),
+                _NativeWord(2.5, 3.9, " Yeah."),
+            ],
+        )
+
+        class _Info:
+            language = "en"
+            duration = 4.0
+
+        return iter([native]), _Info()
+
+
+def _wired(monkeypatch, **config) -> tuple[FasterWhisperBackend, _Model]:
+    backend = FasterWhisperBackend(model="tiny", diarization=True, **config)
+    model = _Model()
+    monkeypatch.setattr(backend, "_model", model)
+    monkeypatch.setattr(backend, "_build_model", lambda device: model)
+    monkeypatch.setattr(
+        backend, "_diarize", lambda path: turns((0.0, 2.0, "A"), (2.2, 4.0, "B"))
+    )
+    backend._resolved_device = "cpu"
+    return backend, model
+
+
+def test_word_assignment_splits_a_two_speaker_segment(monkeypatch, tmp_path):
+    backend, model = _wired(monkeypatch, speaker_assignment="word")
+
+    transcript = backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert model.options["word_timestamps"] is True
+    assert [(s.text, s.speaker) for s in transcript.segments] == [
+        ("I think so.", "A"),
+        ("Yeah.", "B"),
+    ]
+
+
+def test_segment_assignment_keeps_the_segment_whole(monkeypatch, tmp_path):
+    backend, model = _wired(monkeypatch)
+
+    transcript = backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert "word_timestamps" not in model.options
+    assert [(s.text, s.speaker) for s in transcript.segments] == [
+        ("I think so. Yeah.", "A")
+    ]
+
+
+def test_word_assignment_splits_in_chunked_mode(monkeypatch, tmp_path):
+    import numpy as np
+
+    from audio_transcriber.backends.chunking import SAMPLE_RATE
+
+    backend, model = _wired(
+        monkeypatch,
+        speaker_assignment="word",
+        language_detection="chunked",
+        languages=["en", "es"],
+    )
+    samples = np.zeros(4 * SAMPLE_RATE, dtype=np.float32)
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.decode_audio",
+        lambda *a, **k: samples,
+    )
+
+    class _Chunk:
+        start, end = 0, len(samples)
+
+    monkeypatch.setattr(
+        "audio_transcriber.backends.faster_whisper.speech_chunks",
+        lambda *a, **k: [_Chunk()],
+    )
+    model.detect_language = lambda audio=None: ("en", 0.99, [("en", 0.99)])
+
+    transcript = backend.transcribe(tmp_path / "a.wav", "a.wav")
+
+    assert [(s.text, s.speaker, s.spoken_language) for s in transcript.segments] == [
+        ("I think so.", "A", "en"),
+        ("Yeah.", "B", "en"),
+    ]

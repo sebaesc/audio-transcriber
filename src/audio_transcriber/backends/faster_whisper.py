@@ -702,13 +702,26 @@ class FasterWhisperBackend(TranscriptionBackend):
         )
 
     def _maybe_diarize(
-        self, transcript: Transcript, audio_path: Path, source: str
+        self,
+        transcript: Transcript,
+        audio_path: Path,
+        source: str,
+        words: tuple[tuple[diarization.Word, ...], ...] = (),
     ) -> Transcript:
         """Attach speaker labels to a transcript's segments.
 
-        Each segment takes the speaker holding most of its span. A segment that
-        overlaps no turn keeps `None`: inventing a speaker would be worse than
-        admitting there is not one.
+        With `speaker_assignment=segment`, each segment takes the speaker
+        holding most of its span. With `word`, each word takes its own speaker
+        and a segment is split where the speaker changes. Either way a segment
+        that overlaps no turn keeps `None`: inventing a speaker would be worse
+        than admitting there is not one.
+
+        Args:
+            transcript: The transcript to label.
+            audio_path: The decoded audio, for the diarizer.
+            source: The original input path, for error reports.
+            words: Each segment's words, in segment order. Only read with
+                `speaker_assignment=word`.
         """
         if not self.config["diarization"]:
             return transcript
@@ -720,6 +733,19 @@ class FasterWhisperBackend(TranscriptionBackend):
             ) from error
         if not turns:
             return transcript
+        if self._assigns_per_word():
+            return replace(
+                transcript,
+                segments=tuple(
+                    piece
+                    for segment, segment_words in zip(
+                        transcript.segments, words, strict=True
+                    )
+                    for piece in diarization.split_by_speaker(
+                        segment, list(segment_words), turns
+                    )
+                ),
+            )
         return replace(
             transcript,
             segments=tuple(
@@ -749,8 +775,8 @@ class FasterWhisperBackend(TranscriptionBackend):
         model = self._model_for_file()
         if self.config["language_detection"] == "chunked":
             try:
-                transcript, _ = self._transcribe_chunked(model, audio_path, source)
-                return self._maybe_diarize(transcript, audio_path, source)
+                transcript, words = self._transcribe_chunked(model, audio_path, source)
+                return self._maybe_diarize(transcript, audio_path, source, words)
             except TranscriptionError:
                 raise
             except Exception as error:  # noqa: BLE001 - one file failing is not fatal
@@ -759,19 +785,22 @@ class FasterWhisperBackend(TranscriptionBackend):
             native_segments, info = model.transcribe(
                 str(audio_path), **self._decode_options()
             )
-            segments = self._normalize(native_segments, info.language, info.duration)
+            normalized = self._normalize_with_words(
+                native_segments, info.language, info.duration
+            )
         except Exception as error:  # noqa: BLE001 - one file failing is not fatal
             raise TranscriptionError(source, self.name, str(error)) from error
 
         transcript = Transcript(
             source=source,
-            segments=segments,
+            segments=tuple(segment for segment, _ in normalized),
             language=info.language,
             duration=info.duration,
             backend=self.name,
             model_version=self.model_version(),
         )
-        return self._maybe_diarize(transcript, audio_path, source)
+        words = tuple(segment_words for _, segment_words in normalized)
+        return self._maybe_diarize(transcript, audio_path, source, words)
 
     def _decode_options(self) -> dict[str, Any]:
         """Return every config option that is passed to a decode.
