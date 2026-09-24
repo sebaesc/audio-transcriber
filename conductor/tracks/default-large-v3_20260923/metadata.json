@@ -7,15 +7,16 @@
   "updated": "2026-09-23T00:00:00Z",
   "phases": {
     "total": 2,
-    "completed": 1
+    "completed": 2
   },
   "tasks": {
     "total": 5,
-    "completed": 2
+    "completed": 5
   },
   "current_phase": 2,
-  "current_task": "2.1",
+  "current_task": null,
   "commits": [
-    "68bfdb9: chore(backends): default faster-whisper to large-v3"
+    "68bfdb9: chore(backends): default faster-whisper to large-v3",
+    "d3a5357: docs(backends): document large-v3 as the faster-whisper default"
   ]
 }

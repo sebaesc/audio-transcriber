@@ -33,19 +33,20 @@ slower, especially on CPU. This plan leaves the suite as is, so it keeps testing
 
 ### Tasks
 
-- [ ] Task 2.1: In `docs/backends/faster-whisper.md`, change the options table default for `model`
+- [x] Task 2.1: In `docs/backends/faster-whisper.md`, change the options table default for `model`
       from `base` to `large-v3`, and move "The default" from the `base` row to the `large-v3` row
       in the model-size table
-- [ ] Task 2.2: Add a docs note on the new default's cost: 3.1 GB first download (about 70 s to
+- [x] Task 2.2: Add a docs note on the new default's cost: 3.1 GB first download (about 70 s to
       download and load), about 3.8 GB VRAM at `float16` and more with diarization on the same
       device, slow on CPU-only hosts; override with `--option model=base` (or `tiny` for a quick
       check)
-- [ ] Task 2.3: Check README and `docs/evaluation.md` for any statement that the default is
+- [x] Task 2.3: Check README and `docs/evaluation.md` for any statement that the default is
       `base`, and update it (the examples already pass `model=large-v3` explicitly)
+      — none found; no change needed. The explicit `model=large-v3` in examples is kept.
 
 ### Verification
 
-- [ ] No remaining doc text describes `base` as the default
+- [x] No remaining doc text describes `base` as the default
 
 ## Final Verification
 
