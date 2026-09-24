@@ -3,7 +3,7 @@
 **Track ID:** elevenlabs-scribe_20260924
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-09-24
-**Status:** [~] In Progress
+**Status:** [x] Complete
 
 ## Overview
 
@@ -234,7 +234,7 @@ Document the backend and measure it against faster-whisper.
 - [x] `ruff check . && ruff format --check . && pytest` pass (offline)
 - [x] `pytest -k conformance` passes, and passes live with `AUDIO_TRANSCRIBER_LIVE_TESTS=1`
 - [x] Documentation updated: backend doc page, README, tech-stack
-- [ ] Manual sign-off recorded in this plan
+- [x] Manual sign-off recorded in this plan: approved by Sebastian Escuder, 2026-09-24
 
 ---
 
