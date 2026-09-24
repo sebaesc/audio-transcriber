@@ -221,9 +221,13 @@ holding both languages. Per recording it runs from 9% to 25% of speech time.
 
 ### Limits
 
-- **`maria20` is partly timed.** 255 of its 380 utterances carry timestamps. The gaps holding the
-  untimed ones are left out of diarization scoring rather than counted as false alarms, so its
-  scores cover part of the recording.
+- **`maria20` cannot score speakers.** 255 of its 380 utterances carry timestamps, and all 255
+  belong to one speaker: the other speaker is entirely untimed. Anything the diarizer does with
+  that speaker's speech would be scored against the first speaker's turns, which read as 46%
+  confusion and measured nothing. So diarization is skipped wherever a speaker has no timed speech,
+  and the report records why. Its language scores still count.
+- **Partly timed references** otherwise have the gaps holding untimed utterances left out of
+  diarization scoring, rather than counted as false alarms.
 - **Overlapping speech** is scored against whichever speakers TalkBank timed there. Crosstalk is
   common in this corpus and slightly inflates `confusion`.
 - **Five recordings, two speakers each.** Enough to judge whether speaker labels are usable, not

@@ -147,8 +147,11 @@ corpus, against a seed noise floor of 0.022 WER per recording:
   detection adds few decode boundaries. One recording was worse by 0.048.
 
 **When to use it.** On the Spanish-English evaluation corpus, `chunked` reported both languages
-on every recording, where `file` reported one, and cut mean language-mix error from 0.164 to
-0.044. It improved WER on four of five recordings (mean −0.034). The fifth, whose language `file`
+on every recording, where `file` reported one. It raised per-segment language accuracy on all
+five recordings, from 0.67 to 0.82 on average, measured against TalkBank's annotations, and cut
+language-mix error from 0.164 to 0.044. Detection still leans toward each recording's majority
+language: on English-base recordings it labels 50–80% of Spanish speech correctly, against
+84–90% of English. It improved WER on four of five recordings (mean −0.034). The fifth, whose language `file`
 mode had already guessed right, got worse by 0.045 WER. It stays opt-in: use it for audio you
 know is bilingual. See
 [`docs/evaluation.md`](../evaluation.md) and the track plan for the numbers.
@@ -270,11 +273,12 @@ magnitude, not a benchmark — it scales down substantially with larger models.
 
 ## Known limits
 
-- **Diarization quality is unmeasured.** It runs end to end and labels every segment it can, but
-  no evaluation corpus with speaker labels was available for code-switched speech, so there is no
-  accuracy figure for this project's audio. pyannote's published benchmarks describe
-  `speaker-diarization-3.1`, not the `community-1` pipeline used by default, and are not claimed
-  here.
+- **Speaker labels are right about 94% of the time, measured on four recordings.** Against
+  TalkBank's annotations of the Spanish-English evaluation corpus, 3.7–9.7% of labelled speech went
+  to the wrong speaker (mean 5.5% in `chunked` mode). The fifth recording could not be scored: its
+  reference times only one of its two speakers. That is four two-speaker conversations. It says
+  the labels are usable, not how the pipeline handles three or more speakers, which was not
+  measured. See [`docs/evaluation.md`](../evaluation.md#speakers-and-languages-talkbank).
 - **Diarization needs a gated model and a token.** See [For diarization](#for-diarization).
 - **One language per file, by default.** In `file` mode the model detects a single language and
   every segment carries it, so `spoken_language` will not vary even when the audio switches. Use
@@ -282,7 +286,8 @@ magnitude, not a benchmark — it scales down substantially with larger models.
 - **No switching below chunk granularity.** In `chunked` mode each chunk — up to `chunk_seconds`
   of speech, several utterances — gets one language. A switch mid-sentence, or between two
   utterances in one chunk, is labelled and decoded as whichever language dominated the chunk. On
-  the evaluation corpus at least 5.7% of utterances, holding 8.7% of words, mix both languages.
+  the evaluation corpus, TalkBank's word-level annotations put 9–26% of speech time (18% on average)
+  in utterances that mix both languages. No segment label can be right for those.
 - **`chunked` is not a free win.** On a recording whose language `file` mode already guessed
   right, it adds overhead and can cost a little WER. That is why it is opt-in.
 - **Word timestamps and translation are not exposed.** The engine supports both and the

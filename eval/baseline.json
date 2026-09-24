@@ -1,6 +1,6 @@
 {
   "label": "baseline",
-  "created_at": "2026-09-23T18:18:25.750088+00:00",
+  "created_at": "2026-09-24T00:30:37.771549+00:00",
   "tool_version": "0.1.0",
   "backend": "faster-whisper",
   "model_version": "faster-whisper-1.2.1/large-v3",
@@ -16,8 +16,8 @@
     "language_detection": "file",
     "languages": null,
     "language_threshold": 0.5,
-    "chunk_seconds": 25.0,
-    "diarization": false,
+    "chunk_seconds": 15.0,
+    "diarization": true,
     "diarization_model": "pyannote/speaker-diarization-community-1",
     "hf_token": null,
     "num_speakers": null,
@@ -31,11 +31,13 @@
     "length_penalty": 1.0,
     "compression_ratio_threshold": 2.4,
     "log_prob_threshold": -1.0,
-    "no_speech_threshold": 0.6
+    "no_speech_threshold": 0.6,
+    "diarization_version": "pyannote.audio-4.0.7"
   },
   "corpus": {
     "dataset": "BrunoHays/Bangor-Miami-Spanish-English-Corpus",
-    "license": "CC BY-SA 3.0"
+    "license": "CC BY-SA 3.0",
+    "annotations": "Deuchar, M., & Parafita Couto, M. (2011). The Bangor Miami Corpus. TalkBank. doi:10.21415/T5J01D"
   },
   "summary": {
     "recordings": 5,
@@ -43,14 +45,20 @@
     "mean_wer": 0.3773,
     "mean_retained": 0.8469,
     "mean_coverage": 0.8899,
-    "mean_language_mix_error": 0.1639
+    "mean_language_mix_error": 0.1639,
+    "talkbank": {
+      "mean_der": 0.2295,
+      "mean_speaker_confusion": 0.0693,
+      "mean_language_accuracy": 0.6663,
+      "mean_mixed_share": 0.1788
+    }
   },
   "recordings": [
     {
       "name": "herring17",
       "duration_s": 1801.3,
-      "elapsed_s": 279.1,
-      "realtime_factor": 6.5,
+      "elapsed_s": 357.5,
+      "realtime_factor": 5.0,
       "segments": 877,
       "detected_languages": [
         "en"
@@ -69,13 +77,43 @@
         "reference_words": 6042,
         "hypothesis_words": 4600
       },
+      "talkbank": {
+        "diarization": {
+          "der": 0.1917,
+          "missed": 0.1282,
+          "false_alarm": 0.0257,
+          "confusion": 0.0378,
+          "reference_seconds": 1137.493
+        },
+        "language": {
+          "accuracy": 0.6287,
+          "recall": {
+            "en": 1.0,
+            "es": 0.0
+          },
+          "mixed_share": 0.0891,
+          "scored_seconds": 1585.832,
+          "confusion": {
+            "en": {
+              "en": 996.936
+            },
+            "es": {
+              "en": 588.896,
+              "es": 0.0
+            },
+            "mixed": {
+              "en": 155.145
+            }
+          }
+        }
+      },
       "error": null
     },
     {
       "name": "maria20",
       "duration_s": 1914.6,
-      "elapsed_s": 87.5,
-      "realtime_factor": 21.9,
+      "elapsed_s": 166.7,
+      "realtime_factor": 11.5,
       "segments": 124,
       "detected_languages": [
         "en"
@@ -94,13 +132,38 @@
         "reference_words": 1615,
         "hypothesis_words": 1390
       },
+      "talkbank": {
+        "diarization": null,
+        "language": {
+          "accuracy": 0.7322,
+          "recall": {
+            "en": 1.0,
+            "es": 0.0
+          },
+          "mixed_share": 0.2309,
+          "scored_seconds": 295.933,
+          "confusion": {
+            "mixed": {
+              "en": 88.83
+            },
+            "en": {
+              "en": 216.693
+            },
+            "es": {
+              "en": 79.24,
+              "es": 0.0
+            }
+          }
+        },
+        "diarization_skipped": "speaker(s) OSE have no timed utterances"
+      },
       "error": null
     },
     {
       "name": "sastre8",
       "duration_s": 2003.1,
-      "elapsed_s": 308.7,
-      "realtime_factor": 6.5,
+      "elapsed_s": 391.2,
+      "realtime_factor": 5.1,
       "segments": 1008,
       "detected_languages": [
         "en"
@@ -119,13 +182,43 @@
         "reference_words": 5791,
         "hypothesis_words": 5713
       },
+      "talkbank": {
+        "diarization": {
+          "der": 0.2205,
+          "missed": 0.1163,
+          "false_alarm": 0.0179,
+          "confusion": 0.0863,
+          "reference_seconds": 1371.963
+        },
+        "language": {
+          "accuracy": 0.6621,
+          "recall": {
+            "en": 1.0,
+            "es": 0.0
+          },
+          "mixed_share": 0.2572,
+          "scored_seconds": 1364.923,
+          "confusion": {
+            "en": {
+              "en": 903.763
+            },
+            "es": {
+              "en": 461.16,
+              "es": 0.0
+            },
+            "mixed": {
+              "en": 472.521
+            }
+          }
+        }
+      },
       "error": null
     },
     {
       "name": "zeledon14",
       "duration_s": 1984.9,
-      "elapsed_s": 316.7,
-      "realtime_factor": 6.3,
+      "elapsed_s": 394.9,
+      "realtime_factor": 5.0,
       "segments": 943,
       "detected_languages": [
         "es"
@@ -144,13 +237,43 @@
         "reference_words": 6758,
         "hypothesis_words": 6616
       },
+      "talkbank": {
+        "diarization": {
+          "der": 0.2007,
+          "missed": 0.1365,
+          "false_alarm": 0.0086,
+          "confusion": 0.0556,
+          "reference_seconds": 1337.781
+        },
+        "language": {
+          "accuracy": 0.8724,
+          "recall": {
+            "en": 0.0,
+            "es": 1.0
+          },
+          "mixed_share": 0.2047,
+          "scored_seconds": 1382.77,
+          "confusion": {
+            "es": {
+              "es": 1206.38
+            },
+            "en": {
+              "es": 176.39,
+              "en": 0.0
+            },
+            "mixed": {
+              "es": 355.853
+            }
+          }
+        }
+      },
       "error": null
     },
     {
       "name": "zeledon4",
       "duration_s": 1310.9,
-      "elapsed_s": 237.5,
-      "realtime_factor": 5.5,
+      "elapsed_s": 289.1,
+      "realtime_factor": 4.5,
       "segments": 600,
       "detected_languages": [
         "es"
@@ -168,6 +291,36 @@
         "hits": 2764,
         "reference_words": 4225,
         "hypothesis_words": 3642
+      },
+      "talkbank": {
+        "diarization": {
+          "der": 0.3052,
+          "missed": 0.1959,
+          "false_alarm": 0.0119,
+          "confusion": 0.0973,
+          "reference_seconds": 1061.455
+        },
+        "language": {
+          "accuracy": 0.4363,
+          "recall": {
+            "en": 0.0,
+            "es": 1.0
+          },
+          "mixed_share": 0.1122,
+          "scored_seconds": 1272.175,
+          "confusion": {
+            "mixed": {
+              "es": 160.79
+            },
+            "es": {
+              "es": 555.061
+            },
+            "en": {
+              "es": 717.114,
+              "en": 0.0
+            }
+          }
+        }
       },
       "error": null
     }
