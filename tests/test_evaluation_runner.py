@@ -226,3 +226,31 @@ def test_talkbank_scores_survive_the_report_round_trip(tmp_path: Path):
     loaded = _load(report.write(tmp_path / "r.json"))
 
     assert loaded.results[0].talkbank["language"]["accuracy"] == 0.7
+
+
+def test_diarization_is_skipped_with_a_reason_when_a_speaker_is_untimed():
+    from audio_transcriber.evaluation.runner import _talkbank_scores
+    from audio_transcriber.evaluation.talkbank import ChatTranscript, Utterance
+    from audio_transcriber.schema import Segment, Transcript
+
+    reference = ChatTranscript(
+        languages=("en", "es"),
+        utterances=(
+            Utterance("A", 0.0, 2.0, "en"),
+            Utterance("B", None, None, "es"),
+        ),
+    )
+    transcript = Transcript(
+        source="a.wav",
+        segments=(Segment(0.0, 2.0, "hi", "SPEAKER_00", "en"),),
+        language="en",
+        duration=5.0,
+        backend="stub",
+        model_version="stub-1.0",
+    )
+
+    scores = _talkbank_scores(reference, transcript, 5.0)
+
+    assert scores["diarization"] is None
+    assert "B" in scores["diarization_skipped"]
+    assert scores["language"]["accuracy"] == 1.0

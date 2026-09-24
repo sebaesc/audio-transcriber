@@ -74,6 +74,23 @@ def scorable_region(
     return region
 
 
+def diarization_scorable(utterances: list[Utterance]) -> str | None:
+    """Return why a reference cannot score speakers, or None if it can.
+
+    Diarization error is only meaningful when every speaker's speech is on the
+    timeline. If one speaker is entirely untimed, whatever the diarizer does
+    with their speech is scored against the other speaker's turns — on
+    maria20, where every utterance of one speaker is untimed, that read as 46%
+    confusion and measured nothing.
+    """
+    speakers = {utterance.speaker for utterance in utterances}
+    timed = {utterance.speaker for utterance in utterances if utterance.timed}
+    untimed = sorted(speakers - timed)
+    if untimed:
+        return f"speaker(s) {', '.join(untimed)} have no timed utterances"
+    return None
+
+
 def diarization_error(
     utterances: list[Utterance],
     segments: list[Segment],

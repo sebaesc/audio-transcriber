@@ -8,6 +8,7 @@ import pytest
 
 from audio_transcriber.evaluation.annotation import (
     diarization_error,
+    diarization_scorable,
     language_confusion,
     scorable_region,
 )
@@ -175,3 +176,23 @@ def test_nothing_to_score_reports_none_rather_than_dividing_by_zero():
     result = language_confusion([_utt("A", 0.0, 4.0, "en")], [])
 
     assert result["accuracy"] is None
+
+
+# --- Whether a reference can score speakers at all ---
+
+
+def test_a_reference_timing_every_speaker_can_score_diarization():
+    utterances = [_utt("A", 0.0, 1.0), _utt("B", 1.0, 2.0), _utt("B", None, None)]
+
+    assert diarization_scorable(utterances) is None
+
+
+def test_a_reference_timing_only_one_speaker_cannot():
+    """Observed on maria20: every utterance of one of its two speakers is untimed.
+
+    With one speaker timed, any speech given to the other counts as confusion —
+    46% on maria20 — which says nothing about the diarizer.
+    """
+    utterances = [_utt("A", 0.0, 1.0), _utt("B", None, None), _utt("B", None, None)]
+
+    assert "B" in diarization_scorable(utterances)

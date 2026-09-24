@@ -21,6 +21,7 @@ from audio_transcriber import __version__, audio, registry
 from audio_transcriber.evaluation import corpus, talkbank
 from audio_transcriber.evaluation.annotation import (
     diarization_error,
+    diarization_scorable,
     language_confusion,
 )
 from audio_transcriber.evaluation.scoring import Comparison, Score, score
@@ -288,14 +289,19 @@ def _talkbank_scores(
     """Score one transcript's speakers and languages against TalkBank."""
     utterances = list(reference.utterances)
     segments = list(transcript.segments)
-    diarized = any(segment.speaker for segment in segments)
-    language = language_confusion(utterances, segments)
-    return {
-        "diarization": _rounded(diarization_error(utterances, segments, duration))
-        if diarized
-        else None,
-        "language": _rounded(language),
+    scores: dict[str, Any] = {
+        "diarization": None,
+        "language": _rounded(language_confusion(utterances, segments)),
     }
+    if any(segment.speaker for segment in segments):
+        reason = diarization_scorable(utterances)
+        if reason:
+            scores["diarization_skipped"] = reason
+        else:
+            scores["diarization"] = _rounded(
+                diarization_error(utterances, segments, duration)
+            )
+    return scores
 
 
 def _rounded(data: Any) -> Any:
