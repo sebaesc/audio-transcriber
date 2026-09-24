@@ -50,11 +50,20 @@ slower, especially on CPU. This plan leaves the suite as is, so it keeps testing
 
 ## Final Verification
 
-- [ ] A real run over sample audio with no `model` option writes a manifest recording `large-v3`
-- [ ] `pytest` passes (including `-k conformance`, now on `large-v3`)
-- [ ] `ruff check .` and `ruff format --check .` pass
-- [ ] All success criteria in spec.md met
+- [x] A real run over sample audio with no `model` option writes a manifest recording `large-v3`
+- [x] `pytest` passes (including `-k conformance`, now on `large-v3`)
+- [x] `ruff check .` and `ruff format --check .` pass
+- [x] All success criteria in spec.md met
 - [ ] Manual sign-off recorded here
+
+### Results (2026-09-23)
+
+- Real run: 30 s clip from `audio/`, no `model` option. The manifest records `config.model =
+  large-v3` and `model_version = faster-whisper-1.2.1/large-v3`, on `cuda`. No errors. 6 s wall-clock
+  with the model already cached.
+- `pytest`: all passed, 1 skipped (`test_no_engine_leakage.py:80`, a deliberate skip that predates
+  this track). The 25 conformance tests pass on `large-v3`. The full suite took 4 min.
+- `ruff check .` and `ruff format --check .`: clean.
 
 ---
 
