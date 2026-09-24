@@ -162,12 +162,18 @@ _DEFAULTS: dict[str, Any] = {
     "num_speakers": None,
     "min_speakers": None,
     "max_speakers": None,
-    # How diarized speakers reach the transcript. `segment` gives each segment
-    # whoever speaks most of it. `word` gives each word its speaker and splits a
-    # segment where the speaker changes, so an interruption inside a segment is
-    # attributed to whoever made it. `word` decodes with word timestamps, which
-    # costs time and moves segment boundaries, so it is only enabled on request.
-    "speaker_assignment": "segment",
+    # How diarized speakers reach the transcript. `word` gives each word its
+    # speaker and splits a segment where the speaker changes, so an interruption
+    # inside a segment is attributed to whoever made it. `segment` gives each
+    # segment whoever speaks most of it, as before this option existed.
+    #
+    # `word` is the default because it measured better: against TalkBank, mean
+    # speaker confusion fell from 6.9% to 4.5% in file mode and from 5.5% to
+    # 4.6% in chunked mode, lower on all four scorable recordings in both, with
+    # no WER regression. Most of that comes from the word timestamps it decodes
+    # with, which tighten segment boundaries; splitting adds the rest. It costs
+    # up to 18% more time. Only read when diarization is on.
+    "speaker_assignment": "word",
     # Conditioning on previous text helps context, but it also carries any
     # divergence into every later segment. Exposed because it is the lever to
     # reach for when a recording falls into a repetition loop.
@@ -286,9 +292,9 @@ class FasterWhisperBackend(TranscriptionBackend):
     - `diarization`: label segments by speaker. Off by default; needs the
       `diarization` extra and accepted Hugging Face gates.
     - `diarization_model`: the pyannote pipeline to use.
-    - `speaker_assignment`: `segment` (default) labels each segment with its
-      majority speaker; `word` labels each word and splits segments where the
-      speaker changes. `word` needs `diarization=true`.
+    - `speaker_assignment`: `word` (default) labels each word and splits
+      segments where the speaker changes; `segment` labels each segment with
+      its majority speaker. Only applies with `diarization=true`.
     - `hf_token`: Hugging Face token. Falls back to `HF_TOKEN` in the environment,
       and is redacted from the manifest.
     - `num_speakers`, `min_speakers`, `max_speakers`: constrain the speaker count
@@ -346,8 +352,8 @@ class FasterWhisperBackend(TranscriptionBackend):
             BackendRequirementError: If `language` is forced in chunked mode,
                 where detection would overwrite it; a chunked-only option is
                 given in file mode, which never reads it; or
-                `speaker_assignment` is unknown, or set to `word` without
-                diarization, which would leave nothing to assign.
+                `speaker_assignment` is unknown, or set without diarization,
+                which leaves no speakers to assign.
         """
         assignment = config.get("speaker_assignment", _DEFAULTS["speaker_assignment"])
         if assignment not in _SPEAKER_ASSIGNMENTS:
@@ -361,8 +367,8 @@ class FasterWhisperBackend(TranscriptionBackend):
         ):
             raise BackendRequirementError(
                 self.name,
-                f"speaker_assignment={assignment} assigns diarized speakers, but "
-                "diarization is off, so there are none to assign.",
+                f"speaker_assignment={assignment} only applies with "
+                "diarization=true, and would be ignored.",
                 "Add diarization=true, or drop speaker_assignment.",
             )
 
@@ -721,7 +727,8 @@ class FasterWhisperBackend(TranscriptionBackend):
             audio_path: The decoded audio, for the diarizer.
             source: The original input path, for error reports.
             words: Each segment's words, in segment order. Only read with
-                `speaker_assignment=word`.
+                `speaker_assignment=word`; without them, each segment is
+                labelled whole.
         """
         if not self.config["diarization"]:
             return transcript
@@ -734,6 +741,8 @@ class FasterWhisperBackend(TranscriptionBackend):
         if not turns:
             return transcript
         if self._assigns_per_word():
+            # A segment without words falls back to segment assignment.
+            words = words or ((),) * len(transcript.segments)
             return replace(
                 transcript,
                 segments=tuple(

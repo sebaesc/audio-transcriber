@@ -37,12 +37,12 @@ _EXTRA_CONFIGS: dict[str, list[dict]] = {
             "languages": ["en", "es"],
             "diarization": True,
         },
-        {"diarization": True, "speaker_assignment": "word"},
+        {"diarization": True, "speaker_assignment": "segment"},
         {
             "language_detection": "chunked",
             "languages": ["en", "es"],
             "diarization": True,
-            "speaker_assignment": "word",
+            "speaker_assignment": "segment",
         },
     ],
 }

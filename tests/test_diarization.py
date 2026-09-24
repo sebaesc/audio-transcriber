@@ -220,7 +220,7 @@ def test_a_transcript_is_unchanged_when_diarization_is_off():
 
 
 def test_speakers_are_attached_to_every_segment(monkeypatch):
-    backend = FasterWhisperBackend(diarization=True)
+    backend = FasterWhisperBackend(diarization=True, speaker_assignment="segment")
     monkeypatch.setattr(
         backend, "_diarize", lambda path: turns((0.0, 5.0, "S0"), (5.0, 10.0, "S1"))
     )
@@ -277,7 +277,7 @@ def test_a_diarization_failure_is_a_per_file_failure(monkeypatch):
 def test_speaker_labels_survive_the_schema_round_trip(monkeypatch):
     import json
 
-    backend = FasterWhisperBackend(diarization=True)
+    backend = FasterWhisperBackend(diarization=True, speaker_assignment="segment")
     monkeypatch.setattr(backend, "_diarize", lambda path: turns((0.0, 5.0, "S0")))
     transcript = Transcript(
         source="a.wav",
@@ -375,8 +375,9 @@ def test_diarization_runs_on_the_device_transcription_resolved(monkeypatch):
 # --- Speaker assignment mode ---
 
 
-def test_speakers_are_assigned_per_segment_by_default():
-    assert FasterWhisperBackend().config["speaker_assignment"] == "segment"
+def test_speakers_are_assigned_per_word_by_default():
+    """Chosen from the TalkBank evaluation; see the option's comment."""
+    assert FasterWhisperBackend().config["speaker_assignment"] == "word"
 
 
 @pytest.mark.parametrize("mode", ["segment", "word"])
@@ -386,17 +387,17 @@ def test_either_assignment_mode_is_accepted_with_diarization(mode):
     assert backend.config["speaker_assignment"] == mode
 
 
-def test_word_assignment_without_diarization_is_rejected():
+def test_segment_assignment_without_diarization_is_rejected():
     """There would be no speakers to assign, so the option would do nothing."""
     with pytest.raises(BackendRequirementError, match="diarization=true"):
-        FasterWhisperBackend(speaker_assignment="word")
+        FasterWhisperBackend(speaker_assignment="segment")
 
 
-def test_segment_assignment_without_diarization_is_accepted():
+def test_word_assignment_without_diarization_is_accepted():
     """It is the default, so stating it contradicts nothing."""
-    backend = FasterWhisperBackend(speaker_assignment="segment")
+    backend = FasterWhisperBackend(speaker_assignment="word")
 
-    assert backend.config["speaker_assignment"] == "segment"
+    assert backend.config["speaker_assignment"] == "word"
 
 
 def test_an_unknown_assignment_mode_is_rejected_with_the_valid_ones():
@@ -653,7 +654,7 @@ def _wired(monkeypatch, **config) -> tuple[FasterWhisperBackend, _Model]:
 
 
 def test_word_assignment_splits_a_two_speaker_segment(monkeypatch, tmp_path):
-    backend, model = _wired(monkeypatch, speaker_assignment="word")
+    backend, model = _wired(monkeypatch)
 
     transcript = backend.transcribe(tmp_path / "a.wav", "a.wav")
 
@@ -665,7 +666,7 @@ def test_word_assignment_splits_a_two_speaker_segment(monkeypatch, tmp_path):
 
 
 def test_segment_assignment_keeps_the_segment_whole(monkeypatch, tmp_path):
-    backend, model = _wired(monkeypatch)
+    backend, model = _wired(monkeypatch, speaker_assignment="segment")
 
     transcript = backend.transcribe(tmp_path / "a.wav", "a.wav")
 
@@ -707,3 +708,23 @@ def test_word_assignment_splits_in_chunked_mode(monkeypatch, tmp_path):
         ("I think so.", "A", "en"),
         ("Yeah.", "B", "en"),
     ]
+
+
+def test_word_assignment_without_words_labels_each_segment_whole(monkeypatch):
+    backend = FasterWhisperBackend(diarization=True)
+    monkeypatch.setattr(
+        backend, "_diarize", lambda path: turns((0.0, 5.0, "S0"), (5.0, 10.0, "S1"))
+    )
+    transcript = Transcript(
+        source="a.wav",
+        segments=(
+            Segment(start_time=0.0, end_time=2.0, text="first"),
+            Segment(start_time=6.0, end_time=8.0, text="second"),
+        ),
+        backend=backend.name,
+        model_version="x",
+    )
+
+    result = backend._maybe_diarize(transcript, Path("a.wav"), "a.wav")
+
+    assert [s.speaker for s in result.segments] == ["S0", "S1"]

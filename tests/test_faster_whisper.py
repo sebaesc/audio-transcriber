@@ -657,15 +657,18 @@ def test_normalize_keeps_a_short_single_word(backend):
 # --- Word timings, for per-word speaker assignment ---
 
 
-def test_word_timestamps_are_requested_for_word_assignment():
-    backend = FasterWhisperBackend(diarization=True, speaker_assignment="word")
+@pytest.mark.parametrize(
+    "config",
+    [{"diarization": True}, {"diarization": True, "speaker_assignment": "word"}],
+)
+def test_word_timestamps_are_requested_for_word_assignment(config):
+    backend = FasterWhisperBackend(**config)
 
     assert backend._decode_options()["word_timestamps"] is True
 
 
 @pytest.mark.parametrize(
-    "config",
-    [{}, {"diarization": True}, {"diarization": True, "speaker_assignment": "segment"}],
+    "config", [{}, {"diarization": True, "speaker_assignment": "segment"}]
 )
 def test_word_timestamps_are_left_alone_otherwise(config):
     """They move segment boundaries, so turning them on would change output."""
