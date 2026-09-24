@@ -3,7 +3,7 @@
 **Track ID:** word-speakers_20260924
 **Type:** Feature
 **Created:** 2026-09-24
-**Status:** Draft
+**Status:** Implemented, awaiting sign-off. Default changed to `word` by Task 4.6; see plan
 
 ## Summary
 
@@ -43,20 +43,20 @@ attributed to the person who said them.
 
 ## Acceptance Criteria
 
-- [ ] `--option speaker_assignment=word` gives each word a speaker and splits segments where the
-      speaker changes; `speaker_assignment=segment` (the default) produces output byte-identical
-      to the current release
-- [ ] Setting `speaker_assignment` to a value other than the default without `diarization=true`
+- [x] `--option speaker_assignment=word` gives each word a speaker and splits segments where the
+      speaker changes; `speaker_assignment=segment` produces output byte-identical to the current
+      release (verified on `herring17`). **Deviation:** `word` became the default in Task 4.6
+- [x] Setting `speaker_assignment` to a value other than the default without `diarization=true`
       is rejected with a `BackendRequirementError`, the same way chunked-only options are
       rejected in `file` mode; an unknown value is rejected too
-- [ ] Words overlapping no speaker turn take a neighbouring word's speaker rather than `None`,
+- [x] Words overlapping no speaker turn take a neighbouring word's speaker rather than `None`,
       and a speaker change lasting a single word is not split out on its own (see Technical Notes)
-- [ ] Works with both `language_detection=file` and `language_detection=chunked`; split segments
+- [x] Works with both `language_detection=file` and `language_detection=chunked`; split segments
       keep their segment's `spoken_language`
-- [ ] The option is recorded in the manifest's resolved config
-- [ ] Both modes are scored with `evaluation --talkbank` on the four scorable recordings, the
+- [x] The option is recorded in the manifest's resolved config
+- [x] Both modes are scored with `evaluation --talkbank` on the four scorable recordings, the
       results are recorded in the plan, and the default is set from them
-- [ ] `docs/backends/faster-whisper.md` documents the option, its cost and its limits
+- [x] `docs/backends/faster-whisper.md` documents the option, its cost and its limits
 
 ## Dependencies
 

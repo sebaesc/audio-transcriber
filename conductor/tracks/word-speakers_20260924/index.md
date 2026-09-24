@@ -1,7 +1,7 @@
 # Track: Per-Word Speaker Assignment
 
 **ID:** word-speakers_20260924
-**Status:** Pending
+**Status:** Implemented, awaiting sign-off
 **Depends on:** [codeswitch-diarization_20260922](../codeswitch-diarization_20260922/index.md) (complete)
 
 ## Documents
@@ -11,8 +11,8 @@
 
 ## Progress
 
-- Phases: 0/4 complete
-- Tasks: 0/21 complete
+- Phases: 4/4 complete
+- Tasks: 21/21 complete
 
 ## Quick Links
 

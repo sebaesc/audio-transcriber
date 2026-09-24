@@ -100,38 +100,103 @@ Connect the pieces, measure both modes, and pick the default from the numbers.
 
 ### Tasks
 
-- [ ] Task 4.1: Branch `_maybe_diarize` on `speaker_assignment`, using Phase 3's functions in
+- [x] Task 4.1: Branch `_maybe_diarize` on `speaker_assignment`, using Phase 3's functions in
       `word` mode; test with fake turns and fake native segments in both detection modes
-- [ ] Task 4.2: Extend `tests/test_conformance.py` so `speaker_assignment=word` is one of the
+- [x] Task 4.2: Extend `tests/test_conformance.py` so `speaker_assignment=word` is one of the
       modes checked
-- [ ] Task 4.3: Real run over sample audio in both modes; check the transcripts by eye at a
+- [x] Task 4.3: Real run over sample audio in both modes; check the transcripts by eye at a
       known interruption
-- [ ] Task 4.4: `evaluation --talkbank` on the Bangor Miami `mixed` recordings, `segment` and
+- [x] Task 4.4: `evaluation --talkbank` on the Bangor Miami `mixed` recordings, `segment` and
       `word` modes, same seed. Record per recording: speaker `confusion`, `der`, WER and segment
       count. `maria20` is excluded from speaker scoring as before
-- [ ] Task 4.5: If `word` mode fragments output or confusion does not improve, try the smoothing
+- [x] Task 4.5: If `word` mode fragments output or confusion does not improve, try the smoothing
       threshold at one or two other values and record every result; do not tune to a single
       recording
-- [ ] Task 4.6: Decide the default. Switch to `word` only if confusion falls on the scorable
+- [x] Task 4.6: Decide the default. Switch to `word` only if confusion falls on the scorable
       recordings on average without a WER regression beyond the seed noise floor noted in
       `_DEFAULTS`. Record the decision and its numbers here
-- [ ] Task 4.7: Document `speaker_assignment` in `docs/backends/faster-whisper.md`: what it does,
+- [x] Task 4.7: Document `speaker_assignment` in `docs/backends/faster-whisper.md`: what it does,
       that it needs `diarization=true`, the extra decode cost, the measured results, and the
       limits (overlapping speech, word-timing drift, one language per split segment)
-- [ ] Task 4.8: Update the README example if the default changes
+- [x] Task 4.8: Update the README example if the default changes
 
 ### Verification
 
-- [ ] Evaluation results and the default decision recorded in this plan
+- [x] Evaluation results and the default decision recorded in this plan
+
+## Results and Decisions (2026-09-24)
+
+### Evaluation (Task 4.4)
+
+`large-v3`, seed 0, TalkBank speaker scoring on the four scorable recordings (`maria20` excluded,
+as before). `segment` columns are the existing reports from `main`
+(`baseline-talkbank.local.json`, `chunked-talkbank.local.json`). Re-running `segment` mode on
+`herring17` with this branch produced a byte-identical transcript, so those reports stand for it.
+
+| Speaker confusion | `file`, `segment` | `file`, `word` | `chunked`, `segment` | `chunked`, `word` |
+| --- | --- | --- | --- | --- |
+| `herring17` | 3.78% | 2.62% | 3.73% | 2.69% |
+| `sastre8` | 8.63% | 7.29% | 8.27% | 7.55% |
+| `zeledon14` | 5.56% | 3.62% | 4.12% | 3.58% |
+| `zeledon4` | 9.73% | 4.37% | 6.02% | 4.43% |
+| **Mean** | 6.93% | **4.48%** | 5.53% | **4.56%** |
+| DER, mean | 23.0% | 27.4% | 24.9% | 27.3% |
+| WER, mean of five | 0.377 | 0.310 | 0.343 | 0.341 |
+| Segments, five recordings | 3552 | 4695 | 3201 | 3530 |
+| Wall-clock | 1599 s | 1885 s | 1764 s | 1742 s |
+
+DER rises because `missed` rises by 3–17 points per recording: word timestamps tighten segment
+boundaries, and TalkBank's utterance times are looser. Confusion as a share of labelled speech
+(`confusion / (1 − missed)`) still fell on all four recordings in both modes, so the confusion
+gain is not speech merely moving into `missed`.
+
+### Attribution and tuning (Task 4.5)
+
+One GPU pass cached each recording's segments, words and speaker turns (`file` mode), and every
+split rule was scored from the cache. The cache reproduced the `word` report exactly on all four.
+
+| Rule | Mean confusion |
+| --- | --- |
+| Word timestamps, each segment labelled whole (control) | 4.71% |
+| **Word, fold one-word runs (shipped)** | **4.48%** |
+| Word, fold runs up to 2 words | 4.49% |
+| Word, fold runs up to 3 words | 4.53% |
+| Word, snap changes to `.?!` within 2 words | 4.51% |
+| Word, snap changes to `.?!,;:` within 1 word | 4.48% |
+| One speaker per sentence | 4.71% |
+
+**Most of the gain comes from word timestamps, not from splitting:** 6.93% → 4.71% from decoding
+with word timestamps alone, then → 4.48% from splitting, which improved 3 of 4 recordings. No
+alternative rule beat the one-word fold beyond noise, so the simplest stays. Reading the output,
+some splits land a word early or late inside a phrase ("If you have | a party."); these are small
+by time and are documented as a known limit.
+
+### Default (Task 4.6)
+
+The rule was met in both detection modes: confusion fell on all four recordings, and WER did not
+regress (`file` improved on all five, three beyond the 0.022 noise floor; `chunked` flat). **The
+default is now `word`.**
+
+### Deviations from the spec
+
+- **Default switched to `word`** (Task 4.6, as the plan allowed). The acceptance criterion that
+  the default is byte-identical to the previous release now applies to `speaker_assignment=segment`,
+  which was verified byte-identical.
+- **Validation follows the new default.** The chunked-only convention (reject a non-default value
+  the configuration would ignore) now rejects `speaker_assignment=segment` without diarization and
+  accepts `word`, the default.
+- **Word mode without words labels segments whole**, rather than failing on a length mismatch.
+- **Text fidelity (Task 3.4) held on real data:** all 3991 cached segments join back exactly from
+  their words, and none lacked word timings.
 
 ## Final Verification
 
-- [ ] All acceptance criteria met
-- [ ] `ruff check . && ruff format --check . && pytest` clean
-- [ ] `faster-whisper` doc page current
-- [ ] Manifest records `speaker_assignment`
-- [ ] A real run over sample audio produces the expected output
-- [ ] Manual sign-off recorded here
+- [x] All acceptance criteria met
+- [x] `ruff check . && ruff format --check . && pytest` clean
+- [x] `faster-whisper` doc page current
+- [x] Manifest records `speaker_assignment`
+- [x] A real run over sample audio produces the expected output
+- [ ] Manual sign-off recorded here — awaiting the user
 
 ---
 
