@@ -48,23 +48,23 @@ Keep faster-whisper's words alongside each segment inside the backend, without c
 
 ### Tasks
 
-- [ ] Task 2.1: Test that `_decode_options()` sets `word_timestamps=True` only when `diarization`
+- [x] Task 2.1: Test that `_decode_options()` sets `word_timestamps=True` only when `diarization`
       is on and `speaker_assignment=word`, and leaves the key out otherwise
-- [ ] Task 2.2: Introduce an internal word record (start, end, text) and a way for `_normalize`
+- [x] Task 2.2: Introduce an internal word record (start, end, text) and a way for `_normalize`
       to return each kept segment with its words. `Segment` is not changed. Apply the existing
       rules to words too: overlap clamping, end-of-audio clamping, words past the clamped end
       dropped, and the density drop still decided per segment
-- [ ] Task 2.3: Shift word times onto the recording's timeline in `_transcribe_chunked`, exactly
+- [x] Task 2.3: Shift word times onto the recording's timeline in `_transcribe_chunked`, exactly
       as segment times are shifted
-- [ ] Task 2.4: Test with fake native segments: words survive normalization in both modes; times
+- [x] Task 2.4: Test with fake native segments: words survive normalization in both modes; times
       are shifted in chunked mode; a hallucinated segment dropped for density takes its words
       with it; a segment overhanging the audio's end loses the words past it
-- [ ] Task 2.5: Regression test that `segment` mode output is unchanged, using the existing
+- [x] Task 2.5: Regression test that `segment` mode output is unchanged, using the existing
       normalization fixtures
 
 ### Verification
 
-- [ ] Full suite passes; no test fixture for `segment` mode needed updating
+- [x] Full suite passes; no test fixture for `segment` mode needed updating
 
 ## Phase 3: Assignment and Splitting
 
