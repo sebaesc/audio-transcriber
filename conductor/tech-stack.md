@@ -46,7 +46,8 @@ consumers need to query results.
 
 ### Additional Backend Libraries
 
-Pinned by the `core-pipeline_20260922` track; extended by `codeswitch-diarization_20260922`.
+Pinned by the `core-pipeline_20260922` track; extended by `codeswitch-diarization_20260922` and
+`elevenlabs-scribe_20260924`.
 
 **Core dependencies** — the pipeline and its CLI, nothing else:
 
@@ -67,6 +68,7 @@ Pinned by the `core-pipeline_20260922` track; extended by `codeswitch-diarizatio
 | Extra            | Library          | Version        |
 | ---------------- | ---------------- | -------------- |
 | `faster-whisper` | faster-whisper   | `>=1.0,<2.0`   |
+| `elevenlabs`     | elevenlabs (official SDK; brings httpx) | `>=2.0,<3.0` |
 | `diarization`    | pyannote.audio (brings torch), pyannote.metrics | `>=4.0,<5.0` each |
 
 **Tooling extras** — never a dependency of the core or of a backend:
@@ -329,6 +331,33 @@ citation. Using the data was the user's decision under those terms.
 
 ---
 
+### The first hosted backend: ElevenLabs Scribe v2
+
+**Date:** 2026-09-24
+**Status:** Accepted
+
+**Context:**
+Every backend so far ran locally. A hosted model is worth comparing against faster-whisper on the
+team's code-switched audio, but it uploads audio to a third party, costs money per call, and
+reports language per file only.
+
+**Decision:**
+`elevenlabs-scribe`, via the official SDK, as an optional `elevenlabs` extra. Retention on
+ElevenLabs' side is accepted: zero retention is enterprise-only, and the doc page says plainly
+that audio leaves the machine. Hosted backends are skipped by the shared conformance suite unless
+`AUDIO_TRANSCRIBER_LIVE_TESTS=1`, and are covered offline by a fake client on every run.
+Credentials for every backend resolve through one helper (`backends/credentials.py`): the config,
+then the environment, then `.env`.
+
+**Consequences:**
+
+- A key in `.env` never makes a plain `pytest` spend money or need the network
+- Live conformance for a hosted backend is a deliberate, occasional step, not part of the default gate
+- Transcripts from this backend carry one `spoken_language` per file
+- Its evaluation runs are not byte-reproducible; a repeat run measures the noise floor instead
+
+---
+
 ## Version Compatibility Matrix
 
 | Component      | Min Version | Max Version | Notes                                          |
@@ -344,3 +373,4 @@ citation. Using the data was the user's decision under those terms.
 | python-dotenv  | 1.0         | <2.0        | Core dependency; verified with 1.2.3           |
 | jiwer          | 3.0         | <5.0        | `eval` extra; verified with 4.0.0              |
 | pyarrow        | 15.0        | —           | `eval` extra; verified with 25.0.1             |
+| elevenlabs     | 2.0         | <3.0        | `elevenlabs` extra; verified with 2.68.0       |
