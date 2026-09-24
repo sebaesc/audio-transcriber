@@ -4,14 +4,14 @@
   "type": "feature",
   "status": "in_progress",
   "created": "2026-09-24T03:42:14Z",
-  "updated": "2026-09-24T19:40:00Z",
+  "updated": "2026-09-24T20:10:00Z",
   "phases": {
     "total": 4,
     "completed": 4
   },
   "tasks": {
-    "total": 19,
-    "completed": 19
+    "total": 20,
+    "completed": 20
   },
   "current_phase": 4,
   "current_task": "sign-off",
@@ -24,6 +24,7 @@
     "a5f4e93: docs(backends): measure Scribe throughput and explain the timeout",
     "f8ff85f: fix(backends): report an exhausted Scribe quota as such, not as a bad key",
     "8c21f1d: test(eval): record Scribe against faster-whisper on Bangor Miami",
-    "49ca9fe: fix(backends): close the Scribe connection after each file"
+    "49ca9fe: fix(backends): close the Scribe connection after each file",
+    "92462a2: feat(registry): name the extra to install when a built-in backend is missing"
   ]
 }

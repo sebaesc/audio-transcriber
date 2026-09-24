@@ -63,8 +63,7 @@ Make the backend selectable and able to validate itself, without transcribing ye
 - **1.6:** A missing SDK cannot reach `check_requirements()`. The module imports the SDK at the
   top, so the registry skips the backend and `--backend elevenlabs-scribe` reports "unknown
   backend", the same as faster-whisper without its extra. Naming the missing extra there needs a
-  registry change (remember why each built-in failed to import), which is outside this track.
-  Possible follow-up.
+  registry change (remember why each built-in failed to import). Done in Task 4.6.
 - **1.6:** The key is not tried against the API up front, because that would spend a request on
   every run. A wrong key fails every file with a 401 that names the key.
 
@@ -208,8 +207,21 @@ Document the backend and measure it against faster-whisper.
   records `elevenlabs-2.68.0/scribe_v2`, `timeout: 900.0` and `api_key: null`. No output file
   contains the key. Code-switched speech was transcribed in both languages, with every segment
   labelled `es`: the per-file language limit, as documented.
+- **4.6:** checked for real by blocking the `elevenlabs` import in a subprocess.
+  `--backend elevenlabs-scribe` printed `backend 'elevenlabs-scribe' is not installed: it needs
+  'elevenlabs'. Install its extra: pip install -e ".[elevenlabs]"`, exited 3 and wrote nothing.
+  One behaviour change: a built-in whose own module fails to import used to be skipped
+  silently. It is now reported as broken. Test finding: a registration check that relies on
+  re-import passes alone and fails in the full suite, since modules import once. The test reads
+  the module's classes instead.
 - **Key:** the `.env` key authenticates for speech-to-text but lacks `user_read`, so account
   endpoints such as subscription return 401. The backend does not use them.
+
+- [x] Task 4.6: Name the missing extra. Added after 4.5 at the user's request, to resolve the
+      1.6 follow-up. The registry declares each built-in's name, module and extra, and remembers
+      why each import failed. Selecting one whose extra is missing raises
+      `BackendNotInstalledError` (a subclass of `UnknownBackendError`) with the `pip install`
+      command, and the CLI exits 3. `--list-backends` notes missing built-ins on stderr
 
 ### Verification
 
