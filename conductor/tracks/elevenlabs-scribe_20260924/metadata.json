@@ -4,19 +4,22 @@
   "type": "feature",
   "status": "in_progress",
   "created": "2026-09-24T03:42:14Z",
-  "updated": "2026-09-24T03:50:22Z",
+  "updated": "2026-09-24T03:55:59Z",
   "phases": {
     "total": 4,
     "completed": 2
   },
   "tasks": {
     "total": 19,
-    "completed": 10
+    "completed": 14
   },
-  "current_phase": 3,
-  "current_task": "3.1",
+  "current_phase": 4,
+  "current_task": "4.1",
   "commits": [
     "bfafdf4: refactor(backends): share .env credential lookup across backends",
-    "69d8091: feat(backends): add elevenlabs-scribe options, key check and normalization"
+    "69d8091: feat(backends): add elevenlabs-scribe options, key check and normalization",
+    "c5569c4: feat(backends): call Scribe v2 and map API failures to per-file errors",
+    "a285b5e: test(conformance): run hosted backends live only on opt-in",
+    "98d77e4: docs(backends): document the elevenlabs-scribe backend"
   ]
 }

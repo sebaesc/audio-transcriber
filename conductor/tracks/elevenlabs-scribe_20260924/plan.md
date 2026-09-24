@@ -113,27 +113,42 @@ network.
 
 ### Tasks
 
-- [ ] Task 3.1: Implement `transcribe()`. Build the client once, with the `timeout` option and
+- [x] Task 3.1: Implement `transcribe()`. Build the client once, with the `timeout` option and
       the SDK's default retries. Call `speech_to_text.convert` with `model_id="scribe_v2"`, the
       WAV file, `timestamps_granularity="word"`, `tag_audio_events=False`, `diarize`, `num_speakers`
       (from `max_speakers`), `diarization_threshold`, `language_code`, `seed` and `temperature`.
       Omitted options are not sent
-- [ ] Task 3.2: Using a fake client, test that the request carries exactly the configured
+- [x] Task 3.2: Using a fake client, test that the request carries exactly the configured
       parameters, and that options left unset are omitted
-- [ ] Task 3.3: Test and implement error mapping. `ApiError` subclasses become
+- [x] Task 3.3: Test and implement error mapping. `ApiError` subclasses become
       `TranscriptionError` with the status and a short reason: 401 means check the key, 422 means
       a validation message, 429 means rate limited after retries. `httpx.TimeoutException`
       becomes an error naming the `timeout` option. Other transport errors become a connection
       failure. The API key never appears in a message. The pipeline continues to the next file
-- [ ] Task 3.4: Conformance. Run the shared suite against the backend with a fake client
+- [x] Task 3.4: Conformance. Run the shared suite against the backend with a fake client
       returning a canned response, on every `pytest` run. Skip the live registered configurations
       unless `AUDIO_TRANSCRIBER_LIVE_TESTS=1` is set, so a key in `.env` never makes the default
       suite call the paid API. Add `{"diarization": True}` to `_EXTRA_CONFIGS`
 
 ### Verification
 
-- [ ] `pytest` passes offline with a key present in `.env`, making no network calls
-- [ ] `AUDIO_TRANSCRIBER_LIVE_TESTS=1 pytest -k conformance` passes against the real API
+- [x] `pytest` passes offline with a key present in `.env`, making no network calls. Run with
+      `ELEVENLABS_API_KEY=sk_dummy_not_real`: the 8 hosted conformance cases skip with the opt-in
+      message, and everything else passes; ruff is clean
+- [ ] `AUDIO_TRANSCRIBER_LIVE_TESTS=1 pytest -k conformance` passes against the real API. Waiting
+      on a real key. With a dummy key, the live path reached the real endpoint and came back as a
+      clean per-file 401 `TranscriptionError` that names `ELEVENLABS_API_KEY` and does not echo the
+      key. So the SDK wiring and upload are correct as far as authentication
+
+### Notes
+
+- **3.1:** The upload is `("<name>.wav", handle, "audio/wav")`. `file_format` stays at the API
+  default (`other`): `pcm_s16le_16` expects raw PCM without a WAV header.
+- **3.3:** Messages are built from the status and body, never from `str(ApiError)`, which dumps
+  the response headers. As a safeguard, the key is scrubbed from every message.
+- **3.4:** Hosted backends are listed in `_HOSTED` in `tests/test_conformance.py`. The offline
+  contract runs in `tests/test_elevenlabs_scribe.py` (default and `diarization=true`, plus
+  silence), marked `conformance` so `pytest -k conformance` includes it.
 
 ## Phase 4: Documentation, Measured Defaults, Evaluation
 
@@ -144,12 +159,12 @@ Document the backend and measure it against faster-whisper.
 - [ ] Task 4.1: Measure the `timeout` default. Time real requests on a short clip and on the
       longest Bangor Miami recording (`sastre8`, 33.4 min), then set the default with headroom and
       record the measurement in the doc page
-- [ ] Task 4.2: Write `docs/backends/elevenlabs-scribe.md`: usage and options; the extra; the
+- [~] Task 4.2: Write `docs/backends/elevenlabs-scribe.md`: usage and options; the extra; the
       credential and `.env`; cost ($0.22/h, about $0.55 per Bangor Miami run); limits (5 GB,
       10 h, 100 ms minimum, 32 speakers); per-file language only; best-effort seed; the
       difference between `max_speakers` and pyannote's count; data retention (audio leaves the
       machine and ElevenLabs stores it; zero retention is enterprise only); errors and retries
-- [ ] Task 4.3: Update `README.md` backend list, `docs/backend-interface.md` if it lists
+- [~] Task 4.3: Update `README.md` backend list, `docs/backend-interface.md` if it lists
       backends, and `conductor/tech-stack.md` (extras table, version matrix, a decision-log entry
       on the first hosted backend covering retention and live-test gating)
 - [ ] Task 4.4: Evaluate on Bangor Miami. Run `elevenlabs-scribe` without diarization, run it
