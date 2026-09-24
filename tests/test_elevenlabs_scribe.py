@@ -611,7 +611,45 @@ def test_the_client_gets_the_key_and_the_timeout(monkeypatch, no_key, wav_file):
 
     backend.transcribe(wav_file, "a.wav")
 
+    http = built.pop("httpx_client")
     assert built == {"api_key": "sk_given", "timeout": 123.0}
+    assert http.timeout.read == 123.0
+
+
+def test_the_connection_is_closed_after_each_file(monkeypatch, no_key, wav_file):
+    """The interface has no close hook, so nothing else would ever close it."""
+    clients = []
+
+    class _Recorder:
+        def __init__(self, **kwargs):
+            clients.append(kwargs["httpx_client"])
+            self.speech_to_text = _FakeSpeechToText(_HELLO)
+
+    monkeypatch.setattr(elevenlabs_scribe, "ElevenLabs", _Recorder)
+    backend = ElevenLabsScribeBackend(api_key="sk_given")
+
+    backend.transcribe(wav_file, "a.wav")
+    backend.transcribe(wav_file, "b.wav")
+
+    assert len(clients) == 2
+    assert all(client.is_closed for client in clients)
+
+
+def test_the_connection_is_closed_when_a_file_fails(monkeypatch, no_key, wav_file):
+    clients = []
+
+    class _Recorder:
+        def __init__(self, **kwargs):
+            clients.append(kwargs["httpx_client"])
+            self.speech_to_text = _FakeSpeechToText(_api_error(503))
+
+    monkeypatch.setattr(elevenlabs_scribe, "ElevenLabs", _Recorder)
+    backend = ElevenLabsScribeBackend(api_key="sk_given")
+
+    with pytest.raises(TranscriptionError):
+        backend.transcribe(wav_file, "a.wav")
+
+    assert clients[0].is_closed
 
 
 def test_duration_falls_back_to_the_wav_header(backend, wav_file):

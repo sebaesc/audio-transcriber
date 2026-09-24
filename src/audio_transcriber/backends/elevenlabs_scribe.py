@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import json
 import wave
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any
@@ -183,6 +185,8 @@ class ElevenLabsScribeBackend(TranscriptionBackend):
         self._reject_unsupported(config)
         super().__init__(**{**_DEFAULTS, **config})
         self._api_key: str | None = None
+        # Set only by tests, to stand in for the SDK. A real client is opened
+        # per file instead; see `_session`.
         self._client: Any = None
         if self.config["diarization"]:
             # Declared per instance, as faster-whisper does: a consumer reading
@@ -299,9 +303,8 @@ class ElevenLabsScribeBackend(TranscriptionBackend):
         Raises:
             TranscriptionError: If this file cannot be transcribed.
         """
-        client = self._client_for_run()
         try:
-            with audio_path.open("rb") as audio:
+            with self._session() as client, audio_path.open("rb") as audio:
                 response = client.speech_to_text.convert(
                     file=(audio_path.name, audio, "audio/wav"), **self._request()
                 )
@@ -319,15 +322,22 @@ class ElevenLabsScribeBackend(TranscriptionBackend):
             ) from error
         return self._normalize(response, source, _wav_duration(audio_path))
 
-    def _client_for_run(self) -> Any:
-        """Return the API client, built once with the key and the timeout."""
-        if self._client is None:
-            if self._api_key is None:
-                self.check_requirements()
-            self._client = ElevenLabs(
-                api_key=self._api_key, timeout=float(self.config["timeout"])
-            )
-        return self._client
+    @contextmanager
+    def _session(self) -> Iterator[Any]:
+        """Yield an API client whose connection is closed when the file is done.
+
+        The backend interface has no close hook, so a client kept for the whole
+        run would leak its connection. One upload per file means reusing a
+        connection saves nothing.
+        """
+        if self._client is not None:
+            yield self._client
+            return
+        if self._api_key is None:
+            self.check_requirements()
+        timeout = float(self.config["timeout"])
+        with httpx.Client(timeout=timeout) as http:
+            yield ElevenLabs(api_key=self._api_key, timeout=timeout, httpx_client=http)
 
     def _request(self) -> dict[str, Any]:
         """Return the request parameters, built from the config.
