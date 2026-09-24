@@ -15,7 +15,7 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
-| `[ ]` | [word-speakers_20260924](./tracks/word-speakers_20260924/index.md) | Per-Word Speaker Assignment | 2026-09-24 | 2026-09-24 |
+| `[~]` | [word-speakers_20260924](./tracks/word-speakers_20260924/index.md) | Per-Word Speaker Assignment | 2026-09-24 | 2026-09-24 |
 
 <!-- Tracks registered by /conductor:new-track -->
 

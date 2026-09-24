@@ -3,7 +3,7 @@
 **Track ID:** word-speakers_20260924
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-09-24
-**Status:** [ ] Not Started
+**Status:** [~] In Progress
 
 ## Overview
 
@@ -27,19 +27,19 @@ output yet.
 
 ### Tasks
 
-- [ ] Task 1.1: Write the option tests first: default is `segment`; `word` and `segment` are
+- [x] Task 1.1: Write the option tests first: default is `segment`; `word` and `segment` are
       accepted with `diarization=true`; `speaker_assignment=word` without diarization is rejected
       with a `BackendRequirementError` naming `diarization=true`; an unknown value is rejected and
       lists the valid ones; `speaker_assignment=segment` without diarization is accepted, since
       it is the default
-- [ ] Task 1.2: Add `speaker_assignment` to `_DEFAULTS` and `_PIPELINE_OPTIONS`, and the checks
+- [x] Task 1.2: Add `speaker_assignment` to `_DEFAULTS` and `_PIPELINE_OPTIONS`, and the checks
       to `_reject_contradictions`
-- [ ] Task 1.3: Test that `effective_config()` records `speaker_assignment`, and that
+- [x] Task 1.3: Test that `effective_config()` records `speaker_assignment`, and that
       `_decode_options()` never contains it
 
 ### Verification
 
-- [ ] `pytest tests/test_faster_whisper.py` passes, and so does the full suite
+- [x] `pytest tests/test_faster_whisper.py` passes, and so does the full suite
 
 ## Phase 2: Word Timings Through Normalization
 
