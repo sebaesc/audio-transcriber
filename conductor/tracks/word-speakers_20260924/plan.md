@@ -73,26 +73,26 @@ tested without a model or pyannote.
 
 ### Tasks
 
-- [ ] Task 3.1: Write tests first for per-word assignment: each word takes
+- [x] Task 3.1: Write tests first for per-word assignment: each word takes
       `speaker_for(turns, start, end)`; a word overlapping no turn takes the previous word's
       speaker, or the next word's at the start of a segment; a segment with no word overlapping
       any turn keeps `None`
-- [ ] Task 3.2: Write tests first for smoothing: a single word whose speaker differs from both
+- [x] Task 3.2: Write tests first for smoothing: a single word whose speaker differs from both
       neighbours is folded into them; the same word at a segment edge is not folded; two
       consecutive words by the other speaker are kept as a real change. Make the threshold a
       module constant so Phase 4 can tune it
-- [ ] Task 3.3: Write tests first for splitting: one segment with a speaker change becomes two,
+- [x] Task 3.3: Write tests first for splitting: one segment with a speaker change becomes two,
       with times taken from their first and last words, text joined from their words, and the
       parent's `spoken_language`; pieces are ordered and non-overlapping; a segment with one
       speaker comes back identical to the `segment` mode result
-- [ ] Task 3.4: Write tests first for text fidelity: joining a segment's words reproduces its
+- [x] Task 3.4: Write tests first for text fidelity: joining a segment's words reproduces its
       text, including punctuation, Spanish accents and `¿`/`¡`. If faster-whisper's words do not
       reproduce the text exactly, record the deviation here and decide which one wins
-- [ ] Task 3.5: Implement assignment, smoothing and splitting to pass 3.1–3.4
+- [x] Task 3.5: Implement assignment, smoothing and splitting to pass 3.1–3.4
 
 ### Verification
 
-- [ ] `pytest tests/test_diarization.py` passes, and so does the full suite
+- [x] `pytest tests/test_diarization.py` passes, and so does the full suite
 
 ## Phase 4: Wiring, Documentation and Evaluation
 

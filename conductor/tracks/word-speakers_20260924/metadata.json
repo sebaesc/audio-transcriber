@@ -10,16 +10,17 @@
   ],
   "phases": {
     "total": 4,
-    "completed": 2
+    "completed": 3
   },
   "tasks": {
     "total": 21,
-    "completed": 8
+    "completed": 13
   },
-  "current_phase": 3,
-  "current_task": "3.1",
+  "current_phase": 4,
+  "current_task": "4.1",
   "commits": [
     "6ae345a: feat(backends): add the speaker_assignment option to faster-whisper",
-    "f1b80e8: feat(backends): carry word timings through faster-whisper normalization"
+    "f1b80e8: feat(backends): carry word timings through faster-whisper normalization",
+    "174620f: feat(backends): assign speakers per word and split segments at changes"
   ]
 }
