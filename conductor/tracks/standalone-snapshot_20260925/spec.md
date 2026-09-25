@@ -31,25 +31,26 @@ reading its internals.
 
 ## Success Criteria
 
-- [ ] `standalone/` contains `faster_whisper.py` and `elevenlabs_scribe.py`
-- [ ] Neither script imports `audio_transcriber` or any file from the repo; each runs when copied
+- [x] `standalone/` contains `transcribe_faster_whisper.py` and `transcribe_elevenlabs_scribe.py`
+      (renamed from `faster_whisper.py`, which shadows the library it imports)
+- [x] Neither script imports `audio_transcriber` or any file from the repo; each runs when copied
       alone into an empty directory
-- [ ] Each script's header lists its requirements: the `pip install` line, ffmpeg, and the
+- [x] Each script's header lists its requirements: the `pip install` line, ffmpeg, and the
       credentials it reads (`HF_TOKEN`, `ELEVENLABS_API_KEY`)
-- [ ] Each script runs with one command, `python <script> <audio-file>`, and prints a transcript as
+- [x] Each script runs with one command, `python <script> <audio-file>`, and prints a transcript as
       a JSON array of segments with exactly the five schema keys
-- [ ] Both scripts include speaker diarization, the same way their backend does in the pipeline
-- [ ] `standalone/README.md` explains the pipeline: what it does, the plug-in backend design, the
+- [x] Both scripts include speaker diarization, the same way their backend does in the pipeline
+- [x] `standalone/README.md` explains the pipeline: what it does, the plug-in backend design, the
       transcript schema, code-switching and diarization, the committed evaluation results, and how
       to run each script
-- [ ] Each script has been run for real on a short sample, and the output checked against the
+- [x] Each script has been run for real on a short sample, and the output checked against the
       schema
 
 ## Risk Assessment
 
 | Risk | Mitigation |
 | ---- | ---------- |
-| The copies drift from `src/` as the package changes | README marks the directory as a dated snapshot of a named commit; the directory is excluded from pytest and Ruff so it never blocks the main gate |
+| The copies drift from `src/` as the package changes | README marks the directory as a dated snapshot of a named commit. pytest never collects it; Ruff still lints it, since the scripts import nothing from `src/` and drift cannot break their lint |
 | Secrets end up in the upload | Keys are read from the environment only, never hard-coded; `standalone/.gitignore` ignores `.env` |
 | The live ElevenLabs run spends free-tier credits | One clip of 30–60 s; confirm with the user before the call |
 | Corpus text leaks into the document | Only the committed aggregate scores are quoted, with the corpus citation; no TalkBank or Bangor transcript text |

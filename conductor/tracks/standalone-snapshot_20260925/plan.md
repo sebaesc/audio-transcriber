@@ -94,21 +94,29 @@ Set up the directory so it can never break the main gate or leak a secret.
 
 ### Tasks
 
-- [ ] Task 4.1: What the pipeline does and why: swappable backends, one transcript schema, code-switched English-Spanish audio
-- [ ] Task 4.2: How it works: decode, backend interface, normalization, runtime schema validation, run manifest; a short diagram
-- [ ] Task 4.3: The transcript schema with a real example segment from the sample run
-- [ ] Task 4.4: Backends compared (language granularity, diarization, cost, where audio goes) and the committed evaluation results, as aggregate scores with the corpus citation
-- [ ] Task 4.5: How to run each script, and what they simplify compared with the package; the snapshot's date and commit
+- [x] Task 4.1: What the pipeline does and why: swappable backends, one transcript schema, code-switched English-Spanish audio
+- [x] Task 4.2: How it works: decode, backend interface, normalization, runtime schema validation, run manifest; a short diagram
+- [x] Task 4.3: The transcript schema with a real example segment from the sample run
+  - **Deviation:** the example has invented text, marked as such. The sample clips are corpus
+    audio, and the spec keeps corpus transcript text out. The real runs are described by their
+    counts (segments, speakers, language spans) instead.
+- [x] Task 4.4: Backends compared (language granularity, diarization, cost, where audio goes) and the committed evaluation results, as aggregate scores with the corpus citation
+- [x] Task 4.5: How to run each script, and what they simplify compared with the package; the snapshot's date and commit
 
 ### Verification
 
-- [ ] The README contains no corpus transcript text, and every command in it has been run as written
+- [x] The README contains no corpus transcript text, and every command in it has been run as written
+  - No four-word run of any sample transcript appears in the README.
+  - Run verbatim in a clean copy of the directory: both venv setups, the faster-whisper run with
+    and without diarization (8 segments, 2 speakers, `es en es`). The Scribe run was checked up to
+    the missing-key message and `--help` rather than spending another ~50 credits on the call
+    Phase 3 already made the same way.
 
 ## Final Verification
 
-- [ ] All success criteria in spec.md met
-- [ ] `pytest`, `ruff check .` and `ruff format --check .` pass
-- [ ] No secrets in `standalone/` (`git grep` for key patterns)
+- [x] All success criteria in spec.md met
+- [x] `pytest`, `ruff check .` and `ruff format --check .` pass (540 passed, 9 skipped)
+- [x] No secrets in `standalone/`: neither `.env` value appears, and nothing key-shaped
 - [ ] Manual sign-off recorded in this plan
 
 ---

@@ -1,7 +1,7 @@
 # Track: Standalone Backend Scripts and Pipeline Overview
 
 **ID:** standalone-snapshot_20260925
-**Status:** Pending
+**Status:** In Progress — awaiting sign-off
 
 ## Documents
 
@@ -10,8 +10,8 @@
 
 ## Progress
 
-- Phases: 0/4 complete
-- Tasks: 0/18 complete
+- Phases: 4/4 complete
+- Tasks: 18/18 complete
 
 ## Quick Links
 
