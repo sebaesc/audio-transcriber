@@ -65,19 +65,28 @@ Set up the directory so it can never break the main gate or leak a secret.
 
 ## Phase 3: ElevenLabs Scribe Script
 
-`standalone/elevenlabs_scribe.py`, condensed from `backends/elevenlabs_scribe.py`.
+`standalone/transcribe_elevenlabs_scribe.py`, condensed from `backends/elevenlabs_scribe.py`.
 
 ### Tasks
 
-- [ ] Task 3.1: Header docstring with requirements (`pip install elevenlabs`, ffmpeg, `ELEVENLABS_API_KEY`, the note that audio leaves the machine) and the run command
-- [ ] Task 3.2: Decode with ffmpeg, then call Scribe v2 through the SDK with `diarize=True`, reading the key from the environment only
-- [ ] Task 3.3: Group words into segments at speaker changes and pauses, with the file language on every segment
-- [ ] Task 3.4: Clear messages for a missing key, a rejected key and an exhausted quota
-- [ ] Task 3.5: Confirm with the user before spending credits, then run it once live on the sample clip
+- [x] Task 3.1: Header docstring with requirements (`pip install elevenlabs`, ffmpeg, `ELEVENLABS_API_KEY`, the note that audio leaves the machine) and the run command
+- [x] Task 3.2: Decode with ffmpeg, then call Scribe v2 through the SDK with `diarize=True`, reading the key from the environment only
+- [x] Task 3.3: Group words into segments at speaker changes and pauses, with the file language on every segment
+- [x] Task 3.4: Clear messages for a missing key, a rejected key and an exhausted quota
+- [x] Task 3.5: Confirm with the user before spending credits, then run it once live on the sample clip
 
 ### Verification
 
-- [ ] Copied alone into an empty directory with a fresh venv, the script prints valid five-key segments with speaker labels
+- [x] Copied alone into an empty directory with a fresh venv, the script prints valid five-key segments with speaker labels
+  - Offline: `segments()` matches the package's `_normalize` on 3,000 random responses built with
+    the SDK's own model (10,794 segments), covering spacing, audio events, missing timings,
+    overlaps and audio past the end. Missing-key, quota and rejected-key messages checked.
+  - Live, approved by the user: one call on the `zeledon4` clip, 2.8 s, about 50 credits. 18
+    segments, `speaker_0`/`speaker_1`, all `es`. Identical to the package's normalization of the
+    same response. faster-whisper put English at about 16–32 s of the same clip, which is Scribe's
+    one-language-per-file limit as the backend doc describes it.
+  - The language table is cut to English and Spanish; other codes pass through as Scribe sends
+    them. Every other behaviour matches the backend.
 
 ## Phase 4: Pipeline Document
 
