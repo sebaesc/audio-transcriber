@@ -1,0 +1,22 @@
+# This directory is meant to be copied out of the repo and uploaded on its own,
+# so it carries its own ignores rather than relying on the repo root's.
+
+# Credentials
+.env
+.env.*
+
+# Transcripts the scripts print, when redirected into a file
+*.json
+
+# Audio
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+*.opus
+*.mp4
+
+# Python
+__pycache__/
+.venv/
