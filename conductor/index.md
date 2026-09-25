@@ -40,7 +40,7 @@ A modular audio transcription pipeline with swappable model backends.
 | [Default Whisper Model to large-v3](./tracks/default-large-v3_20260923/index.md) | Complete | Low | [spec](./tracks/default-large-v3_20260923/spec.md) | [plan](./tracks/default-large-v3_20260923/plan.md) |
 | [Per-Word Speaker Assignment](./tracks/word-speakers_20260924/index.md) | Complete | Medium | [spec](./tracks/word-speakers_20260924/spec.md) | [plan](./tracks/word-speakers_20260924/plan.md) |
 | [ElevenLabs Scribe v2 Backend](./tracks/elevenlabs-scribe_20260924/index.md) | Complete | Medium | [spec](./tracks/elevenlabs-scribe_20260924/spec.md) | [plan](./tracks/elevenlabs-scribe_20260924/plan.md) |
-| [Standalone Backend Scripts and Pipeline Overview](./tracks/standalone-snapshot_20260925/index.md) | In Progress | Medium | [spec](./tracks/standalone-snapshot_20260925/spec.md) | [plan](./tracks/standalone-snapshot_20260925/plan.md) |
+| [Standalone Backend Scripts and Pipeline Overview](./tracks/standalone-snapshot_20260925/index.md) | Complete | Medium | [spec](./tracks/standalone-snapshot_20260925/spec.md) | [plan](./tracks/standalone-snapshot_20260925/plan.md) |
 
 ## Recent Activity
 
@@ -59,6 +59,7 @@ A modular audio transcription pipeline with swappable model backends.
 | 2026-09-24 | elevenlabs-scribe_20260924 | Track created (4 phases, 19 tasks) |
 | 2026-09-24 | elevenlabs-scribe_20260924 | Track complete (4 phases, 20 tasks, all gates passed; evaluation scored 3 of 5 recordings, free-tier quota) |
 | 2026-09-25 | standalone-snapshot_20260925 | Track created (4 phases, 18 tasks) |
+| 2026-09-25 | standalone-snapshot_20260925 | Track complete (4 phases, 18 tasks, all gates passed); merged into `main` |
 
 ## Project Status
 

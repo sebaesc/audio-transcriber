@@ -3,7 +3,7 @@
 **Track ID:** standalone-snapshot_20260925
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-09-25
-**Status:** [~] In Progress
+**Status:** [x] Complete
 
 ## Overview
 
@@ -117,7 +117,7 @@ Set up the directory so it can never break the main gate or leak a secret.
 - [x] All success criteria in spec.md met
 - [x] `pytest`, `ruff check .` and `ruff format --check .` pass (540 passed, 9 skipped)
 - [x] No secrets in `standalone/`: neither `.env` value appears, and nothing key-shaped
-- [ ] Manual sign-off recorded in this plan
+- [x] Manual sign-off recorded in this plan: approved by Sebastian Escuder, 2026-09-25
 
 ---
 
