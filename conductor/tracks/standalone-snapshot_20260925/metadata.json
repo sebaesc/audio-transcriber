@@ -1,0 +1,16 @@
+{
+  "id": "standalone-snapshot_20260925",
+  "title": "Standalone Backend Scripts and Pipeline Overview",
+  "type": "chore",
+  "status": "pending",
+  "created": "2026-09-25T14:01:03Z",
+  "updated": "2026-09-25T14:01:03Z",
+  "phases": {
+    "total": 4,
+    "completed": 0
+  },
+  "tasks": {
+    "total": 18,
+    "completed": 0
+  }
+}
