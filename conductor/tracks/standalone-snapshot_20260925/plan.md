@@ -1,0 +1,124 @@
+# Implementation Plan: Standalone Backend Scripts and Pipeline Overview
+
+**Track ID:** standalone-snapshot_20260925
+**Spec:** [spec.md](./spec.md)
+**Created:** 2026-09-25
+**Status:** [x] Complete
+
+## Overview
+
+Build `standalone/` as a detached snapshot: one script per backend, condensed from the backend
+module it mirrors, and a README explaining the pipeline. Nothing under `src/` changes. The
+scripts are verified by a real run, not by the test suite.
+
+## Phase 1: Directory and Guardrails
+
+Set up the directory so it can never break the main gate or leak a secret.
+
+### Tasks
+
+- [x] Task 1.1: Create `standalone/` with a `.gitignore` covering `.env`, `*.json` output and audio files
+- [x] Task 1.2: Exclude `standalone/` from pytest collection and Ruff in `pyproject.toml`
+  - **Deviation:** no change needed for pytest, since `testpaths = ["tests"]` never collects
+    `standalone/`. Ruff is deliberately kept on: the scripts import nothing from `src/`, so drift
+    cannot break their lint, and lint-clean scripts are the better thing to hand over.
+- [x] Task 1.3: Prepare a 30–60 s two-speaker, code-switched sample clip locally, uncommitted, to run both scripts on
+  - 45 s of Bangor Miami `herring17` from 2:25, chosen from the earlier `word-chunked` eval output
+    as the window with the most language switches between two speakers. Kept in the session
+    scratchpad, never in the repo.
+  - pyannote found only one speaker in that clip, in the package too, so a second clip was added:
+    the first 45 s of `zeledon4`, with two speakers and three language spans. It is the sample
+    for everything after Phase 1.
+
+### Verification
+
+- [ ] `pytest` and `ruff check . && ruff format --check .` pass unchanged with `standalone/` present
+
+## Phase 2: faster-whisper Script
+
+`standalone/transcribe_faster_whisper.py`, condensed from `backends/faster_whisper.py`, `chunking.py`,
+`diarization.py` and `audio.py`.
+
+### Tasks
+
+- [x] Task 2.1: Header docstring with requirements (`pip install faster-whisper pyannote.audio`, ffmpeg, `HF_TOKEN` and the Hugging Face gate, GPU optional) and the run command
+- [x] Task 2.2: ffmpeg decode to 16 kHz mono float32, with a clear message when ffmpeg is missing
+- [x] Task 2.3: Transcription with `large-v3`, CUDA when available, else CPU `int8`; seeded decoding
+- [x] Task 2.4: Chunked language detection limited to English and Spanish: VAD chunks of at most 15 s, a 0.5 threshold falling back to the file language, and agreeing neighbours merged
+- [x] Task 2.5: pyannote `speaker-diarization-community-1` with speakers assigned per word; a `--no-diarization` flag that sets `speaker` to `null`
+- [x] Task 2.6: Emit the five-key segment array to stdout, with logs on stderr; comments mark where the full backend does more
+
+### Verification
+
+- [x] Copied alone into an empty directory with a fresh venv, the script runs on the sample and prints valid five-key segments, with both languages and two speakers where the audio has them
+  - **Deviation:** renamed from `faster_whisper.py`, which shadows the `faster_whisper` library
+    and failed on import in the isolated run. Both scripts are now `transcribe_<backend>.py`.
+  - Output is identical to the package's (`--option diarization=true
+    --option language_detection=chunked --option 'languages=["en","es"]'`) on both clips: same
+    text, times to the millisecond, languages and speakers. The first isolated run was not
+    identical: decoding to float32 directly, instead of through 16-bit PCM as the pipeline does,
+    moved one chunk's detection from 0.514 to 0.474, across the 0.5 threshold. The decode now
+    matches the pipeline's sample for sample.
+  - `zeledon4` clip: 8 segments, `SPEAKER_00`/`SPEAKER_01`, spans `es en es`, 24 s on the RTX
+    3060. `--no-diarization` gives `speaker: null` without `HF_TOKEN`; without the token and
+    the flag, it exits before transcribing, naming the gate page.
+
+## Phase 3: ElevenLabs Scribe Script
+
+`standalone/transcribe_elevenlabs_scribe.py`, condensed from `backends/elevenlabs_scribe.py`.
+
+### Tasks
+
+- [x] Task 3.1: Header docstring with requirements (`pip install elevenlabs`, ffmpeg, `ELEVENLABS_API_KEY`, the note that audio leaves the machine) and the run command
+- [x] Task 3.2: Decode with ffmpeg, then call Scribe v2 through the SDK with `diarize=True`, reading the key from the environment only
+- [x] Task 3.3: Group words into segments at speaker changes and pauses, with the file language on every segment
+- [x] Task 3.4: Clear messages for a missing key, a rejected key and an exhausted quota
+- [x] Task 3.5: Confirm with the user before spending credits, then run it once live on the sample clip
+
+### Verification
+
+- [x] Copied alone into an empty directory with a fresh venv, the script prints valid five-key segments with speaker labels
+  - Offline: `segments()` matches the package's `_normalize` on 3,000 random responses built with
+    the SDK's own model (10,794 segments), covering spacing, audio events, missing timings,
+    overlaps and audio past the end. Missing-key, quota and rejected-key messages checked.
+  - Live, approved by the user: one call on the `zeledon4` clip, 2.8 s, about 50 credits. 18
+    segments, `speaker_0`/`speaker_1`, all `es`. Identical to the package's normalization of the
+    same response. faster-whisper put English at about 16–32 s of the same clip, which is Scribe's
+    one-language-per-file limit as the backend doc describes it.
+  - The language table is cut to English and Spanish; other codes pass through as Scribe sends
+    them. Every other behaviour matches the backend.
+
+## Phase 4: Pipeline Document
+
+`standalone/README.md`.
+
+### Tasks
+
+- [x] Task 4.1: What the pipeline does and why: swappable backends, one transcript schema, code-switched English-Spanish audio
+- [x] Task 4.2: How it works: decode, backend interface, normalization, runtime schema validation, run manifest; a short diagram
+- [x] Task 4.3: The transcript schema with a real example segment from the sample run
+  - **Deviation:** the example has invented text, marked as such. The sample clips are corpus
+    audio, and the spec keeps corpus transcript text out. The real runs are described by their
+    counts (segments, speakers, language spans) instead.
+- [x] Task 4.4: Backends compared (language granularity, diarization, cost, where audio goes) and the committed evaluation results, as aggregate scores with the corpus citation
+- [x] Task 4.5: How to run each script, and what they simplify compared with the package; the snapshot's date and commit
+
+### Verification
+
+- [x] The README contains no corpus transcript text, and every command in it has been run as written
+  - No four-word run of any sample transcript appears in the README.
+  - Run verbatim in a clean copy of the directory: both venv setups, the faster-whisper run with
+    and without diarization (8 segments, 2 speakers, `es en es`). The Scribe run was checked up to
+    the missing-key message and `--help` rather than spending another ~50 credits on the call
+    Phase 3 already made the same way.
+
+## Final Verification
+
+- [x] All success criteria in spec.md met
+- [x] `pytest`, `ruff check .` and `ruff format --check .` pass (540 passed, 9 skipped)
+- [x] No secrets in `standalone/`: neither `.env` value appears, and nothing key-shaped
+- [x] Manual sign-off recorded in this plan: approved by Sebastian Escuder, 2026-09-25
+
+---
+
+_Generated by Conductor. Tasks will be marked [~] in progress and [x] complete._

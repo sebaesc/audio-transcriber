@@ -29,6 +29,7 @@ represents a distinct body of work with its own spec and implementation plan.
 | `[x]` | [default-large-v3_20260923](./tracks/default-large-v3_20260923/index.md) | Default Whisper Model to large-v3 | 2026-09-23 | 2026-09-23 |
 | `[x]` | [word-speakers_20260924](./tracks/word-speakers_20260924/index.md) | Per-Word Speaker Assignment | 2026-09-24 | 2026-09-24 |
 | `[x]` | [elevenlabs-scribe_20260924](./tracks/elevenlabs-scribe_20260924/index.md) | ElevenLabs Scribe v2 Backend | 2026-09-24 | 2026-09-24 |
+| `[x]` | [standalone-snapshot_20260925](./tracks/standalone-snapshot_20260925/index.md) | Standalone Backend Scripts and Pipeline Overview | 2026-09-25 | 2026-09-25 |
 
 <!-- Move completed tracks here -->
 

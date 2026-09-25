@@ -1,0 +1,27 @@
+{
+  "id": "standalone-snapshot_20260925",
+  "title": "Standalone Backend Scripts and Pipeline Overview",
+  "type": "chore",
+  "status": "complete",
+  "created": "2026-09-25T14:01:03Z",
+  "updated": "2026-09-25T14:40:41Z",
+  "phases": {
+    "total": 4,
+    "completed": 4
+  },
+  "tasks": {
+    "total": 18,
+    "completed": 18
+  },
+  "current_phase": 4,
+  "current_task": null,
+  "commits": [
+    "e5bcf05: chore(conductor): add the standalone backend scripts track [standalone-snapshot_20260925]",
+    "724d4cd: chore(standalone): add the standalone directory with its own ignores [standalone-snapshot_20260925]",
+    "fb2c07b: feat(standalone): add a self-contained faster-whisper script with diarization [standalone-snapshot_20260925]",
+    "a0ca6ae: chore(plan): mark tasks 1.1 to 2.6 complete [standalone-snapshot_20260925]",
+    "b0f3cc6: feat(standalone): add a self-contained ElevenLabs Scribe v2 script with diarization [standalone-snapshot_20260925]",
+    "e50d798: chore(plan): mark tasks 3.1 to 3.5 complete [standalone-snapshot_20260925]",
+    "8e6be45: docs(standalone): explain the pipeline and how to run each script [standalone-snapshot_20260925]"
+  ]
+}
