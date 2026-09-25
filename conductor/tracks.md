@@ -15,7 +15,7 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
-| `[ ]` | [standalone-snapshot_20260925](./tracks/standalone-snapshot_20260925/index.md) | Standalone Backend Scripts and Pipeline Overview | 2026-09-25 | 2026-09-25 |
+| `[~]` | [standalone-snapshot_20260925](./tracks/standalone-snapshot_20260925/index.md) | Standalone Backend Scripts and Pipeline Overview | 2026-09-25 | 2026-09-25 |
 
 <!-- Tracks registered by /conductor:new-track -->
 
