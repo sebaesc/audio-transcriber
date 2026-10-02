@@ -23,8 +23,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from audio_transcriber import __version__, audio, registry
+from audio_transcriber import __version__, audio, pipeline, registry
 from audio_transcriber.backend import TranscriptionBackend
+from audio_transcriber.errors import ConfigError
 from audio_transcriber.evaluation import corpus, talkbank
 from audio_transcriber.evaluation.annotation import (
     Utterance,
@@ -35,13 +36,16 @@ from audio_transcriber.evaluation.annotation import (
 from audio_transcriber.evaluation.reference import GroundTruth, Pair, load_reference
 from audio_transcriber.evaluation.scoring import Comparison, Score, score
 from audio_transcriber.evaluation.text import clean_reference, normalize
-from audio_transcriber.manifest import utc_now
+from audio_transcriber.manifest import Manifest, utc_now
 from audio_transcriber.schema import Segment, Transcript
 
 _logger = logging.getLogger(__name__)
 
 #: What a report scored against a user's ground truth names as its corpus.
 CUSTOM_DATASET = "custom ground truth"
+
+#: Backend and model version of a transcript whose run left no manifest.
+UNKNOWN = "unknown"
 
 
 @dataclass(slots=True)
@@ -342,6 +346,98 @@ def evaluate_custom(
             )
 
     return report
+
+
+def score_transcripts(
+    label: str,
+    pairs: list[Pair],
+    transcript_dir: Path | None = None,
+) -> Report:
+    """Score transcripts the pipeline already wrote, without running a backend.
+
+    This is how a hosted backend's output is re-scored without paying for it
+    again. The scores are the ones `evaluate_custom` gives the same transcript.
+
+    The backend, model version and config come from the run's `manifest.json`
+    beside the transcripts, when there is one, and are `unknown` otherwise. No
+    audio is read, so a recording's duration is taken as the later of the last
+    reference and transcript speech, which scores the same: nothing after it
+    is speech on either side.
+
+    Args:
+        label: A name for this scoring.
+        pairs: Each transcript file with its ground-truth file.
+        transcript_dir: Where to write each hypothesis and its normalized
+            reference. None skips them.
+
+    Returns:
+        The report, shaped like any other so `compare` accepts it.
+
+    Raises:
+        ConfigError: If a transcript, ground truth or manifest is invalid.
+            Everything is read before anything is scored.
+    """
+    references = {pair.name: load_reference(pair.reference) for pair in pairs}
+    transcripts = {pair.name: _load_transcript(pair.media) for pair in pairs}
+    manifest = _find_manifest(pairs)
+
+    report = Report(
+        label=label,
+        backend=manifest.backend if manifest else UNKNOWN,
+        model_version=(manifest.model_version or UNKNOWN) if manifest else UNKNOWN,
+        config=manifest.config if manifest else {},
+        ground_truth=True,
+    )
+    for pair in pairs:
+        transcript, reference = transcripts[pair.name], references[pair.name]
+        last_speech = max(
+            (segment.end_time for segment in transcript.segments), default=0.0
+        )
+        result = RecordingResult(
+            name=pair.name, duration_s=max(reference.end_time, last_speech)
+        )
+        report.results.append(result)
+        _score_against(result, transcript, reference, label, transcript_dir)
+    return report
+
+
+def _load_transcript(path: Path) -> Transcript:
+    """Read a transcript file the pipeline wrote.
+
+    Raises:
+        ConfigError: If it is not valid JSON or not a valid transcript.
+    """
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return Transcript.from_json_data(data, source=str(path))
+    except (OSError, ValueError, TypeError) as error:
+        # SchemaError and JSONDecodeError are both ValueErrors.
+        raise ConfigError(f"cannot score transcript {path}: {error}") from error
+
+
+def _find_manifest(pairs: list[Pair]) -> Manifest | None:
+    """Read the manifest of the run the transcripts came from, if there is one.
+
+    Read only: the manifest is the pipeline's record, not the harness's.
+
+    Raises:
+        ConfigError: If the transcripts come from more than one folder, or the
+            manifest there cannot be read.
+    """
+    folders = {pair.media.parent for pair in pairs}
+    if len(folders) != 1:
+        raise ConfigError(
+            "transcripts to score together must come from one run folder, got "
+            f"{', '.join(sorted(map(str, folders)))}"
+        )
+    path = folders.pop() / pipeline.MANIFEST_FILENAME
+    if not path.is_file():
+        _logger.info("no %s beside the transcripts; backend unknown", path.name)
+        return None
+    try:
+        return Manifest.from_dict(json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise ConfigError(f"cannot read run manifest {path}: {error}") from error
 
 
 def _ready_backend(

@@ -31,6 +31,9 @@ from audio_transcriber.schema import SchemaError, Segment
 
 REFERENCE_SUFFIX = ".json"
 
+#: Files a pipeline run writes beside its transcripts that are not transcripts.
+_RUN_FILES = frozenset({"manifest.json", "errors.json"})
+
 
 @dataclass(frozen=True, slots=True)
 class GroundTruth:
@@ -260,6 +263,31 @@ def discover_pairs(
             Pair(name=name, media=found_media[0], reference=found_reference[0])
         )
     return pairs
+
+
+def transcript_pairs(
+    directory: Path, reference_directory: Path, only: list[str] | None = None
+) -> list[Pair]:
+    """Pair each transcript in a pipeline run's folder with its ground truth.
+
+    The pipeline names a transcript after its recording, so `standup.json` in
+    the run folder pairs with `standup.json` in the ground-truth folder. The
+    run's `manifest.json` and `errors.json` are not transcripts. Anything else
+    in the ground-truth folder, such as the recordings, is ignored.
+
+    Raises:
+        ConfigError: As `discover_pairs`.
+    """
+    return discover_pairs(
+        directory,
+        only=only,
+        reference_directory=reference_directory,
+        is_media=_is_transcript,
+    )
+
+
+def _is_transcript(path: Path) -> bool:
+    return path.suffix.lower() == REFERENCE_SUFFIX and path.name not in _RUN_FILES
 
 
 def _by_name(paths) -> dict[str, list[Path]]:
