@@ -92,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def _load(path: Path) -> Report:
     """Rebuild enough of a report from JSON to compare it."""
-    from audio_transcriber.evaluation.runner import RecordingResult
+    from audio_transcriber.evaluation.runner import CUSTOM_DATASET, RecordingResult
     from audio_transcriber.evaluation.scoring import Score
 
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -102,6 +102,7 @@ def _load(path: Path) -> Report:
         model_version=data.get("model_version", ""),
         config=data.get("config", {}),
         created_at=data.get("created_at", ""),
+        ground_truth=data.get("corpus", {}).get("dataset") == CUSTOM_DATASET,
     )
     for item in data["recordings"]:
         raw = item.get("score")
@@ -125,7 +126,8 @@ def _load(path: Path) -> Report:
                 )
                 if raw
                 else None,
-                talkbank=item.get("talkbank"),
+                annotation=item.get(report.annotation_key),
+                reference=item.get("reference"),
                 error=item.get("error"),
             )
         )

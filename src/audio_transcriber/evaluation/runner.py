@@ -1,8 +1,13 @@
-"""Running an evaluation over the reference corpus.
+"""Running an evaluation over the reference corpus, or the team's own audio.
 
 The runner takes a backend name and config, transcribes every recording in the
 corpus, scores each one, and writes a JSON report. Two reports can then be
 compared to judge whether a change helped.
+
+The recordings can instead be the user's own, each scored against a ground
+truth they wrote (`evaluation.reference`), or transcripts the pipeline already
+produced can be scored without running a backend at all. Either way the scores
+and the report are the same as for the corpus, so `compare` works on them.
 
 It goes through the registry and the backend interface, exactly as the pipeline
 does, so what is measured is what a run would produce.
@@ -13,22 +18,30 @@ from __future__ import annotations
 import json
 import logging
 import time
+import wave
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from audio_transcriber import __version__, audio, registry
+from audio_transcriber.backend import TranscriptionBackend
 from audio_transcriber.evaluation import corpus, talkbank
 from audio_transcriber.evaluation.annotation import (
+    Utterance,
     diarization_error,
     diarization_scorable,
     language_confusion,
 )
+from audio_transcriber.evaluation.reference import GroundTruth, Pair, load_reference
 from audio_transcriber.evaluation.scoring import Comparison, Score, score
 from audio_transcriber.evaluation.text import clean_reference, normalize
 from audio_transcriber.manifest import utc_now
+from audio_transcriber.schema import Segment, Transcript
 
 _logger = logging.getLogger(__name__)
+
+#: What a report scored against a user's ground truth names as its corpus.
+CUSTOM_DATASET = "custom ground truth"
 
 
 @dataclass(slots=True)
@@ -42,8 +55,10 @@ class RecordingResult:
         detected_languages: The distinct `spoken_language` values produced.
         segments: Number of segments in the transcript.
         score: How the transcript compared to the reference, or None if it failed.
-        talkbank: Speaker and language scores against TalkBank's annotations, or
-            None when they were not requested.
+        annotation: Speaker and language scores against timed annotations —
+            TalkBank's, or the user's ground truth — or None when there are none.
+        reference: The ground-truth file scored against, as `file` and
+            `checksum`, or None for the corpus.
         error: Why it failed, if it did.
     """
 
@@ -53,12 +68,27 @@ class RecordingResult:
     detected_languages: list[str] = field(default_factory=list)
     segments: int = 0
     score: Score | None = None
-    talkbank: dict[str, Any] | None = None
+    annotation: dict[str, Any] | None = None
+    reference: dict[str, str] | None = None
     error: str | None = None
 
-    def to_dict(self) -> dict[str, Any]:
-        """Return the result as JSON-serializable data."""
-        return {
+    @property
+    def talkbank(self) -> dict[str, Any] | None:
+        """The corpus-mode name for `annotation`."""
+        return self.annotation
+
+    @talkbank.setter
+    def talkbank(self, value: dict[str, Any] | None) -> None:
+        self.annotation = value
+
+    def to_dict(self, annotation_key: str = "talkbank") -> dict[str, Any]:
+        """Return the result as JSON-serializable data.
+
+        Args:
+            annotation_key: The key the annotation scores are written under:
+                `talkbank` for the corpus, `ground_truth` for the user's own.
+        """
+        data: dict[str, Any] = {
             "name": self.name,
             "duration_s": round(self.duration_s, 1),
             "elapsed_s": round(self.elapsed_s, 1),
@@ -68,9 +98,12 @@ class RecordingResult:
             "segments": self.segments,
             "detected_languages": self.detected_languages,
             "score": self.score.to_dict() if self.score else None,
-            "talkbank": self.talkbank,
-            "error": self.error,
+            annotation_key: self.annotation,
         }
+        if self.reference is not None:
+            data["reference"] = self.reference
+        data["error"] = self.error
+        return data
 
 
 @dataclass(slots=True)
@@ -85,6 +118,8 @@ class Report:
         results: One entry per recording.
         created_at: When the evaluation ran.
         tool_version: Version of audio-transcriber used.
+        ground_truth: Whether the recordings were scored against the user's own
+            ground truth rather than the corpus.
     """
 
     label: str
@@ -94,6 +129,12 @@ class Report:
     results: list[RecordingResult] = field(default_factory=list)
     created_at: str = field(default_factory=utc_now)
     tool_version: str = __version__
+    ground_truth: bool = False
+
+    @property
+    def annotation_key(self) -> str:
+        """Where annotation scores go in the report: named for their source."""
+        return "ground_truth" if self.ground_truth else "talkbank"
 
     @property
     def scored(self) -> list[RecordingResult]:
@@ -112,8 +153,8 @@ class Report:
         values = [getattr(item.score, attribute) for item in self.scored]
         return sum(values) / len(values) if values else 0.0
 
-    def mean_talkbank(self, section: str, key: str) -> float | None:
-        """Return the mean of a TalkBank score over recordings that have it.
+    def mean_annotation(self, section: str, key: str) -> float | None:
+        """Return the mean of an annotation score over recordings that have it.
 
         Args:
             section: `diarization` or `language`.
@@ -124,30 +165,32 @@ class Report:
             for one, is absent from any run that did not diarize.
         """
         values = [
-            item.talkbank[section][key]
+            item.annotation[section][key]
             for item in self.results
-            if item.talkbank
-            and item.talkbank.get(section)
-            and item.talkbank[section].get(key) is not None
+            if item.annotation
+            and item.annotation.get(section)
+            and item.annotation[section].get(key) is not None
         ]
         return sum(values) / len(values) if values else None
 
-    def _talkbank_summary(self) -> dict[str, Any] | None:
-        if not any(item.talkbank for item in self.results):
+    def _annotation_summary(self) -> dict[str, Any] | None:
+        if not any(item.annotation for item in self.results):
             return None
 
         def rounded(value: float | None) -> float | None:
             return None if value is None else round(value, 4)
 
         return {
-            "mean_der": rounded(self.mean_talkbank("diarization", "der")),
+            "mean_der": rounded(self.mean_annotation("diarization", "der")),
             "mean_speaker_confusion": rounded(
-                self.mean_talkbank("diarization", "confusion")
+                self.mean_annotation("diarization", "confusion")
             ),
             "mean_language_accuracy": rounded(
-                self.mean_talkbank("language", "accuracy")
+                self.mean_annotation("language", "accuracy")
             ),
-            "mean_mixed_share": rounded(self.mean_talkbank("language", "mixed_share")),
+            "mean_mixed_share": rounded(
+                self.mean_annotation("language", "mixed_share")
+            ),
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -160,14 +203,16 @@ class Report:
             "mean_coverage": round(self.mean("coverage"), 4),
             "mean_language_mix_error": round(self.mean("language_mix_error"), 4),
         }
-        corpus_info: dict[str, Any] = {
-            "dataset": corpus.DATASET,
-            "license": corpus.LICENSE,
-        }
-        talkbank_summary = self._talkbank_summary()
-        if talkbank_summary is not None:
-            summary["talkbank"] = talkbank_summary
-            corpus_info["annotations"] = talkbank.CITATION
+        corpus_info: dict[str, Any] = (
+            {"dataset": CUSTOM_DATASET}
+            if self.ground_truth
+            else {"dataset": corpus.DATASET, "license": corpus.LICENSE}
+        )
+        annotation_summary = self._annotation_summary()
+        if annotation_summary is not None:
+            summary[self.annotation_key] = annotation_summary
+            if not self.ground_truth:
+                corpus_info["annotations"] = talkbank.CITATION
         return {
             "label": self.label,
             "created_at": self.created_at,
@@ -177,7 +222,7 @@ class Report:
             "config": self.config,
             "corpus": corpus_info,
             "summary": summary,
-            "recordings": [item.to_dict() for item in self.results],
+            "recordings": [item.to_dict(self.annotation_key) for item in self.results],
         }
 
     def write(self, path: Path) -> Path:
@@ -216,9 +261,7 @@ def evaluate(
         ConfigError: If the corpus cannot be fetched.
         BackendRequirementError: If the backend is not ready to run.
     """
-    backend = registry.create(backend_name, **(backend_config or {}))
-    audio.check_ffmpeg()
-    backend.check_requirements()
+    backend = _ready_backend(backend_name, backend_config)
 
     recordings = corpus.load()
     if only:
@@ -233,74 +276,242 @@ def evaluate(
         else {}
     )
 
-    report = Report(
-        label=label,
-        backend=backend.name,
-        model_version=backend.model_version(),
-        config=_recordable(backend.effective_config()),
-    )
+    report = _report_for(backend, label)
 
     for recording in recordings:
         _logger.info(
             "evaluating %s (%.1f min)", recording.name, recording.duration_s / 60
         )
         result = RecordingResult(name=recording.name, duration_s=recording.duration_s)
-        started = time.monotonic()
-        try:
-            with audio.decoded(recording.audio_path) as decoded:
-                transcript = backend.transcribe(decoded, str(recording.audio_path))
-        except Exception as error:  # noqa: BLE001 - one recording failing is not fatal
-            result.error = f"{type(error).__name__}: {error}"
-            result.elapsed_s = time.monotonic() - started
-            report.results.append(result)
+        report.results.append(result)
+        transcript = _transcribe(backend, recording.audio_path, result)
+        if transcript is None:
             continue
 
-        result.elapsed_s = time.monotonic() - started
-        result.segments = len(transcript.segments)
-        result.detected_languages = sorted(
-            {s.spoken_language for s in transcript.segments if s.spoken_language}
-        )
+        _describe(result, transcript)
         hypothesis = normalize(transcript.text)
         result.score = score(clean_reference(recording.transcript), hypothesis)
         if recording.name in references:
-            result.talkbank = _talkbank_scores(
+            result.annotation = _talkbank_scores(
                 references[recording.name], transcript, recording.duration_s
             )
-        report.results.append(result)
-
         if transcript_dir is not None:
-            transcript_dir.mkdir(parents=True, exist_ok=True)
-            (transcript_dir / f"{recording.name}.{label}.txt").write_text(
-                hypothesis, encoding="utf-8"
-            )
-            # The segments too, not just the text: timing and density are what
-            # expose a hallucination, and the flattened text has neither.
-            (transcript_dir / f"{recording.name}.{label}.json").write_text(
-                json.dumps(transcript.to_json_data(), indent=1, ensure_ascii=False),
-                encoding="utf-8",
+            _write_hypothesis(transcript_dir, recording.name, label, transcript)
+
+    return report
+
+
+def evaluate_custom(
+    backend_name: str,
+    label: str,
+    pairs: list[Pair],
+    backend_config: dict[str, Any] | None = None,
+    transcript_dir: Path | None = None,
+) -> Report:
+    """Transcribe the user's own recordings and score them against their ground truth.
+
+    Args:
+        backend_name: Backend to evaluate, resolved through the registry.
+        label: A name for this configuration.
+        pairs: Each recording (audio or video) with its ground-truth file.
+        backend_config: Backend options.
+        transcript_dir: Where to write each hypothesis and its normalized
+            reference, so `diff` shows which words cost the WER. None skips them.
+
+    Returns:
+        The report, shaped like a corpus report so `compare` accepts it.
+
+    Raises:
+        ConfigError: If a ground truth is invalid. Every one is read before
+            anything is transcribed.
+        BackendRequirementError: If the backend is not ready to run.
+    """
+    references = {pair.name: load_reference(pair.reference) for pair in pairs}
+    backend = _ready_backend(backend_name, backend_config)
+    report = _report_for(backend, label)
+    report.ground_truth = True
+
+    for pair in pairs:
+        _logger.info("evaluating %s", pair.name)
+        result = RecordingResult(name=pair.name, duration_s=0.0)
+        report.results.append(result)
+        transcript = _transcribe(backend, pair.media, result, measure=True)
+        if transcript is not None:
+            _score_against(
+                result, transcript, references[pair.name], label, transcript_dir
             )
 
     return report
+
+
+def _ready_backend(
+    backend_name: str, backend_config: dict[str, Any] | None
+) -> TranscriptionBackend:
+    """Create a backend and check it, and ffmpeg, can run."""
+    backend = registry.create(backend_name, **(backend_config or {}))
+    audio.check_ffmpeg()
+    backend.check_requirements()
+    return backend
+
+
+def _report_for(backend: TranscriptionBackend, label: str) -> Report:
+    """Start a report recording what the backend is and how it is configured."""
+    return Report(
+        label=label,
+        backend=backend.name,
+        model_version=backend.model_version(),
+        config=_recordable(backend.effective_config()),
+    )
+
+
+def _transcribe(
+    backend: TranscriptionBackend,
+    media: Path,
+    result: RecordingResult,
+    measure: bool = False,
+) -> Transcript | None:
+    """Transcribe one recording, recording the time taken or the failure.
+
+    Args:
+        backend: The backend to run.
+        media: The recording, in any format ffmpeg reads.
+        result: Where the elapsed time, and any error, are recorded.
+        measure: Also set the result's duration from the decoded audio.
+
+    Returns:
+        The transcript, or None if it failed. One failing is not fatal.
+    """
+    started = time.monotonic()
+    try:
+        with audio.decoded(media) as decoded:
+            if measure:
+                result.duration_s = _wav_seconds(decoded)
+            transcript = backend.transcribe(decoded, str(media))
+    except Exception as error:  # noqa: BLE001 - one recording failing is not fatal
+        result.error = f"{type(error).__name__}: {error}"
+        transcript = None
+    result.elapsed_s = time.monotonic() - started
+    return transcript
+
+
+def _wav_seconds(path: Path) -> float:
+    """Return the length of a decoded WAV."""
+    with wave.open(str(path), "rb") as handle:
+        return handle.getnframes() / handle.getframerate()
+
+
+def _describe(result: RecordingResult, transcript: Transcript) -> None:
+    """Record what a transcript holds, as distinct from how it scored."""
+    result.segments = len(transcript.segments)
+    result.detected_languages = sorted(
+        {s.spoken_language for s in transcript.segments if s.spoken_language}
+    )
+
+
+def _score_against(
+    result: RecordingResult,
+    transcript: Transcript,
+    reference: GroundTruth,
+    label: str,
+    transcript_dir: Path | None,
+) -> None:
+    """Score a transcript against a user's ground truth, into `result`."""
+    _describe(result, transcript)
+    result.score = score(reference.text, normalize(transcript.text))
+    result.annotation = _ground_truth_scores(
+        reference, list(transcript.segments), result.duration_s
+    )
+    result.reference = {"file": reference.path.name, "checksum": reference.checksum}
+    if transcript_dir is not None:
+        _write_hypothesis(transcript_dir, result.name, label, transcript)
+        (transcript_dir / f"{result.name}.reference.txt").write_text(
+            reference.text, encoding="utf-8"
+        )
+
+
+def _write_hypothesis(
+    transcript_dir: Path, name: str, label: str, transcript: Transcript
+) -> None:
+    """Write the scored hypothesis, as normalized text and as segments."""
+    transcript_dir.mkdir(parents=True, exist_ok=True)
+    (transcript_dir / f"{name}.{label}.txt").write_text(
+        normalize(transcript.text), encoding="utf-8"
+    )
+    # The segments too, not just the text: timing and density are what
+    # expose a hallucination, and the flattened text has neither.
+    (transcript_dir / f"{name}.{label}.json").write_text(
+        json.dumps(transcript.to_json_data(), indent=1, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
 
 def _talkbank_scores(
     reference: talkbank.ChatTranscript, transcript: Any, duration: float
 ) -> dict[str, Any]:
     """Score one transcript's speakers and languages against TalkBank."""
-    utterances = list(reference.utterances)
-    segments = list(transcript.segments)
-    scores: dict[str, Any] = {
-        "diarization": None,
-        "language": _rounded(language_confusion(utterances, segments)),
-    }
-    if any(segment.speaker for segment in segments):
-        reason = diarization_scorable(utterances)
-        if reason:
-            scores["diarization_skipped"] = reason
-        else:
+    return _annotation_scores(
+        list(reference.utterances), list(transcript.segments), duration
+    )
+
+
+def _ground_truth_scores(
+    reference: GroundTruth, segments: list[Segment], duration: float
+) -> dict[str, Any]:
+    """Score one transcript's speakers and languages against a ground truth.
+
+    Unlike TalkBank, which always has both, a user's ground truth may label
+    neither, and a dimension it does not label is skipped with the reason.
+    """
+    return _annotation_scores(
+        reference.utterances,
+        segments,
+        duration,
+        speakers_unscorable=reference.speakers_unscorable(),
+        languages_unscorable=reference.languages_unscorable(),
+        undiarized="the transcript has no speaker labels; the run did not diarize",
+    )
+
+
+def _annotation_scores(
+    utterances: list[Utterance],
+    segments: list[Segment],
+    duration: float,
+    speakers_unscorable: str | None = None,
+    languages_unscorable: str | None = None,
+    undiarized: str | None = None,
+) -> dict[str, Any]:
+    """Score speakers and languages against timed reference utterances.
+
+    Args:
+        utterances: The reference.
+        segments: The transcript's segments.
+        duration: Length of the recording in seconds.
+        speakers_unscorable: Why the reference cannot score speakers, if so.
+        languages_unscorable: Why it cannot score languages, if so.
+        undiarized: The reason to give when the transcript has no speakers.
+            None leaves diarization absent without one, as a corpus run that
+            did not diarize always has.
+
+    Returns:
+        `diarization` and `language` scores, None where skipped, with a
+        `<dimension>_skipped` reason beside any that has one.
+    """
+    scores: dict[str, Any] = {"diarization": None, "language": None}
+    if languages_unscorable:
+        scores["language_skipped"] = languages_unscorable
+    else:
+        scores["language"] = _rounded(language_confusion(utterances, segments))
+
+    if not any(segment.speaker for segment in segments):
+        reason = speakers_unscorable or undiarized
+    else:
+        reason = speakers_unscorable or diarization_scorable(utterances)
+        if not reason:
             scores["diarization"] = _rounded(
                 diarization_error(utterances, segments, duration)
             )
+    if reason:
+        scores["diarization_skipped"] = reason
     return scores
 
 
@@ -344,8 +555,8 @@ def compare(baseline: Report, candidate: Report) -> dict[str, Any]:
         ("mean_speaker_confusion_delta", "diarization", "confusion"),
         ("mean_language_accuracy_delta", "language", "accuracy"),
     ):
-        before = baseline.mean_talkbank(section, key)
-        after = candidate.mean_talkbank(section, key)
+        before = baseline.mean_annotation(section, key)
+        after = candidate.mean_annotation(section, key)
         if before is not None and after is not None:
             talkbank_deltas[name] = round(after - before, 4)
 
