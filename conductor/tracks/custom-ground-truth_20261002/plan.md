@@ -104,16 +104,26 @@ Expose the modes on the command line, document them, and measure real audio.
 - [x] Task 4.2: `docs/evaluation.md`: writing a ground truth (with an example), both input forms,
       scoring an existing transcript, what each metric means on custom data, `en`/`es`-only language
       accuracy, overlap allowed, and where reports go (`eval/custom/`)
-- [ ] Task 4.3: Real run: one of the team's ~20 min recordings with its ground truth, on
+- [x] Task 4.3: Real run: one of the team's ~20 min recordings with its ground truth, on
       faster-whisper `large-v3`; check the scores and the reference/hypothesis diff look right
-- [ ] Task 4.4: Score the same transcript again in existing-transcript mode and confirm the scores
+- [x] Task 4.4: Score the same transcript again in existing-transcript mode and confirm the scores
       match; commit the report under `eval/custom/`
-- [ ] Task 4.5: Update `tech-stack.md` (decision log entry) and the README/pipeline overview if
+- [x] Task 4.5: Update `tech-stack.md` (decision log entry) and the README/pipeline overview if
       they describe the evaluation modes
 
 ### Verification
 
 - [ ] `ruff check . && ruff format --check . && pytest` clean; the real-run report is committed
+
+> **Real run (2026-10-02):** the 20 min clip `Level 1 1101251 Week 8 (19.53-40.09).mp4` (user's
+> choice), its `referencia.json` shifted by the clip start (1193 s) and clamped to the clip, in a
+> scratch copy outside the repo. faster-whisper `large-v3`, chunked language, diarized: WER 0.266,
+> retained 0.958, speaker confusion 0.140, language accuracy 0.998, 4.2x realtime. Re-scoring the
+> written transcript in existing-transcript mode gave identical scores. Report:
+> `eval/custom/week8-clip-large-v3.json`.
+>
+> **Deviation:** the team's ground truths write times as `"MM:SS"` strings. By the user's decision
+> the loader now also accepts `MM:SS`/`HH:MM:SS` (spec Technical Notes updated).
 
 ## Final Verification
 
