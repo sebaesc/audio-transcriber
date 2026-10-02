@@ -101,7 +101,7 @@ Expose the modes on the command line, document them, and measure real audio.
 - [x] Task 4.1: CLI tests and implementation: `--audio`/`--reference`, `--references DIR`,
       `--transcript`/`--transcripts DIR`; the three modes are mutually exclusive; `--talkbank` is
       corpus-only; clear errors and exit codes for misuse
-- [~] Task 4.2: `docs/evaluation.md`: writing a ground truth (with an example), both input forms,
+- [x] Task 4.2: `docs/evaluation.md`: writing a ground truth (with an example), both input forms,
       scoring an existing transcript, what each metric means on custom data, `en`/`es`-only language
       accuracy, overlap allowed, and where reports go (`eval/custom/`)
 - [ ] Task 4.3: Real run: one of the team's ~20 min recordings with its ground truth, on
