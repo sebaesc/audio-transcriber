@@ -78,18 +78,18 @@ Score a transcript the pipeline already wrote, with no backend run.
 
 ### Tasks
 
-- [ ] Task 3.1: Tests: single transcript + reference; a pipeline output folder matched to a
+- [x] Task 3.1: Tests: single transcript + reference; a pipeline output folder matched to a
       reference folder by name; backend/model/config read from the run manifest when present and
       marked unknown when absent; an unmatched transcript or reference is an error
-- [ ] Task 3.2: Load a transcript file through `Transcript`/`Segment` and score it with the Phase 2
+- [x] Task 3.2: Load a transcript file through `Transcript`/`Segment` and score it with the Phase 2
       scoring path, without creating a backend
-- [ ] Task 3.3: Find the run manifest beside the transcripts and take backend, model version and
+- [x] Task 3.3: Find the run manifest beside the transcripts and take backend, model version and
       config from it (read only; the manifest format is not changed)
-- [ ] Task 3.4: Duration without audio: the later of the last reference and hypothesis `end_time`
+- [x] Task 3.4: Duration without audio: the later of the last reference and hypothesis `end_time`
 
 ### Verification
 
-- [ ] Scoring an existing transcript gives the same scores as the Phase 2 run that produced it
+- [x] Scoring an existing transcript gives the same scores as the Phase 2 run that produced it
       (test with the fake backend)
 
 ## Phase 4: CLI, Documentation and a Real Run
