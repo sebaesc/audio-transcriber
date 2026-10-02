@@ -86,6 +86,38 @@ def test_a_malformed_ground_truth_names_the_file_and_the_problem(
     assert problem in str(caught.value)
 
 
+@pytest.mark.parametrize(
+    ("written", "seconds"),
+    [
+        ("19:52", 1192.0),
+        ("00:07", 7.0),
+        ("75:10", 4510.0),
+        ("1:02:03", 3723.0),
+        ("01:02:03.5", 3723.5),
+        ("12.5", 12.5),
+        (12.5, 12.5),
+    ],
+)
+def test_times_may_be_written_as_clock_times(tmp_path: Path, written, seconds):
+    """The team writes ground truth by ear, as MM:SS read off a player."""
+    segment = {"start_time": written, "end_time": 9999, "text": "hi"}
+
+    reference = load_reference(_write(tmp_path / "talk.json", [segment]))
+
+    assert reference.segments[0].start_time == pytest.approx(seconds)
+
+
+@pytest.mark.parametrize("written", ["19.52.10", "12:75", "1:60:00", "-0:05", ""])
+def test_a_time_that_is_neither_seconds_nor_a_clock_time_is_rejected(
+    tmp_path: Path, written
+):
+    segment = {"start_time": 0, "end_time": written, "text": "hi"}
+    path = _write(tmp_path / "bad.json", [segment])
+
+    with pytest.raises(ConfigError, match=r"bad\.json, segment 0: end_time"):
+        load_reference(path)
+
+
 def test_a_missing_key_is_named(tmp_path: Path):
     path = _write(tmp_path / "bad.json", [{"start_time": 0.0, "end_time": 1.0}])
 

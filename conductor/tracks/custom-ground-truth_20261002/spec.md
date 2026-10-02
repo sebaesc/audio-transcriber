@@ -92,6 +92,11 @@ Existing code only; no incomplete tracks.
   but a human ground truth may legitimately have two speakers at once, and diarization error
   handles overlap. The loader validates each segment with `Segment.from_dict` and the file as a
   whole (array, non-empty, ordering not required), not with `Transcript`.
+- **Times may be clock times.** _(Added 2026-10-02, during implementation.)_ The team's
+  ground truths are written by ear as `"MM:SS"` strings, not seconds. The loader accepts
+  seconds (numbers or numeric strings) and `MM:SS` / `HH:MM:SS` strings, optionally with
+  fractional seconds, and converts them on read; any other string is an error naming the
+  file, segment and key. Only the ground-truth loader changes, not the transcript schema.
 - **Ground truth to utterances.** Each segment becomes a timed `Utterance` (speaker,
   start, end, language), so `annotation` scores it unchanged. If `Utterance` needs to move out of
   `talkbank.py` to be shared, that is a refactor inside `evaluation/`.

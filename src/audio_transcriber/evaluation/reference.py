@@ -11,6 +11,10 @@ Each segment is validated as a `Segment`, but the file is not read as a
 have two speakers at once, and diarization error handles that. So overlap is
 allowed and order is not required.
 
+Times may be seconds, as the pipeline writes them, or clock times — `MM:SS` or
+`HH:MM:SS`, optionally with fractional seconds — as a person writes them while
+listening. Clock times are converted to seconds when read.
+
 The recordings and ground-truth files are the team's data and stay outside the
 repo. Reports record each ground truth's checksum, so a score can be traced back
 to the file it was measured against.
@@ -19,6 +23,7 @@ to the file it was measured against.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,6 +35,12 @@ from audio_transcriber.manifest import checksum_file
 from audio_transcriber.schema import SchemaError, Segment
 
 REFERENCE_SUFFIX = ".json"
+
+#: `MM:SS` or `HH:MM:SS`, seconds optionally fractional. Minutes are unbounded
+#: without hours, so an hour-long recording can be written `75:10`.
+_CLOCK = re.compile(r"^(?:(\d+):([0-5]\d):|(\d+):)([0-5]\d(?:\.\d+)?)$")
+
+_TIME_KEYS = ("start_time", "end_time")
 
 #: Files a pipeline run writes beside its transcripts that are not transcripts.
 _RUN_FILES = frozenset({"manifest.json", "errors.json"})
@@ -148,6 +159,7 @@ def load_reference(path: Path) -> GroundTruth:
                 f"start_time, end_time and text, got {type(item).__name__}."
             )
         try:
+            item = {**item, **_times_in_seconds(item)}
             segments.append(Segment.from_dict(item))
         except (SchemaError, TypeError, ValueError) as error:
             raise ConfigError(
@@ -159,6 +171,37 @@ def load_reference(path: Path) -> GroundTruth:
         checksum=checksum_file(path),
         segments=tuple(sorted(segments, key=lambda s: (s.start_time, s.end_time))),
     )
+
+
+def _times_in_seconds(item: dict) -> dict:
+    """Return a segment's times as seconds, converting any clock times.
+
+    Raises:
+        ValueError: If a time is a string that is neither a number nor a clock
+            time.
+    """
+    converted = {}
+    for key in _TIME_KEYS:
+        value = item.get(key)
+        if not isinstance(value, str):
+            continue
+        clock = _CLOCK.match(value.strip())
+        if clock:
+            hours, minutes_after_hours, minutes, seconds = clock.groups()
+            converted[key] = (
+                int(hours or 0) * 3600
+                + int(minutes_after_hours or minutes) * 60
+                + float(seconds)
+            )
+            continue
+        try:
+            converted[key] = float(value)
+        except ValueError:
+            raise ValueError(
+                f"{key} {value!r} is neither seconds nor a clock time "
+                "(MM:SS or HH:MM:SS)"
+            ) from None
+    return converted
 
 
 @dataclass(frozen=True, slots=True)

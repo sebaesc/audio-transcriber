@@ -273,7 +273,7 @@ recording, named after it (`standup.mp4` → `standup.json`).
 
 | Key | Required | Notes |
 | --- | -------- | ----- |
-| `start_time`, `end_time` | Yes | Seconds from the start of the recording. `end_time` not before `start_time` |
+| `start_time`, `end_time` | Yes | From the start of the recording: seconds (`1192.5`) or a clock time (`"19:52"`, `"1:02:03"`). `end_time` not before `start_time` |
 | `text` | Yes | What was said. Write it as spoken: punctuation, case and accents do not count |
 | `speaker` | No | Any name, used consistently. `null` or left out means unlabelled |
 | `spoken_language` | No | `en` or `es`; `mixed` for a segment that holds both. `null` or left out means unlabelled |
@@ -281,7 +281,9 @@ recording, named after it (`standup.mp4` → `standup.json`).
 - **Overlap is allowed.** Two people talking at once is two segments over the same time. A
   pipeline transcript never overlaps; a ground truth may.
 - **Order does not matter.** Segments are sorted by time when read.
-- **Times need not be exact.** Diarization forgives 0.25 s either side of each boundary.
+- **Times need not be exact.** Diarization forgives 0.25 s either side of each boundary. Times
+  written to the second, as `MM:SS` is, are coarser than that, so `missed` and `false_alarm`
+  read high; `confusion` is still the number to trust.
 - **Label speakers on every segment or none.** A segment with no speaker is speech that belongs to
   nobody, so speakers are only scored when all segments have one. Languages can be partly
   labelled: unlabelled segments are left out of language scoring.
