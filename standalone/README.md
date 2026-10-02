@@ -113,7 +113,8 @@ What the project adds around that, and these scripts leave out:
 - **A conformance suite.** Shared tests every backend must pass to prove it honours the schema.
   With a network-free fake, the hosted backend runs them on every test run.
 - **An evaluation harness.** It scores backends against a Spanish-English reference corpus (see
-  [Measured results](#measured-results)).
+  [Measured results](#measured-results)), or against a ground truth written for your own
+  recordings, including transcripts already made (see `docs/evaluation.md`).
 
 ### The transcript schema
 

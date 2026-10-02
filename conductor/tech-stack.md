@@ -370,6 +370,40 @@ stays the default where per-segment language matters. See `docs/backends/elevenl
 
 ---
 
+### Backends are also scored against the team's own ground truth
+
+**Date:** 2026-10-02
+**Status:** Accepted
+
+**Context:**
+The corpus is a fixed benchmark, but it is not the team's audio, and that audio decides which
+backend and settings to use. Re-running a hosted backend just to score it costs free-tier credits.
+
+**Decision:**
+The harness also scores against a ground truth the team writes in the pipeline's own five-key
+segment format. It can run a backend on the recordings (`--audio`/`--reference`,
+`--references DIR`) or score transcripts already made (`--transcript`, `--transcripts DIR`), with
+the backend read from the run manifest. The existing scores are reused: WER and `retained`, plus
+diarization and per-segment language when the ground truth labels them. Ground truth may overlap,
+and its times may be clock times (`MM:SS`), as the team writes them. Reports go under
+`eval/custom/` and record each ground truth's checksum. Recordings, ground truths and normalized
+reference text stay out of the repo.
+
+**Consequences:**
+
+- A hosted backend's output is scored, and re-scored, without spending credits again
+- Scores are only comparable between reports with the same ground-truth checksums
+- Times written to the second make `missed`/`false_alarm` pessimistic; `confusion` is the speaker number
+- No pipeline contract changed: the transcript schema and manifest format are untouched
+
+**Outcome (2026-10-02):** on a 20 min clip of a Level 1 class, faster-whisper `large-v3`
+(chunked language detection, diarized) scored WER 0.266, `retained` 0.958, speaker confusion
+0.140, language accuracy 0.998. Most WER is insertions: the transcript writes out every repeat of
+the children's chorus, which the ground truth writes once. Re-scoring the transcript gave
+identical scores.
+
+---
+
 ## Version Compatibility Matrix
 
 | Component      | Min Version | Max Version | Notes                                          |

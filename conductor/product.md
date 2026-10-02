@@ -16,7 +16,8 @@ it and what it requires.
 Each transcript segment carries the language actually spoken and, optionally, who spoke it. That
 matters for the team's own audio, which is mostly English with Spanish speakers who switch
 languages mid-conversation. Transcription quality is measured, not assumed: an evaluation harness
-scores backends against a Spanish-English reference corpus.
+scores backends against a Spanish-English reference corpus, and against ground truths the team
+writes for its own recordings.
 
 ## Problem Statement
 
