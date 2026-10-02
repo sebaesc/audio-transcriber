@@ -35,7 +35,7 @@ backends or settings on it.
 
 ## Acceptance Criteria
 
-- [ ] **Run a backend against a ground truth.** The evaluation CLI accepts the user's own recordings
+- [x] **Run a backend against a ground truth.** The evaluation CLI accepts the user's own recordings
       in place of the built-in corpus, in two forms:
       - a single pair: `--audio FILE --reference FILE`
       - a folder of pairs: `--references DIR`, matching `name.<audio/video ext>` to `name.json`
@@ -43,25 +43,25 @@ backends or settings on it.
       It runs the chosen backend on each recording (video's audio track decoded by ffmpeg, as in
       the pipeline) and writes a per-recording report with WER and `retained`, as the corpus mode
       does.
-- [ ] **Speakers and language from the ground truth.** If the ground truth has `speaker` labels,
+- [x] **Speakers and language from the ground truth.** If the ground truth has `speaker` labels,
       the report includes diarization error (with `confusion` broken out). If it has
       `spoken_language`, the report includes per-segment language accuracy. A dimension that has
       no labels in the ground truth (all `null` or missing) is skipped, and the report says why.
-- [ ] **Invalid ground truth fails up front.** A ground-truth file that is not a JSON array, has a
+- [x] **Invalid ground truth fails up front.** A ground-truth file that is not a JSON array, has a
       segment missing a required key, or has `end_time` before `start_time` stops the run before
       anything is transcribed. The error names the file, the segment index and the problem. A
       folder entry with audio but no `.json` (or the reverse) is reported the same way.
-- [ ] **Compare runs.** Reports from custom ground truth have the same shape as corpus reports, so
+- [x] **Compare runs.** Reports from custom ground truth have the same shape as corpus reports, so
       `--compare BASELINE CANDIDATE` compares two backends or settings recording by recording.
-- [ ] **Diff the words.** Next to each hypothesis `.txt` and `.json`, the run writes the
+- [x] **Diff the words.** Next to each hypothesis `.txt` and `.json`, the run writes the
       normalized reference text, so `diff` shows which words cost the WER.
-- [ ] **Score an existing transcript, no backend run.** Given a transcript the pipeline already
+- [x] **Score an existing transcript, no backend run.** Given a transcript the pipeline already
       wrote, either a single file (`--transcript FILE --reference FILE`) or the pipeline's
       output folder against a reference folder, the harness scores it without running a backend,
       so a hosted backend's output is scored without spending credits again. Backend, model
       version and config are taken from the run manifest when one is found, and marked unknown
       otherwise.
-- [ ] **Documented.** `docs/evaluation.md` explains how to write a ground truth (with an example),
+- [x] **Documented.** `docs/evaluation.md` explains how to write a ground truth (with an example),
       both input forms, scoring an existing transcript, and what each metric means on custom data.
 
 ## Dependencies
