@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from audio_transcriber.errors import ConfigError
+from audio_transcriber.evaluation.annotation import Utterance
 
 DOWNLOAD_URL = "https://talkbank.org/data/biling/Bangor/Miami?f=zip"
 CITATION = (
@@ -49,29 +50,6 @@ _NAME = re.compile(r"^([a-z]+)(\d+)$")
 
 #: CHAT's placeholders for speech that could not be made out.
 _UNINTELLIGIBLE = frozenset({"xxx", "yyy", "www"})
-
-
-@dataclass(frozen=True, slots=True)
-class Utterance:
-    """One reference utterance.
-
-    Attributes:
-        speaker: CHAT speaker code, e.g. `JAM`.
-        start: Start in seconds, or None when the utterance is untimed.
-        end: End in seconds, or None when the utterance is untimed.
-        language: `en`, `es`, `mixed` when it holds both, or None when it has
-            no word whose language is known.
-    """
-
-    speaker: str
-    start: float | None
-    end: float | None
-    language: str | None
-
-    @property
-    def timed(self) -> bool:
-        """Whether the utterance has a place on the recording's timeline."""
-        return self.start is not None and self.end is not None
 
 
 @dataclass(frozen=True, slots=True)
