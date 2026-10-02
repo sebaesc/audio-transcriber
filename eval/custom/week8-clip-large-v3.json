@@ -1,0 +1,115 @@
+{
+  "label": "week8-clip-large-v3",
+  "created_at": "2026-10-02T17:40:59.191850+00:00",
+  "tool_version": "0.1.0",
+  "backend": "faster-whisper",
+  "model_version": "faster-whisper-1.2.1/large-v3",
+  "config": {
+    "model": "large-v3",
+    "device": "cuda",
+    "compute_type": "default",
+    "language": null,
+    "beam_size": 5,
+    "vad_filter": true,
+    "temperature": "[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]",
+    "seed": 0,
+    "language_detection": "chunked",
+    "languages": "['en', 'es']",
+    "language_threshold": 0.5,
+    "chunk_seconds": 15.0,
+    "diarization": true,
+    "diarization_model": "pyannote/speaker-diarization-community-1",
+    "hf_token": null,
+    "num_speakers": null,
+    "min_speakers": null,
+    "max_speakers": null,
+    "speaker_assignment": "word",
+    "condition_on_previous_text": true,
+    "repetition_penalty": 1.0,
+    "no_repeat_ngram_size": 0,
+    "best_of": 5,
+    "patience": 1.0,
+    "length_penalty": 1.0,
+    "compression_ratio_threshold": 2.4,
+    "log_prob_threshold": -1.0,
+    "no_speech_threshold": 0.6,
+    "diarization_version": "pyannote.audio-4.0.7"
+  },
+  "corpus": {
+    "dataset": "custom ground truth"
+  },
+  "summary": {
+    "recordings": 1,
+    "scored": 1,
+    "mean_wer": 0.266,
+    "mean_retained": 0.9576,
+    "mean_coverage": 1.1024,
+    "mean_language_mix_error": 0.0167,
+    "ground_truth": {
+      "mean_der": 0.4824,
+      "mean_speaker_confusion": 0.1396,
+      "mean_language_accuracy": 0.9979,
+      "mean_mixed_share": 0.0
+    }
+  },
+  "recordings": [
+    {
+      "name": "Level 1 1101251 Week 8 (19.53-40.09)",
+      "duration_s": 1216.0,
+      "elapsed_s": 289.0,
+      "realtime_factor": 4.2,
+      "segments": 301,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.266,
+        "retained": 0.9576,
+        "coverage": 1.1024,
+        "language_mix_error": 0.0167,
+        "reference_spanish_share": 0.0972,
+        "hypothesis_spanish_share": 0.1139,
+        "substitutions": 117,
+        "deletions": 63,
+        "insertions": 215,
+        "hits": 1305,
+        "reference_words": 1485,
+        "hypothesis_words": 1637
+      },
+      "ground_truth": {
+        "diarization": {
+          "der": 0.4824,
+          "missed": 0.3047,
+          "false_alarm": 0.0381,
+          "confusion": 0.1396,
+          "reference_seconds": 1109.5
+        },
+        "language": {
+          "accuracy": 0.9979,
+          "recall": {
+            "en": 0.9979,
+            "es": null
+          },
+          "mixed_share": 0.0,
+          "scored_seconds": 867.444,
+          "confusion": {
+            "en": {
+              "en": 865.628,
+              "es": 1.816
+            },
+            "es": {
+              "es": 0.0
+            },
+            "mixed": {}
+          }
+        }
+      },
+      "reference": {
+        "file": "clip.json",
+        "checksum": "sha256:0890b3277194b2fb912eb5236679d7689caf475b2fb26eaef08bf7dd20955479"
+      },
+      "error": null
+    }
+  ]
+}
