@@ -1,0 +1,36 @@
+{
+  "id": "custom-ground-truth_20261002",
+  "title": "Evaluate Against a Custom Ground Truth",
+  "type": "feature",
+  "status": "complete",
+  "created": "2026-10-02T17:11:41Z",
+  "updated": "2026-10-02T21:00:00Z",
+  "phases": {
+    "total": 4,
+    "completed": 4
+  },
+  "tasks": {
+    "total": 19,
+    "completed": 19
+  },
+  "current_phase": 4,
+  "current_task": null,
+  "commits": [
+    "8369822: chore(conductor): add the custom ground-truth evaluation track [custom-ground-truth_20261002]",
+    "6e8234f: refactor(evaluation): move Utterance into annotation so any reference can build it [custom-ground-truth_20261002]",
+    "e0f3ee1: feat(evaluation): load and validate a custom ground truth and pair it with recordings [custom-ground-truth_20261002]",
+    "6e90ebc: chore(plan): mark tasks 1.1 to 1.5 complete [custom-ground-truth_20261002]",
+    "600a127: feat(evaluation): score a backend run against a custom ground truth [custom-ground-truth_20261002]",
+    "ce20f73: chore(plan): mark tasks 2.1 to 2.5 complete [custom-ground-truth_20261002]",
+    "63e1a8d: feat(evaluation): score an existing transcript against a ground truth, no backend run [custom-ground-truth_20261002]",
+    "1dd58e7: chore(plan): mark tasks 3.1 to 3.4 complete [custom-ground-truth_20261002]",
+    "df5b21c: feat(evaluation): add custom ground-truth and existing-transcript modes to the CLI [custom-ground-truth_20261002]",
+    "0607f9c: chore(plan): mark task 4.1 complete [custom-ground-truth_20261002]",
+    "f5788f0: docs(evaluation): explain scoring against a custom ground truth [custom-ground-truth_20261002]",
+    "71961c1: chore(plan): mark task 4.2 complete [custom-ground-truth_20261002]",
+    "c25020a: feat(evaluation): accept MM:SS and HH:MM:SS times in a ground truth [custom-ground-truth_20261002]",
+    "64f901f: test(evaluation): score faster-whisper large-v3 on a team recording against its ground truth [custom-ground-truth_20261002]",
+    "8ef234e: docs(conductor): record custom ground-truth scoring in tech-stack, README and product [custom-ground-truth_20261002]",
+    "04e9f35: chore(plan): mark tasks 4.2 to 4.5 complete and record the real run [custom-ground-truth_20261002]"
+  ]
+}

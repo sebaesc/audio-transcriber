@@ -149,7 +149,9 @@ Hosted backends run against a fake client by default, so a key in `.env` never t
 `pytest` into paid API calls. `AUDIO_TRANSCRIBER_LIVE_TESTS=1` runs them against the real API too.
 
 To measure whether a change improves transcription quality, run the evaluation harness against
-the Spanish-English reference corpus — see [`docs/evaluation.md`](docs/evaluation.md).
+the Spanish-English reference corpus, or against a ground truth you write for your own recordings
+(by running a backend, or by scoring a transcript the pipeline already made) — see
+[`docs/evaluation.md`](docs/evaluation.md).
 
 ## Adding a backend
 

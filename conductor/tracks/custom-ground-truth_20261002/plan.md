@@ -1,0 +1,144 @@
+# Implementation Plan: Evaluate Against a Custom Ground Truth
+
+**Track ID:** custom-ground-truth_20261002
+**Spec:** [spec.md](./spec.md)
+**Created:** 2026-10-02
+**Status:** [x] Complete
+
+## Overview
+
+Add a ground-truth loader that reads the five-key JSON array into timed reference utterances, then
+let the runner score against those instead of the Bangor Miami corpus, either by running a backend
+on the user's recording or by reading a transcript the pipeline already wrote. The existing
+`scoring` and `annotation` functions are reused unchanged; the new code is input discovery,
+validation, and wiring. Everything stays inside `evaluation/`: no change to the pipeline CLI, the
+transcript schema or the run manifest format, so no contract-approval pause is needed.
+
+## Phase 1: Ground-Truth Loading and Validation
+
+Read and validate ground-truth files, and pair them with recordings, before anything is transcribed.
+
+### Tasks
+
+- [x] Task 1.1: Tests for the ground-truth loader: valid file; overlapping segments accepted;
+      not-an-array, empty array, missing key, `end_time` before `start_time` and invalid JSON each
+      rejected with file name and segment index in the message
+- [x] Task 1.2: `evaluation/reference.py`: `load_reference(path)` validates each segment with
+      `Segment.from_dict` (not `Transcript`, so overlaps are allowed), sorts by time, and returns
+      the segments plus the file's checksum
+- [x] Task 1.3: Convert ground-truth segments into timed `Utterance`s (speaker, start, end,
+      language), and report which dimensions have labels; move `Utterance` to a shared module if
+      `talkbank.py` is the wrong home for it
+- [x] Task 1.4: Reference text: segments' `text` joined in time order and run through `normalize`
+- [x] Task 1.5: Tests and implementation for pair discovery: a single `--audio`/`--reference` pair,
+      and a folder of `name.<audio/video ext>` + `name.json`; an unpaired file on either side is an
+      error naming it; `--only` filters by name
+
+### Verification
+
+- [x] `pytest tests/evaluation` passes; every malformed fixture fails with a message that names
+      the file and the problem
+
+> **Deviation:** the suite has no `tests/evaluation/` package; evaluation tests are flat
+> `tests/test_evaluation_*.py`, so these are in `tests/test_evaluation_reference.py`. `Utterance`
+> moved to `annotation.py` (the module that scores against it); `talkbank` imports it from there.
+> A ground truth whose speakers are only partly labelled skips diarization with a reason (an
+> unlabelled stretch would be scored as nobody's speech); partly labelled languages are scored.
+
+## Phase 2: Scoring a Backend Run Against Custom Ground Truth
+
+Run a backend on each custom recording and score it with the existing metrics.
+
+### Tasks
+
+- [x] Task 2.1: Tests (fake backend, hand-written ground truth): WER/`retained` per recording;
+      diarization and language scores present when labels exist; skipped with a reason when not
+- [x] Task 2.2: Generalize `runner.evaluate` so the recordings and their references come from either
+      the corpus or a custom source, leaving corpus-mode behavior and its reports unchanged
+- [x] Task 2.3: Score speakers and language from the ground truth through `annotation`, reusing the
+      TalkBank path's skip logic and reasons; the duration comes from the decoded audio
+- [x] Task 2.4: Write the normalized reference `.txt` next to the hypothesis `.txt` and `.json`
+- [x] Task 2.5: Record each reference file's name and checksum in the report; check that
+      `compare` works on two custom-ground-truth reports (test)
+
+### Verification
+
+- [x] Existing corpus-mode tests still pass unchanged; a custom run over fixtures produces a
+      report that `compare` accepts
+
+> **Notes:** a custom report's annotation scores are under `ground_truth` (corpus reports keep
+> `talkbank`), its `corpus.dataset` is `custom ground truth`, and each recording carries
+> `reference: {file, checksum}`. `RecordingResult.talkbank` became `annotation`, with `talkbank`
+> kept as an alias so corpus code and tests are unchanged. `eval/custom/transcripts/` is
+> gitignored: the `.reference.txt` there is the team's ground-truth text.
+
+## Phase 3: Scoring an Existing Transcript
+
+Score a transcript the pipeline already wrote, with no backend run.
+
+### Tasks
+
+- [x] Task 3.1: Tests: single transcript + reference; a pipeline output folder matched to a
+      reference folder by name; backend/model/config read from the run manifest when present and
+      marked unknown when absent; an unmatched transcript or reference is an error
+- [x] Task 3.2: Load a transcript file through `Transcript`/`Segment` and score it with the Phase 2
+      scoring path, without creating a backend
+- [x] Task 3.3: Find the run manifest beside the transcripts and take backend, model version and
+      config from it (read only; the manifest format is not changed)
+- [x] Task 3.4: Duration without audio: the later of the last reference and hypothesis `end_time`
+
+### Verification
+
+- [x] Scoring an existing transcript gives the same scores as the Phase 2 run that produced it
+      (test with the fake backend)
+
+## Phase 4: CLI, Documentation and a Real Run
+
+Expose the modes on the command line, document them, and measure real audio.
+
+### Tasks
+
+- [x] Task 4.1: CLI tests and implementation: `--audio`/`--reference`, `--references DIR`,
+      `--transcript`/`--transcripts DIR`; the three modes are mutually exclusive; `--talkbank` is
+      corpus-only; clear errors and exit codes for misuse
+- [x] Task 4.2: `docs/evaluation.md`: writing a ground truth (with an example), both input forms,
+      scoring an existing transcript, what each metric means on custom data, `en`/`es`-only language
+      accuracy, overlap allowed, and where reports go (`eval/custom/`)
+- [x] Task 4.3: Real run: one of the team's ~20 min recordings with its ground truth, on
+      faster-whisper `large-v3`; check the scores and the reference/hypothesis diff look right
+- [x] Task 4.4: Score the same transcript again in existing-transcript mode and confirm the scores
+      match; commit the report under `eval/custom/`
+- [x] Task 4.5: Update `tech-stack.md` (decision log entry) and the README/pipeline overview if
+      they describe the evaluation modes
+
+### Verification
+
+- [x] `ruff check . && ruff format --check . && pytest` clean; the real-run report is committed
+
+> **Real run (2026-10-02):** the 20 min clip `Level 1 1101251 Week 8 (19.53-40.09).mp4` (user's
+> choice), its `referencia.json` shifted by the clip start (1193 s) and clamped to the clip, in a
+> scratch copy outside the repo. faster-whisper `large-v3`, chunked language, diarized: WER 0.266,
+> retained 0.958, speaker confusion 0.140, language accuracy 0.998, 4.2x realtime. Re-scoring the
+> written transcript in existing-transcript mode gave identical scores. Report:
+> `eval/custom/week8-clip-large-v3.json`.
+>
+> **Deviation:** the team's ground truths write times as `"MM:SS"` strings. By the user's decision
+> the loader now also accepts `MM:SS`/`HH:MM:SS` (spec Technical Notes updated).
+
+## Final Verification
+
+- [x] All acceptance criteria met
+- [x] Tests passing: `pytest` 418 passed, 1 skipped; `ruff check .` and `ruff format --check .` clean
+- [x] Documentation updated (`docs/evaluation.md`, `tech-stack.md`, README, `product.md`,
+      `standalone/README.md`)
+  - Verified against the code: anchors resolve; the example ground truth loads with its overlap
+    kept; the error example matches the real message; both existing-transcript commands run on
+    real data (the 2026-10-01 run of Week 8, backend read from its manifest, identical scores
+    either way); the backend-run commands parse and reach input validation; `--compare`, the
+    `git diff --word-diff` command and `--help` behave as described
+- [x] Manual sign-off recorded in this plan: approved by Sebastian Escuder, 2026-10-02
+- [x] Ready for review; merged into `main`, not archived (user's decision)
+
+---
+
+_Generated by Conductor. Tasks will be marked [~] in progress and [x] complete._

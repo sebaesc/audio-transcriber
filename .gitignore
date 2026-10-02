@@ -57,3 +57,7 @@ models/
 # transcripts are regenerable output and the corpus is not ours to vendor.
 eval/transcripts/
 eval/*.local.json
+# Scored against the team's own ground truth: the reference text is theirs, so
+# only the reports (which hold scores and checksums) may be committed.
+eval/custom/transcripts/
+eval/custom/*.local.json

@@ -2,8 +2,9 @@
 
 Word error rate compares text. These compare *time*: whether each stretch of
 reference speech was attributed to the right speaker, and labelled with the
-right language. The reference is a list of timed utterances, as read from
-TalkBank by `evaluation.talkbank`.
+right language. The reference is a list of timed utterances, read from
+TalkBank by `evaluation.talkbank` or from a user's ground truth by
+`evaluation.reference`.
 
 What is scored is the transcript's segments — the speaker and language labels
 a user actually receives — not the diarizer's raw output. So the diarization
@@ -20,9 +21,9 @@ Read confusion for "are the speaker labels right".
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any
 
-from audio_transcriber.evaluation.talkbank import Utterance
 from audio_transcriber.schema import Segment
 
 #: Seconds forgiven either side of each reference boundary. Human timestamps
@@ -31,6 +32,29 @@ DEFAULT_COLLAR = 0.25
 
 #: Reference languages that a single segment label can be right or wrong about.
 _SCORED_LANGUAGES = ("en", "es")
+
+
+@dataclass(frozen=True, slots=True)
+class Utterance:
+    """One reference utterance.
+
+    Attributes:
+        speaker: Speaker label, e.g. TalkBank's CHAT code `JAM`.
+        start: Start in seconds, or None when the utterance is untimed.
+        end: End in seconds, or None when the utterance is untimed.
+        language: `en`, `es`, `mixed` when it holds both, or None when it has
+            no word whose language is known.
+    """
+
+    speaker: str
+    start: float | None
+    end: float | None
+    language: str | None
+
+    @property
+    def timed(self) -> bool:
+        """Whether the utterance has a place on the recording's timeline."""
+        return self.start is not None and self.end is not None
 
 
 def scorable_region(
