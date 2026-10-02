@@ -1,0 +1,19 @@
+{
+  "id": "custom-ground-truth_20261002",
+  "title": "Evaluate Against a Custom Ground Truth",
+  "type": "feature",
+  "status": "in_progress",
+  "created": "2026-10-02T17:11:41Z",
+  "updated": "2026-10-02T18:00:00Z",
+  "phases": {
+    "total": 4,
+    "completed": 0
+  },
+  "tasks": {
+    "total": 19,
+    "completed": 0
+  },
+  "current_phase": 1,
+  "current_task": "1.1",
+  "commits": []
+}

@@ -15,6 +15,7 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
+| `[~]` | [custom-ground-truth_20261002](./tracks/custom-ground-truth_20261002/index.md) | Evaluate Against a Custom Ground Truth | 2026-10-02 | 2026-10-02 |
 
 <!-- Tracks registered by /conductor:new-track -->
 
