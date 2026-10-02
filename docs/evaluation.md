@@ -4,6 +4,10 @@ Measures transcription quality against a reference corpus, so a change to a back
 to help rather than assumed to. It is a development tool: nothing in the pipeline imports it, and
 it is not part of transcribing audio.
 
+The corpus is a fixed benchmark, but it is not our audio. To score a backend on the team's own
+recordings, against a ground truth you write, see
+[Your own recordings: a custom ground truth](#your-own-recordings-a-custom-ground-truth).
+
 ## Install
 
 ```bash
@@ -234,4 +238,159 @@ holding both languages. Per recording it runs from 9% to 25% of speech time.
   to rank diarization models finely.
 - **Utterances with no known language** (only `xxx`, fillers) count as speech for diarization and
   are ignored for language.
+
+## Your own recordings: a custom ground truth
+
+The corpus decides nothing on its own: what matters is how a backend does on the team's recordings,
+English with Spanish speakers who code-switch. So the harness also scores against a ground truth
+you write for one of them, either by running a backend on the recording or by scoring a transcript
+the pipeline already made. The scores are the corpus's, and the reports have the same shape, so
+`--compare` works on them.
+
+### Writing a ground truth
+
+A ground truth is the pipeline's own transcript format: a JSON array of segments, one file per
+recording, named after it (`standup.mp4` → `standup.json`).
+
+```json
+[
+  {
+    "start_time": 0.0,
+    "end_time": 4.2,
+    "speaker": "Bob",
+    "spoken_language": "en",
+    "text": "So the meeting is at three, right?"
+  },
+  {
+    "start_time": 3.9,
+    "end_time": 6.5,
+    "speaker": "Ana",
+    "spoken_language": "es",
+    "text": "Sí, a las tres. ¿Y tú qué piensas?"
+  }
+]
+```
+
+| Key | Required | Notes |
+| --- | -------- | ----- |
+| `start_time`, `end_time` | Yes | Seconds from the start of the recording. `end_time` not before `start_time` |
+| `text` | Yes | What was said. Write it as spoken: punctuation, case and accents do not count |
+| `speaker` | No | Any name, used consistently. `null` or left out means unlabelled |
+| `spoken_language` | No | `en` or `es`; `mixed` for a segment that holds both. `null` or left out means unlabelled |
+
+- **Overlap is allowed.** Two people talking at once is two segments over the same time. A
+  pipeline transcript never overlaps; a ground truth may.
+- **Order does not matter.** Segments are sorted by time when read.
+- **Times need not be exact.** Diarization forgives 0.25 s either side of each boundary.
+- **Label speakers on every segment or none.** A segment with no speaker is speech that belongs to
+  nobody, so speakers are only scored when all segments have one. Languages can be partly
+  labelled: unlabelled segments are left out of language scoring.
+- **Keep the files out of the repo.** Recordings and ground truths are the team's data. Reports,
+  which hold scores and each ground truth's checksum, may be committed.
+
+A ground truth is checked before anything is transcribed. A file that is not a JSON array, is
+empty, or has a segment with a missing key or its end before its start stops the run, with the
+file, the segment's index and the problem:
+
+```
+error: ground truth truth/standup.json, segment 12: segment end_time (61.0) is before its start_time (62.5)
+```
+
+### Running a backend on your recordings
+
+```bash
+# One recording and its ground truth (audio or video; ffmpeg decodes either)
+.venv/bin/python -m audio_transcriber.evaluation -b faster-whisper -l large-v3 \
+    --option model=large-v3 --option diarization=true \
+    --audio ~/recordings/standup.mp4 --reference ~/recordings/standup.json
+
+# A folder of recordings, each beside its ground truth: name.<ext> + name.json
+.venv/bin/python -m audio_transcriber.evaluation -b faster-whisper -l large-v3 \
+    --option model=large-v3 --option diarization=true \
+    --references ~/recordings
+
+# Limit a folder to some recordings
+.venv/bin/python -m audio_transcriber.evaluation -b faster-whisper -l try.local \
+    --references ~/recordings --only standup
+```
+
+In a folder, every recording needs a ground truth and every ground truth a recording; a file
+without its partner, or two recordings with the same name, is an error naming it. Other files are
+ignored, and only the top level is searched. `--only` is applied first, so an unrelated unpaired
+file does not block a run.
+
+### Scoring a transcript you already have
+
+To re-score a transcript, say from a hosted backend, without transcribing again:
+
+```bash
+# One transcript
+.venv/bin/python -m audio_transcriber.evaluation -l scribe \
+    --transcript out/2026-10-02T10-00-00Z/standup.json --reference ~/recordings/standup.json
+
+# A pipeline run's output folder, matched to the ground truths by name
+.venv/bin/python -m audio_transcriber.evaluation -l scribe \
+    --transcripts out/2026-10-02T10-00-00Z --references ~/recordings
+```
+
+No backend runs and no `--backend` is given. The backend, model version and config are read from
+the run's `manifest.json` beside the transcripts; without one, they are reported as `unknown`.
+Every transcript in the folder needs a ground truth (use `--only` to pick some), but ground truths
+without a transcript are errors too. The scores are exactly those a backend run gives for the same
+transcript.
+
+**This is the default way to score a hosted backend.** About 20 minutes of `elevenlabs-scribe`
+costs roughly a seventh of a free-tier month: transcribe once with the pipeline, then score and
+re-score the output.
+
+### Where the output goes
+
+| Path | Contents | Committed |
+| ---- | -------- | --------- |
+| `eval/custom/<label>.json` | The report | Yes |
+| `eval/custom/<label>.local.json` | A report you do not intend to keep | No, gitignored |
+| `eval/custom/transcripts/<name>.<label>.txt` | The normalized hypothesis that was scored | No, gitignored |
+| `eval/custom/transcripts/<name>.<label>.json` | The hypothesis as segments | No, gitignored |
+| `eval/custom/transcripts/<name>.reference.txt` | Your ground truth, normalized as scored | No, gitignored: it is your text |
+
+`--out` moves all of it: reports go under `<out>/custom/`. To see which words cost the WER:
+
+```bash
+git diff --no-index --word-diff eval/custom/transcripts/standup.reference.txt \
+    eval/custom/transcripts/standup.large-v3.txt
+```
+
+### What the scores mean on your data
+
+**Words.** `wer`, `retained`, `coverage` and the language-mix fields mean what they do for the
+corpus (see [What it measures](#what-it-measures)). Both sides are normalized the same way, but
+there is no CHAT markup to strip, so everything in your `text` counts: write `um` only if you want
+fillers scored, and never write placeholders like `[inaudible]` or `xxx`, which no transcriber can
+match.
+
+**Speakers and languages** are under `ground_truth` in the report, where corpus reports have
+`talkbank`, and are scored the same way (see [What it scores](#what-it-scores)):
+
+| Field | Meaning |
+| ----- | ------- |
+| `ground_truth.diarization.confusion` | Your speech attributed to the wrong speaker. The number to read for speaker labels |
+| `ground_truth.diarization.missed`, `false_alarm`, `der` | Mostly where segments start and stop against yours; pessimistic, as for TalkBank |
+| `ground_truth.language.accuracy` | Share of your `en` and `es` speech whose overlapping segment has the right `spoken_language`, by time |
+| `ground_truth.language.recall.en`, `.es` | The same, per language |
+| `ground_truth.language.mixed_share` | Share of speech you labelled `mixed`; left out of accuracy |
+| `ground_truth.language.confusion` | Seconds, as your label → the transcript's |
+
+Speaker scores need `pyannote.metrics`, which the `diarization` extra installs; a run that
+diarizes has it already.
+
+**Only `en` and `es` count towards accuracy.** That suits the team's audio. Other codes, if you
+use them, appear in the confusion table but not in accuracy.
+
+**Skipped scores say why.** When your ground truth has no speaker labels (or only some), or no
+language labels, that score is `null` and `diarization_skipped` or `language_skipped` gives the
+reason. So does a transcript with no speaker labels, from a run that did not diarize.
+
+**Traceability.** Each recording in the report records its ground truth's `reference.file` and
+`reference.checksum`. Compare only reports scored against the same ground truths: if the checksums
+differ, the reference changed and so did what the scores mean.
 

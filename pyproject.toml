@@ -42,7 +42,8 @@ elevenlabs = [
 # their conditions on the Hugging Face Hub and setting HF_TOKEN is required.
 diarization = [
     "pyannote.audio>=4.0,<5.0",
-    # Scores diarization against reference speakers (evaluation --talkbank).
+    # Scores diarization against reference speakers (evaluation --talkbank, or a
+    # custom ground truth).
     # Already pulled in by pyannote.audio; declared because the harness uses it.
     "pyannote.metrics>=4.0,<5.0",
 ]
