@@ -20,24 +20,30 @@ Read and validate ground-truth files, and pair them with recordings, before anyt
 
 ### Tasks
 
-- [ ] Task 1.1: Tests for the ground-truth loader: valid file; overlapping segments accepted;
+- [x] Task 1.1: Tests for the ground-truth loader: valid file; overlapping segments accepted;
       not-an-array, empty array, missing key, `end_time` before `start_time` and invalid JSON each
       rejected with file name and segment index in the message
-- [ ] Task 1.2: `evaluation/reference.py`: `load_reference(path)` validates each segment with
+- [x] Task 1.2: `evaluation/reference.py`: `load_reference(path)` validates each segment with
       `Segment.from_dict` (not `Transcript`, so overlaps are allowed), sorts by time, and returns
       the segments plus the file's checksum
-- [ ] Task 1.3: Convert ground-truth segments into timed `Utterance`s (speaker, start, end,
+- [x] Task 1.3: Convert ground-truth segments into timed `Utterance`s (speaker, start, end,
       language), and report which dimensions have labels; move `Utterance` to a shared module if
       `talkbank.py` is the wrong home for it
-- [ ] Task 1.4: Reference text: segments' `text` joined in time order and run through `normalize`
-- [ ] Task 1.5: Tests and implementation for pair discovery: a single `--audio`/`--reference` pair,
+- [x] Task 1.4: Reference text: segments' `text` joined in time order and run through `normalize`
+- [x] Task 1.5: Tests and implementation for pair discovery: a single `--audio`/`--reference` pair,
       and a folder of `name.<audio/video ext>` + `name.json`; an unpaired file on either side is an
       error naming it; `--only` filters by name
 
 ### Verification
 
-- [ ] `pytest tests/evaluation` passes; every malformed fixture fails with a message that names
+- [x] `pytest tests/evaluation` passes; every malformed fixture fails with a message that names
       the file and the problem
+
+> **Deviation:** the suite has no `tests/evaluation/` package; evaluation tests are flat
+> `tests/test_evaluation_*.py`, so these are in `tests/test_evaluation_reference.py`. `Utterance`
+> moved to `annotation.py` (the module that scores against it); `talkbank` imports it from there.
+> A ground truth whose speakers are only partly labelled skips diarization with a reason (an
+> unlabelled stretch would be scored as nobody's speech); partly labelled languages are scored.
 
 ## Phase 2: Scoring a Backend Run Against Custom Ground Truth
 
