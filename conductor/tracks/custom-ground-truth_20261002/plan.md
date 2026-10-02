@@ -51,20 +51,26 @@ Run a backend on each custom recording and score it with the existing metrics.
 
 ### Tasks
 
-- [ ] Task 2.1: Tests (fake backend, hand-written ground truth): WER/`retained` per recording;
+- [x] Task 2.1: Tests (fake backend, hand-written ground truth): WER/`retained` per recording;
       diarization and language scores present when labels exist; skipped with a reason when not
-- [ ] Task 2.2: Generalize `runner.evaluate` so the recordings and their references come from either
+- [x] Task 2.2: Generalize `runner.evaluate` so the recordings and their references come from either
       the corpus or a custom source, leaving corpus-mode behavior and its reports unchanged
-- [ ] Task 2.3: Score speakers and language from the ground truth through `annotation`, reusing the
+- [x] Task 2.3: Score speakers and language from the ground truth through `annotation`, reusing the
       TalkBank path's skip logic and reasons; the duration comes from the decoded audio
-- [ ] Task 2.4: Write the normalized reference `.txt` next to the hypothesis `.txt` and `.json`
-- [ ] Task 2.5: Record each reference file's name and checksum in the report; check that
+- [x] Task 2.4: Write the normalized reference `.txt` next to the hypothesis `.txt` and `.json`
+- [x] Task 2.5: Record each reference file's name and checksum in the report; check that
       `compare` works on two custom-ground-truth reports (test)
 
 ### Verification
 
-- [ ] Existing corpus-mode tests still pass unchanged; a custom run over fixtures produces a
+- [x] Existing corpus-mode tests still pass unchanged; a custom run over fixtures produces a
       report that `compare` accepts
+
+> **Notes:** a custom report's annotation scores are under `ground_truth` (corpus reports keep
+> `talkbank`), its `corpus.dataset` is `custom ground truth`, and each recording carries
+> `reference: {file, checksum}`. `RecordingResult.talkbank` became `annotation`, with `talkbank`
+> kept as an alias so corpus code and tests are unchanged. `eval/custom/transcripts/` is
+> gitignored: the `.reference.txt` there is the team's ground-truth text.
 
 ## Phase 3: Scoring an Existing Transcript
 
