@@ -61,3 +61,6 @@ eval/*.local.json
 # only the reports (which hold scores and checksums) may be committed.
 eval/custom/transcripts/
 eval/custom/*.local.json
+
+# uv lockfile: the project installs with pip (see README); uv is only used locally.
+uv.lock
