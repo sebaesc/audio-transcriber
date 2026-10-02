@@ -41,7 +41,7 @@ A modular audio transcription pipeline with swappable model backends.
 | [Per-Word Speaker Assignment](./tracks/word-speakers_20260924/index.md) | Complete | Medium | [spec](./tracks/word-speakers_20260924/spec.md) | [plan](./tracks/word-speakers_20260924/plan.md) |
 | [ElevenLabs Scribe v2 Backend](./tracks/elevenlabs-scribe_20260924/index.md) | Complete | Medium | [spec](./tracks/elevenlabs-scribe_20260924/spec.md) | [plan](./tracks/elevenlabs-scribe_20260924/plan.md) |
 | [Standalone Backend Scripts and Pipeline Overview](./tracks/standalone-snapshot_20260925/index.md) | Complete | Medium | [spec](./tracks/standalone-snapshot_20260925/spec.md) | [plan](./tracks/standalone-snapshot_20260925/plan.md) |
-| [Evaluate Against a Custom Ground Truth](./tracks/custom-ground-truth_20261002/index.md) | In Progress | Medium | [spec](./tracks/custom-ground-truth_20261002/spec.md) | [plan](./tracks/custom-ground-truth_20261002/plan.md) |
+| [Evaluate Against a Custom Ground Truth](./tracks/custom-ground-truth_20261002/index.md) | Complete | Medium | [spec](./tracks/custom-ground-truth_20261002/spec.md) | [plan](./tracks/custom-ground-truth_20261002/plan.md) |
 
 ## Recent Activity
 
@@ -62,6 +62,7 @@ A modular audio transcription pipeline with swappable model backends.
 | 2026-09-25 | standalone-snapshot_20260925 | Track created (4 phases, 18 tasks) |
 | 2026-09-25 | standalone-snapshot_20260925 | Track complete (4 phases, 18 tasks, all gates passed); merged into `main` |
 | 2026-10-02 | custom-ground-truth_20261002 | Track created (4 phases, 19 tasks) |
+| 2026-10-02 | custom-ground-truth_20261002 | Track complete (4 phases, 19 tasks, all gates passed); merged into `main` |
 
 ## Project Status
 

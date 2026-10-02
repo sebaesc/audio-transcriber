@@ -3,7 +3,7 @@
 **Track ID:** custom-ground-truth_20261002
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-10-02
-**Status:** [~] In Progress
+**Status:** [x] Complete
 
 ## Overview
 
@@ -113,7 +113,7 @@ Expose the modes on the command line, document them, and measure real audio.
 
 ### Verification
 
-- [ ] `ruff check . && ruff format --check . && pytest` clean; the real-run report is committed
+- [x] `ruff check . && ruff format --check . && pytest` clean; the real-run report is committed
 
 > **Real run (2026-10-02):** the 20 min clip `Level 1 1101251 Week 8 (19.53-40.09).mp4` (user's
 > choice), its `referencia.json` shifted by the clip start (1193 s) and clamped to the clip, in a
@@ -127,11 +127,17 @@ Expose the modes on the command line, document them, and measure real audio.
 
 ## Final Verification
 
-- [ ] All acceptance criteria met
-- [ ] Tests passing
-- [ ] Documentation updated (`docs/evaluation.md`, `tech-stack.md`)
-- [ ] Manual sign-off recorded in this plan
-- [ ] Ready for review
+- [x] All acceptance criteria met
+- [x] Tests passing: `pytest` 418 passed, 1 skipped; `ruff check .` and `ruff format --check .` clean
+- [x] Documentation updated (`docs/evaluation.md`, `tech-stack.md`, README, `product.md`,
+      `standalone/README.md`)
+  - Verified against the code: anchors resolve; the example ground truth loads with its overlap
+    kept; the error example matches the real message; both existing-transcript commands run on
+    real data (the 2026-10-01 run of Week 8, backend read from its manifest, identical scores
+    either way); the backend-run commands parse and reach input validation; `--compare`, the
+    `git diff --word-diff` command and `--help` behave as described
+- [x] Manual sign-off recorded in this plan: approved by Sebastian Escuder, 2026-10-02
+- [x] Ready for review; merged into `main`, not archived (user's decision)
 
 ---
 

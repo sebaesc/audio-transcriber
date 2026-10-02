@@ -15,7 +15,6 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
-| `[~]` | [custom-ground-truth_20261002](./tracks/custom-ground-truth_20261002/index.md) | Evaluate Against a Custom Ground Truth | 2026-10-02 | 2026-10-02 |
 
 <!-- Tracks registered by /conductor:new-track -->
 
@@ -31,6 +30,7 @@ represents a distinct body of work with its own spec and implementation plan.
 | `[x]` | [word-speakers_20260924](./tracks/word-speakers_20260924/index.md) | Per-Word Speaker Assignment | 2026-09-24 | 2026-09-24 |
 | `[x]` | [elevenlabs-scribe_20260924](./tracks/elevenlabs-scribe_20260924/index.md) | ElevenLabs Scribe v2 Backend | 2026-09-24 | 2026-09-24 |
 | `[x]` | [standalone-snapshot_20260925](./tracks/standalone-snapshot_20260925/index.md) | Standalone Backend Scripts and Pipeline Overview | 2026-09-25 | 2026-09-25 |
+| `[x]` | [custom-ground-truth_20261002](./tracks/custom-ground-truth_20261002/index.md) | Evaluate Against a Custom Ground Truth | 2026-10-02 | 2026-10-02 |
 
 <!-- Move completed tracks here -->
 
