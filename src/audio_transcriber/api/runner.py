@@ -62,14 +62,16 @@ class JobRunner:
     def _execute(self, job_id: str, upload: Path) -> None:
         try:
             job = self._store.update(job_id, Job.start)
-            self._store.update(job_id, self._outcome(job, upload))
+            record = self._outcome(job, upload)
         except Exception as error:  # noqa: BLE001 - a job must never hang
             if not isinstance(error, AudioTranscriberError):
                 _logger.exception("job %s failed unexpectedly", job_id)
             failure = JobError.from_exception(error)
-            self._store.update(job_id, lambda current: current.fail(failure))
+            record = lambda current: current.fail(failure)  # noqa: E731
         finally:
+            # Before the outcome is recorded, so a finished job has no upload.
             shutil.rmtree(upload.parent, ignore_errors=True)
+        self._store.update(job_id, record)
 
     def _outcome(self, job: Job, upload: Path) -> Callable[[Job], Job]:
         """Run the pipeline for a job, and return how to record the result.
