@@ -78,6 +78,14 @@ Pinned by the `core-pipeline_20260922` track; extended by `codeswitch-diarizatio
 | `eval` | jiwer            | Word error rate                           | `>=3.0,<5.0` |
 | `eval` | pyarrow          | Reading the Hugging Face reference corpus | `>=15.0`     |
 
+**Service extra** — the HTTP API (`http-api_20261005`), a consumer of the pipeline:
+
+| Extra | Library          | Purpose                     | Version          | Installed |
+| ----- | ---------------- | --------------------------- | ---------------- | --------- |
+| `api` | FastAPI          | HTTP routes and validation  | `>=0.115,<1.0`   | 0.142.2 (Starlette 1.7.0) |
+| `api` | uvicorn[standard] | ASGI server                | `>=0.30,<1.0`    | 0.54.0    |
+| `api` | python-multipart | Multipart upload parsing    | `>=0.0.9,<1.0`   | 0.0.32    |
+
 Scoring speakers against TalkBank (`evaluation --talkbank`) also needs the `diarization` extra,
 for `pyannote.metrics`.
 
