@@ -28,6 +28,11 @@ from fastapi.responses import JSONResponse
 from audio_transcriber import __version__, registry
 from audio_transcriber.api.jobs import InMemoryJobStore, Job, JobError, JobStore
 from audio_transcriber.api.runner import JobRunner
+from audio_transcriber.api.scoring import (
+    JobNotScorableError,
+    ScoringUnavailableError,
+    score_job,
+)
 from audio_transcriber.api.settings import ApiSettings
 from audio_transcriber.errors import (
     AudioTranscriberError,
@@ -110,6 +115,7 @@ def create_app(
     _add_error_handlers(app)
     _add_upload_limit(app, settings)
     _add_transcription_routes(app)
+    _add_evaluation_routes(app)
     _add_service_routes(app)
     return app
 
@@ -215,6 +221,41 @@ def find_job(request: Request, job_id: str) -> Job:
             ),
         )
     return job
+
+
+def _add_evaluation_routes(app: FastAPI) -> None:
+    @app.post("/transcriptions/{job_id}/evaluation")
+    def evaluate_transcription(
+        request: Request,
+        job_id: str,
+        ground_truth: Annotated[
+            UploadFile,
+            File(description="Ground truth: a JSON array of transcript segments."),
+        ],
+    ) -> dict[str, Any]:
+        """Score a succeeded job's transcript against a ground truth.
+
+        Reads the transcript the job wrote; no backend runs, so nothing is
+        spent. Returns the report the evaluation CLI writes.
+        """
+        settings: ApiSettings = request.app.state.settings
+        job = find_job(request, job_id)
+        if job.transcript_path is None:
+            raise ApiError(409, JobError.from_exception(JobNotScorableError(job)))
+
+        reference = _save_upload(
+            ground_truth.file,
+            settings.uploads_dir / uuid.uuid4().hex / _safe_name(ground_truth),
+            settings.max_upload_bytes,
+        )
+        try:
+            return score_job(job, reference)
+        except ConfigError as error:
+            raise ApiError(422, JobError.from_exception(error)) from None
+        except ScoringUnavailableError as error:
+            raise ApiError(501, JobError.from_exception(error)) from None
+        finally:
+            shutil.rmtree(reference.parent, ignore_errors=True)
 
 
 def _add_service_routes(app: FastAPI) -> None:
