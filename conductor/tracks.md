@@ -15,7 +15,7 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
-| [ ] | [http-api_20261005](./tracks/http-api_20261005/index.md) | HTTP API Service | 2026-10-05 | 2026-10-05 |
+| [~] | [http-api_20261005](./tracks/http-api_20261005/index.md) | HTTP API Service | 2026-10-05 | 2026-10-05 |
 
 <!-- Tracks registered by /conductor:new-track -->
 

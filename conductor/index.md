@@ -35,7 +35,7 @@ A modular audio transcription pipeline with swappable model backends.
 
 | Track | Status | Priority | Spec | Plan |
 | ----- | ------ | -------- | ---- | ---- |
-| [HTTP API Service](./tracks/http-api_20261005/index.md) | Pending | Medium | [spec](./tracks/http-api_20261005/spec.md) | [plan](./tracks/http-api_20261005/plan.md) |
+| [HTTP API Service](./tracks/http-api_20261005/index.md) | In Progress | Medium | [spec](./tracks/http-api_20261005/spec.md) | [plan](./tracks/http-api_20261005/plan.md) |
 | [Core Pipeline and Backend Interface](./tracks/_archive/core-pipeline_20260922/index.md) | Complete | Critical | [spec](./tracks/_archive/core-pipeline_20260922/spec.md) | [plan](./tracks/_archive/core-pipeline_20260922/plan.md) |
 | [Code-Switching Language Detection and Speaker Diarization](./tracks/_archive/codeswitch-diarization_20260922/index.md) | Complete | High | [spec](./tracks/_archive/codeswitch-diarization_20260922/spec.md) | [plan](./tracks/_archive/codeswitch-diarization_20260922/plan.md) |
 | [Default Whisper Model to large-v3](./tracks/_archive/default-large-v3_20260923/index.md) | Complete | Low | [spec](./tracks/_archive/default-large-v3_20260923/spec.md) | [plan](./tracks/_archive/default-large-v3_20260923/plan.md) |

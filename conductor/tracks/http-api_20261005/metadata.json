@@ -2,9 +2,9 @@
   "id": "http-api_20261005",
   "title": "HTTP API Service",
   "type": "feature",
-  "status": "pending",
+  "status": "in_progress",
   "created": "2026-10-05T16:12:18Z",
-  "updated": "2026-10-05T16:12:18Z",
+  "updated": "2026-10-05T17:00:00Z",
   "phases": {
     "total": 5,
     "completed": 0
@@ -12,5 +12,8 @@
   "tasks": {
     "total": 22,
     "completed": 0
-  }
+  },
+  "current_phase": 1,
+  "current_task": "1.1",
+  "commits": []
 }
