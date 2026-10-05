@@ -2,7 +2,7 @@
   "id": "core-pipeline_20260922",
   "title": "Core Pipeline and Backend Interface",
   "type": "feature",
-  "status": "complete",
+  "status": "archived",
   "created": "2026-09-22T00:00:00Z",
   "updated": "2026-09-22T00:00:00Z",
   "phases": {
@@ -15,5 +15,8 @@
   },
   "current_phase": 5,
   "current_task": null,
-  "commits": []
+  "commits": [],
+  "archived": true,
+  "archived_at": "2026-10-05T15:01:15Z",
+  "archive_reason": "Completed"
 }

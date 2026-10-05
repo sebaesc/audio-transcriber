@@ -35,13 +35,13 @@ A modular audio transcription pipeline with swappable model backends.
 
 | Track | Status | Priority | Spec | Plan |
 | ----- | ------ | -------- | ---- | ---- |
-| [Core Pipeline and Backend Interface](./tracks/core-pipeline_20260922/index.md) | Complete | Critical | [spec](./tracks/core-pipeline_20260922/spec.md) | [plan](./tracks/core-pipeline_20260922/plan.md) |
-| [Code-Switching Language Detection and Speaker Diarization](./tracks/codeswitch-diarization_20260922/index.md) | In Progress | High | [spec](./tracks/codeswitch-diarization_20260922/spec.md) | [plan](./tracks/codeswitch-diarization_20260922/plan.md) |
-| [Default Whisper Model to large-v3](./tracks/default-large-v3_20260923/index.md) | Complete | Low | [spec](./tracks/default-large-v3_20260923/spec.md) | [plan](./tracks/default-large-v3_20260923/plan.md) |
-| [Per-Word Speaker Assignment](./tracks/word-speakers_20260924/index.md) | Complete | Medium | [spec](./tracks/word-speakers_20260924/spec.md) | [plan](./tracks/word-speakers_20260924/plan.md) |
-| [ElevenLabs Scribe v2 Backend](./tracks/elevenlabs-scribe_20260924/index.md) | Complete | Medium | [spec](./tracks/elevenlabs-scribe_20260924/spec.md) | [plan](./tracks/elevenlabs-scribe_20260924/plan.md) |
-| [Standalone Backend Scripts and Pipeline Overview](./tracks/standalone-snapshot_20260925/index.md) | Complete | Medium | [spec](./tracks/standalone-snapshot_20260925/spec.md) | [plan](./tracks/standalone-snapshot_20260925/plan.md) |
-| [Evaluate Against a Custom Ground Truth](./tracks/custom-ground-truth_20261002/index.md) | Complete | Medium | [spec](./tracks/custom-ground-truth_20261002/spec.md) | [plan](./tracks/custom-ground-truth_20261002/plan.md) |
+| [Core Pipeline and Backend Interface](./tracks/_archive/core-pipeline_20260922/index.md) | Complete | Critical | [spec](./tracks/_archive/core-pipeline_20260922/spec.md) | [plan](./tracks/_archive/core-pipeline_20260922/plan.md) |
+| [Code-Switching Language Detection and Speaker Diarization](./tracks/_archive/codeswitch-diarization_20260922/index.md) | Complete | High | [spec](./tracks/_archive/codeswitch-diarization_20260922/spec.md) | [plan](./tracks/_archive/codeswitch-diarization_20260922/plan.md) |
+| [Default Whisper Model to large-v3](./tracks/_archive/default-large-v3_20260923/index.md) | Complete | Low | [spec](./tracks/_archive/default-large-v3_20260923/spec.md) | [plan](./tracks/_archive/default-large-v3_20260923/plan.md) |
+| [Per-Word Speaker Assignment](./tracks/_archive/word-speakers_20260924/index.md) | Complete | Medium | [spec](./tracks/_archive/word-speakers_20260924/spec.md) | [plan](./tracks/_archive/word-speakers_20260924/plan.md) |
+| [ElevenLabs Scribe v2 Backend](./tracks/_archive/elevenlabs-scribe_20260924/index.md) | Complete | Medium | [spec](./tracks/_archive/elevenlabs-scribe_20260924/spec.md) | [plan](./tracks/_archive/elevenlabs-scribe_20260924/plan.md) |
+| [Standalone Backend Scripts and Pipeline Overview](./tracks/_archive/standalone-snapshot_20260925/index.md) | Complete | Medium | [spec](./tracks/_archive/standalone-snapshot_20260925/spec.md) | [plan](./tracks/_archive/standalone-snapshot_20260925/plan.md) |
+| [Evaluate Against a Custom Ground Truth](./tracks/_archive/custom-ground-truth_20261002/index.md) | Complete | Medium | [spec](./tracks/_archive/custom-ground-truth_20261002/spec.md) | [plan](./tracks/_archive/custom-ground-truth_20261002/plan.md) |
 
 ## Recent Activity
 

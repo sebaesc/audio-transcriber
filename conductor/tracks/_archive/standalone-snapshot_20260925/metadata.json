@@ -2,7 +2,7 @@
   "id": "standalone-snapshot_20260925",
   "title": "Standalone Backend Scripts and Pipeline Overview",
   "type": "chore",
-  "status": "complete",
+  "status": "archived",
   "created": "2026-09-25T14:01:03Z",
   "updated": "2026-09-25T14:40:41Z",
   "phases": {
@@ -23,5 +23,8 @@
     "b0f3cc6: feat(standalone): add a self-contained ElevenLabs Scribe v2 script with diarization [standalone-snapshot_20260925]",
     "e50d798: chore(plan): mark tasks 3.1 to 3.5 complete [standalone-snapshot_20260925]",
     "8e6be45: docs(standalone): explain the pipeline and how to run each script [standalone-snapshot_20260925]"
-  ]
+  ],
+  "archived": true,
+  "archived_at": "2026-10-05T15:01:15Z",
+  "archive_reason": "Completed"
 }

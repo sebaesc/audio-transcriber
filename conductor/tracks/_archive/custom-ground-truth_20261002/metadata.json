@@ -2,7 +2,7 @@
   "id": "custom-ground-truth_20261002",
   "title": "Evaluate Against a Custom Ground Truth",
   "type": "feature",
-  "status": "complete",
+  "status": "archived",
   "created": "2026-10-02T17:11:41Z",
   "updated": "2026-10-02T21:00:00Z",
   "phases": {
@@ -32,5 +32,8 @@
     "64f901f: test(evaluation): score faster-whisper large-v3 on a team recording against its ground truth [custom-ground-truth_20261002]",
     "8ef234e: docs(conductor): record custom ground-truth scoring in tech-stack, README and product [custom-ground-truth_20261002]",
     "04e9f35: chore(plan): mark tasks 4.2 to 4.5 complete and record the real run [custom-ground-truth_20261002]"
-  ]
+  ],
+  "archived": true,
+  "archived_at": "2026-10-05T15:01:15Z",
+  "archive_reason": "Completed"
 }

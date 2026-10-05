@@ -24,13 +24,6 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Completed |
 | ------ | -------- | ----- | ------- | --------- |
-| `[x]` | [core-pipeline_20260922](./tracks/core-pipeline_20260922/index.md) | Core Pipeline and Backend Interface | 2026-09-22 | 2026-09-22 |
-| `[x]` | [codeswitch-diarization_20260922](./tracks/codeswitch-diarization_20260922/index.md) | Code-Switching Language Detection and Speaker Diarization | 2026-09-22 | 2026-09-23 |
-| `[x]` | [default-large-v3_20260923](./tracks/default-large-v3_20260923/index.md) | Default Whisper Model to large-v3 | 2026-09-23 | 2026-09-23 |
-| `[x]` | [word-speakers_20260924](./tracks/word-speakers_20260924/index.md) | Per-Word Speaker Assignment | 2026-09-24 | 2026-09-24 |
-| `[x]` | [elevenlabs-scribe_20260924](./tracks/elevenlabs-scribe_20260924/index.md) | ElevenLabs Scribe v2 Backend | 2026-09-24 | 2026-09-24 |
-| `[x]` | [standalone-snapshot_20260925](./tracks/standalone-snapshot_20260925/index.md) | Standalone Backend Scripts and Pipeline Overview | 2026-09-25 | 2026-09-25 |
-| `[x]` | [custom-ground-truth_20261002](./tracks/custom-ground-truth_20261002/index.md) | Evaluate Against a Custom Ground Truth | 2026-10-02 | 2026-10-02 |
 
 <!-- Move completed tracks here -->
 
@@ -40,6 +33,13 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Track ID | Type | Reason | Archived | Folder |
 | -------- | ---- | ------ | -------- | ------ |
+| core-pipeline_20260922 | feature | Completed | 2026-10-05 | [./tracks/_archive/core-pipeline_20260922/](./tracks/_archive/core-pipeline_20260922/) |
+| codeswitch-diarization_20260922 | feature | Completed | 2026-10-05 | [./tracks/_archive/codeswitch-diarization_20260922/](./tracks/_archive/codeswitch-diarization_20260922/) |
+| default-large-v3_20260923 | chore | Completed | 2026-10-05 | [./tracks/_archive/default-large-v3_20260923/](./tracks/_archive/default-large-v3_20260923/) |
+| word-speakers_20260924 | feature | Completed | 2026-10-05 | [./tracks/_archive/word-speakers_20260924/](./tracks/_archive/word-speakers_20260924/) |
+| elevenlabs-scribe_20260924 | feature | Completed | 2026-10-05 | [./tracks/_archive/elevenlabs-scribe_20260924/](./tracks/_archive/elevenlabs-scribe_20260924/) |
+| standalone-snapshot_20260925 | chore | Completed | 2026-10-05 | [./tracks/_archive/standalone-snapshot_20260925/](./tracks/_archive/standalone-snapshot_20260925/) |
+| custom-ground-truth_20261002 | feature | Completed | 2026-10-05 | [./tracks/_archive/custom-ground-truth_20261002/](./tracks/_archive/custom-ground-truth_20261002/) |
 
 ---
 

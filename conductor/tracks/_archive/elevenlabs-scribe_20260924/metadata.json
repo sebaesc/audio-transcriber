@@ -2,7 +2,7 @@
   "id": "elevenlabs-scribe_20260924",
   "title": "ElevenLabs Scribe v2 Backend",
   "type": "feature",
-  "status": "complete",
+  "status": "archived",
   "created": "2026-09-24T03:42:14Z",
   "updated": "2026-09-24T20:20:00Z",
   "phases": {
@@ -26,5 +26,8 @@
     "8c21f1d: test(eval): record Scribe against faster-whisper on Bangor Miami",
     "49ca9fe: fix(backends): close the Scribe connection after each file",
     "92462a2: feat(registry): name the extra to install when a built-in backend is missing"
-  ]
+  ],
+  "archived": true,
+  "archived_at": "2026-10-05T15:01:15Z",
+  "archive_reason": "Completed"
 }

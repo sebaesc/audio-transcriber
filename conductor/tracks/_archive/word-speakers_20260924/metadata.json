@@ -2,7 +2,7 @@
   "id": "word-speakers_20260924",
   "title": "Per-Word Speaker Assignment",
   "type": "feature",
-  "status": "complete",
+  "status": "archived",
   "created": "2026-09-24T14:37:55Z",
   "updated": "2026-09-24T19:00:00Z",
   "depends_on": [
@@ -25,5 +25,8 @@
     "570c3d5: feat(backends): wire per-word speaker assignment into faster-whisper",
     "8ba00dc: feat(backends): assign speakers per word by default",
     "315d245: docs(backends): document per-word speaker assignment and its measurements"
-  ]
+  ],
+  "archived": true,
+  "archived_at": "2026-10-05T15:01:15Z",
+  "archive_reason": "Completed"
 }
