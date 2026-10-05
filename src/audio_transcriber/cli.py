@@ -8,6 +8,7 @@ from a run that never started.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import logging
 import sys
@@ -126,8 +127,9 @@ def _list_backends_callback(requested: bool) -> None:
     raise typer.Exit(ExitCode.SUCCESS)
 
 
-@app.command()
+@app.callback(invoke_without_command=True)
 def main(
+    ctx: typer.Context,
     input_path: Annotated[
         Path | None,
         typer.Option(
@@ -186,7 +188,14 @@ def main(
         ),
     ] = False,
 ) -> None:
-    """Transcribe audio files with a swappable model backend."""
+    """Transcribe audio files with a swappable model backend.
+
+    Run with --input and --backend, or use a command below.
+    """
+    if ctx.invoked_subcommand is not None:
+        # The run form is the callback, so `audio-transcriber --input ...`
+        # needs no verb; a command such as `serve` runs instead of it.
+        return
     logging.basicConfig(
         level=logging.ERROR if quiet else logging.WARNING,
         format="warning: %(message)s",
@@ -233,6 +242,47 @@ def main(
     if result.status is RunStatus.PARTIAL:
         raise typer.Exit(ExitCode.PARTIAL)
     raise typer.Exit(ExitCode.ABORTED)
+
+
+@app.command()
+def serve(
+    host: Annotated[
+        str,
+        typer.Option(help="Address to listen on. 0.0.0.0 listens on every one."),
+    ] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="Port to listen on.")] = 8000,
+    workers_concurrency: Annotated[
+        int | None,
+        typer.Option(
+            min=1,
+            help="Transcription jobs run at once. Overrides "
+            "AUDIO_TRANSCRIBER_CONCURRENCY; defaults to 1.",
+        ),
+    ] = None,
+) -> None:
+    """Serve the HTTP API. Needs the api extra."""
+    try:
+        import uvicorn
+
+        from audio_transcriber.api.app import create_app
+        from audio_transcriber.api.settings import ApiSettings
+    except ModuleNotFoundError as error:
+        _echo(
+            f"error: serving the HTTP API needs {error.name!r}, which is not "
+            'installed. Install the api extra: pip install -e ".[api]"'
+        )
+        raise typer.Exit(ExitCode.CONFIG_ERROR) from None
+
+    try:
+        settings = ApiSettings.from_env()
+        if workers_concurrency is not None:
+            settings = dataclasses.replace(settings, concurrency=workers_concurrency)
+        application = create_app(settings)
+    except AudioTranscriberError as error:
+        _fail(error)
+        raise typer.Exit(ExitCode.CONFIG_ERROR) from None
+
+    uvicorn.run(application, host=host, port=port)
 
 
 def run() -> None:
