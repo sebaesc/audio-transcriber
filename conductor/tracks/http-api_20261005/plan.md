@@ -127,20 +127,34 @@ Make the service runnable locally and in a container.
 
 ### Tasks
 
-- [ ] Task 4.1: Add `audio-transcriber serve` (`--host`, `--port`, `--workers-concurrency`). If
+- [x] Task 4.1: Add `audio-transcriber serve` (`--host`, `--port`, `--workers-concurrency`). If
       the `api` extra is missing, exit with the install command, following the CLI's existing
       error/exit-code style. Add CLI contract tests for both cases
-- [ ] Task 4.2: Add a `Dockerfile`: `python:3.12-slim`, ffmpeg via apt, build arg
+- [x] Task 4.2: Add a `Dockerfile`: `python:3.12-slim`, ffmpeg via apt, build arg
       `EXTRAS=api,faster-whisper,elevenlabs`, a non-root user, `EXPOSE 8000`, a `HEALTHCHECK` on
       `/health`, and `CMD audio-transcriber serve --host 0.0.0.0`. Add a `.dockerignore`
-- [ ] Task 4.3: Add a `docker-compose.yml`: build args, `env_file: .env` (passes
+- [x] Task 4.3: Add a `docker-compose.yml`: build args, `env_file: .env` (passes
       `ELEVENLABS_API_KEY`, `HF_TOKEN`), and a named volume for the Whisper/HF model cache
-- [ ] Task 4.4: Build the image and run it, then smoke-test `/health` and `/backends`, plus one
+- [x] Task 4.4: Build the image and run it, then smoke-test `/health` and `/backends`, plus one
       transcription with faster-whisper on a short sample. Do not call ElevenLabs
+
+### Notes
+
+- 4.1: the CLI was a single Typer command; a second one would have made `--input` need a verb.
+  The run form is now the app's callback (`invoke_without_command=True`), so existing usage and
+  every existing CLI test are unchanged, and `serve` is a command beside it
+- 4.2 deviation: the default `EXTRAS` adds `eval`, so the evaluation endpoint works in the image
+  (`api,eval,faster-whisper,elevenlabs`). Image: 1.27 GB, CPU only
+- 4.4 found a real bug: a fresh install resolves PyAV 19, which removed an argument
+  faster-whisper 1.2.1 passes, so every faster-whisper transcription failed. Fixed by capping
+  `av<19` in the `faster-whisper` extra
+- 4.4 smoke run (2026-10-05): `/health` ok, `/backends` lists both, a 20 s clip transcribed with
+  `{"model": "tiny"}` (3 segments), its evaluation scored, container `healthy`, running as `app`.
+  ElevenLabs was not called
 
 ### Verification
 
-- [ ] `docker compose up` serves the API; a job submitted with `curl` succeeds end to end
+- [x] `docker compose up` serves the API; a job submitted with `curl` succeeds end to end
 
 ## Phase 5: Polish — Docs and Backlog
 
