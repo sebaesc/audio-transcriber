@@ -17,11 +17,6 @@ from tests import api_stub
 
 
 @pytest.fixture
-def stub(monkeypatch):
-    return api_stub.install(monkeypatch)
-
-
-@pytest.fixture
 def settings(tmp_path) -> ApiSettings:
     return ApiSettings(work_dir=tmp_path / "work")
 

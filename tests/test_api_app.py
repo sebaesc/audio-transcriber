@@ -2,66 +2,15 @@
 
 They drive the app through FastAPI's test client, over the real runner and
 pipeline, with the stub backend and decoder. No real engine is ever built.
+Fixtures (`stub`, `settings`, `client`) come from `tests/api_fixtures.py`.
 """
 
 import json
-import time
 
 import pytest
 
-pytest.importorskip("fastapi", reason="the api extra is not installed")
-
-from fastapi.testclient import TestClient  # noqa: E402
-
-from audio_transcriber.api.app import create_app  # noqa: E402
-from audio_transcriber.api.jobs import InMemoryJobStore  # noqa: E402
-from audio_transcriber.api.settings import ApiSettings  # noqa: E402
-from tests import api_stub  # noqa: E402
-
-
-@pytest.fixture
-def stub(monkeypatch):
-    return api_stub.install(monkeypatch)
-
-
-@pytest.fixture
-def settings(tmp_path) -> ApiSettings:
-    return ApiSettings(work_dir=tmp_path / "work", max_upload_bytes=1024)
-
-
-@pytest.fixture
-def client(stub, settings):
-    with TestClient(create_app(settings, InMemoryJobStore())) as client:
-        yield client
-        stub.gate.set()
-
-
-def submit(client, backend="stub", options=None, content=b"fake audio", name="a.wav"):
-    data = {"backend": backend}
-    if options is not None:
-        data["options"] = json.dumps(options)
-    return client.post(
-        "/transcriptions", data=data, files={"file": (name, content, "audio/wav")}
-    )
-
-
-def wait_until_finished(client, job_id: str, timeout: float = 5.0) -> dict:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        body = client.get(f"/transcriptions/{job_id}").json()
-        if body["status"] in ("succeeded", "failed"):
-            return body
-        time.sleep(0.01)
-    raise AssertionError(f"job {job_id} never finished")
-
-
-def assert_error_body(response, error_type: str) -> dict:
-    error = response.json()["error"]
-    assert error["type"] == error_type
-    assert error["message"]
-    assert "remedy" in error
-    return error
-
+from tests import api_stub
+from tests.api_fixtures import assert_error_body, submit, wait_until_finished
 
 # POST /transcriptions
 
