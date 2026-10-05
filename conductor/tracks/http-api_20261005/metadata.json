@@ -1,0 +1,16 @@
+{
+  "id": "http-api_20261005",
+  "title": "HTTP API Service",
+  "type": "feature",
+  "status": "pending",
+  "created": "2026-10-05T16:12:18Z",
+  "updated": "2026-10-05T16:12:18Z",
+  "phases": {
+    "total": 5,
+    "completed": 0
+  },
+  "tasks": {
+    "total": 22,
+    "completed": 0
+  }
+}
