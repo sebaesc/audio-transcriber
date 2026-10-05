@@ -98,19 +98,27 @@ Score a finished job's transcript against a ground truth without re-transcribing
 
 ### Tasks
 
-- [ ] Task 3.1: Write tests first for `POST /transcriptions/{id}/evaluation` (multipart ground
+- [x] Task 3.1: Write tests first for `POST /transcriptions/{id}/evaluation` (multipart ground
       truth file): it returns the `Report` metrics (WER etc.) for a succeeded job; returns 409
       while the job is queued/running and for a failed job; returns 404 for an unknown id; returns
       422 for an invalid ground truth (`ConfigError` from `load_reference`); and never calls the
       backend (assert the stub was not invoked again)
-- [ ] Task 3.2: Implement it by building a `Pair` from the job's stored transcript and the
+- [x] Task 3.2: Implement it by building a `Pair` from the job's stored transcript and the
       uploaded reference, then calling `evaluation.runner.score_transcripts` (which picks up the
       job's `manifest.json`). Return the report in the same shape the evaluation CLI writes
-- [ ] Task 3.3: Clean up the uploaded reference after scoring
+- [x] Task 3.3: Clean up the uploaded reference after scoring
+
+### Notes
+
+- The multipart field is `ground_truth`; the report's label is the job id
+- Addition: a missing scoring library (`jiwer` → `eval`, `pyannote.metrics` → `diarization`) is a
+  501 naming the extra to install, rather than a 500. The Docker image therefore needs `eval`
+  in its default extras (see Phase 4)
+- The shared API fixtures moved to `tests/api_fixtures.py`, loaded as a pytest plugin
 
 ### Verification
 
-- [ ] For the same transcript + ground truth, the endpoint's scores equal the evaluation CLI's
+- [x] For the same transcript + ground truth, the endpoint's scores equal the evaluation CLI's
       `score_transcripts` output
 
 ## Phase 4: Integration — `serve` Command and Docker
