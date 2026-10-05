@@ -33,6 +33,10 @@ dev = [
 # One extra per backend. Adding a backend adds an entry here and nothing else.
 faster-whisper = [
     "faster-whisper>=1.0,<2.0",
+    # faster-whisper 1.2.1 opens audio with PyAV's `metadata_errors`, which
+    # PyAV 19 removed: every transcription fails on a fresh install without
+    # this cap. Lift it once faster-whisper supports PyAV 19.
+    "av>=11,<19",
 ]
 
 # ElevenLabs' hosted Scribe v2. Needs ELEVENLABS_API_KEY; audio is uploaded.
