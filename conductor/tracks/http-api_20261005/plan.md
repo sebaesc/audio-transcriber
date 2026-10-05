@@ -56,28 +56,40 @@ Run transcription jobs in the background and expose them over HTTP.
 
 ### Tasks
 
-- [ ] Task 2.1: Add a stub backend fixture for API tests (deterministic transcript, a
+- [x] Task 2.1: Add a stub backend fixture for API tests (deterministic transcript, a
       configurable delay, and a configurable failure mode). Reuse the existing conformance stub
       if one fits
-- [ ] Task 2.2: Write tests first for `JobRunner`: it submits to a `ThreadPoolExecutor` sized by
+- [x] Task 2.2: Write tests first for `JobRunner`: it submits to a `ThreadPoolExecutor` sized by
       settings, moves a job `queued → running → succeeded` with the transcript stored, and
       records `failed` with a structured error for `AudioDecodeError`,
       `BackendRequirementError` and `TranscriptionError`. Temp uploads are deleted in every
       outcome
-- [ ] Task 2.3: Implement `JobRunner` on top of `pipeline.run`/`validate`. Keep each job's run
+- [x] Task 2.3: Implement `JobRunner` on top of `pipeline.run`/`validate`. Keep each job's run
       directory (transcript JSON + `manifest.json`) for the evaluation step
-- [ ] Task 2.4: Write API contract tests first: `POST /transcriptions` (multipart: `file`,
+- [x] Task 2.4: Write API contract tests first: `POST /transcriptions` (multipart: `file`,
       `backend`, `options` as JSON) → 202 + `{id, status}` + `Location`; unknown/uninstalled
       backend → 400 before queuing; oversize upload → 413; `GET /transcriptions/{id}` → status
       and transcript (same JSON the CLI writes) or error; unknown id → 404
-- [ ] Task 2.5: Implement the FastAPI app factory (`create_app(settings, store)`), the two
+- [x] Task 2.5: Implement the FastAPI app factory (`create_app(settings, store)`), the two
       routes, and the exception handlers that map the `errors.py` hierarchy to JSON bodies
-- [ ] Task 2.6: Test and implement `GET /backends` (`registry.available()` +
+- [x] Task 2.6: Test and implement `GET /backends` (`registry.available()` +
       `registry.unavailable()` reasons) and `GET /health`
+
+### Notes
+
+- 2.1: the conformance stub is private to its test and has no delay or failure modes, so the API
+  has its own, `tests/api_stub.py`. Its options choose the behavior (`fail`, `wait`) and it hides
+  the built-ins, so no API test can build a real engine
+- 2.2: found and fixed a race — a job's outcome was recorded before its upload was removed
+- 2.4/2.5: bad backend options (constructing the backend is offline and cheap) are also a 400
+  before queuing. Missing form fields are a 422 in the same error shape. An oversize upload is
+  refused by its `Content-Length` before the multipart parser spools it, and byte-exact while
+  copying. Error bodies are `{"error": {"type", "message", "remedy"}}`
+- Deviation: Starlette 1.7 deprecates `httpx` for `TestClient`; `httpx2` joins the `dev` extra
 
 ### Verification
 
-- [ ] A test submits a job, polls until it succeeds, and gets back a transcript identical to
+- [x] A test submits a job, polls until it succeeds, and gets back a transcript identical to
       what the CLI writes for the same stub output
 
 ## Phase 3: Evaluation Endpoint
