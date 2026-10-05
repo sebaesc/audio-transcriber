@@ -160,27 +160,45 @@ Make the service runnable locally and in a container.
 
 ### Tasks
 
-- [ ] Task 5.1: Add a README "HTTP API" section: install, `serve`, the endpoints, example `curl`
+- [x] Task 5.1: Add a README "HTTP API" section: install, `serve`, the endpoints, example `curl`
       requests (submit, poll, evaluate), the async job lifecycle, settings, and the limitation
       that jobs are in-memory and lost on restart
-- [ ] Task 5.2: Add a README "Docker" section: build args, compose, `.env`, and the model cache
+- [x] Task 5.2: Add a README "Docker" section: build args, compose, `.env`, and the model cache
       volume
-- [ ] Task 5.3: Update `tech-stack.md` (FastAPI/uvicorn, Docker image details) and the Mermaid
+- [x] Task 5.3: Update `tech-stack.md` (FastAPI/uvicorn, Docker image details) and the Mermaid
       diagrams if the run flow changed
-- [ ] Task 5.4: Confirm that "Persistent job storage" is recorded in the tracks.md Backlog
+- [x] Task 5.4: Confirm that "Persistent job storage" is recorded in the tracks.md Backlog
+
+### Notes
+
+- 5.3: the run flow is unchanged, so the existing diagrams stand; `docs/diagramas.md` gains the
+  `api` package in the dependency view and a sequence diagram of a job (section 6)
+- 5.4: the backlog row was added with the track and is present
 
 ### Verification
 
-- [ ] Following the README from a clean checkout, a new user can start the service and transcribe
+- [x] Following the README from a clean checkout, a new user can start the service and transcribe
       a file
 
 ## Final Verification
 
-- [ ] All acceptance criteria met
-- [ ] Tests passing (`pytest`), `ruff format` / `ruff check` clean
-- [ ] No test or smoke run spent ElevenLabs credits
-- [ ] Documentation updated
-- [ ] Ready for review
+- [x] All acceptance criteria met
+- [x] Tests passing (`pytest`), `ruff format` / `ruff check` clean
+- [x] No test or smoke run spent ElevenLabs credits
+- [x] Documentation updated
+- [ ] Ready for review — awaiting manual sign-off
+
+Recorded 2026-10-05:
+
+- `pytest`: 726 passed, 9 skipped (7m52s). `ruff check .` and `ruff format --check .` clean
+- No credits spent: the API tests register only the stub and hide the built-ins; the hosted
+  backend's own tests use a fake client unless `AUDIO_TRANSCRIBER_LIVE_TESTS=1`; both smoke runs
+  used faster-whisper `tiny`
+- Clean checkout (fresh clone, fresh venv, `pip install -e ".[api,eval,faster-whisper]"`,
+  `audio-transcriber serve`): a 20 s clip transcribed, 3 segments
+- Docker: `docker compose up --build` served the API, the container was `healthy`, a job and its
+  evaluation succeeded
+- No contract changed: backend interface, transcript schema and manifest format are untouched
 
 ---
 
