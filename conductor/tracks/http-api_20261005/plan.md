@@ -3,7 +3,7 @@
 **Track ID:** http-api_20261005
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-10-05
-**Status:** [ ] Not Started
+**Status:** [~] In Progress
 
 ## Overview
 
@@ -23,24 +23,31 @@ Make the API importable and give it a job model, without any routes yet.
 
 ### Tasks
 
-- [ ] Task 1.1: Add the `api` extra (`fastapi`, `uvicorn[standard]`, `python-multipart`, pinned
+- [x] Task 1.1: Add the `api` extra (`fastapi`, `uvicorn[standard]`, `python-multipart`, pinned
       to major ranges) to `pyproject.toml`. Install it in `.venv` and record the versions in
       `tech-stack.md`
-- [ ] Task 1.2: Make sure the core package never imports `fastapi`/`uvicorn`. Extend
+- [x] Task 1.2: Make sure the core package never imports `fastapi`/`uvicorn`. Extend
       `tests/test_no_engine_leakage.py` (or add a sibling test) so that importing
       `audio_transcriber` and its CLI module does not import them
-- [ ] Task 1.3: Write tests first for the job model: `JobStatus`
+- [x] Task 1.3: Write tests first for the job model: `JobStatus`
       (`queued`/`running`/`succeeded`/`failed`), legal transitions only, timestamps, a structured
       error (`type`, `message`, `remedy`), and JSON serialization
-- [ ] Task 1.4: Implement `Job` and a `JobStore` protocol with an `InMemoryJobStore`
+- [x] Task 1.4: Implement `Job` and a `JobStore` protocol with an `InMemoryJobStore`
       (thread-safe; `create`, `get`, `update`). The protocol is the seam for the backlogged
       persistent store
-- [ ] Task 1.5: Add `ApiSettings` (read from the environment): max upload size, worker
+- [x] Task 1.5: Add `ApiSettings` (read from the environment): max upload size, worker
       concurrency (default 1), temp/output directory
+
+### Notes
+
+- 1.2 is a regression guard in its own file, `tests/test_api_optional.py`: it imports the core
+  modules in a fresh interpreter, because the API tests import FastAPI into the test process
+- 1.5 settings: `AUDIO_TRANSCRIBER_MAX_UPLOAD_MB` (default 1024), `AUDIO_TRANSCRIBER_CONCURRENCY`
+  (default 1), `AUDIO_TRANSCRIBER_WORK_DIR` (default `<tmp>/audio-transcriber-api`)
 
 ### Verification
 
-- [ ] `pytest` passes; `ruff check` clean; `pip install -e .` without `[api]` still works and the
+- [x] `pytest` passes; `ruff check` clean; `pip install -e .` without `[api]` still works and the
       CLI runs
 
 ## Phase 2: Core — Job Execution and Transcription Routes
