@@ -163,6 +163,12 @@ curl -X POST localhost:8000/transcriptions/3f2c…/evaluation -F ground_truth=@m
 # The report the evaluation CLI writes: WER, retention, coverage, speakers, languages
 ```
 
+**Postman.** [`docs/postman/audio-transcriber.postman_collection.json`](docs/postman/audio-transcriber.postman_collection.json)
+holds the same requests, plus the refused ones and their errors. Import it, set the `baseUrl`,
+`backend` and `options` collection variables, and pick the files in each request's Body tab.
+`Submit transcription` saves the job id in `jobId`, so the poll and evaluate requests use that job.
+Send `Get transcription` again until the job finishes.
+
 **Jobs are asynchronous.** A job moves `queued` → `running` → `succeeded` or `failed`, and never
 back. On success, `transcript` is the same JSON array the CLI writes. On failure, `error` says why:
 `{"type", "message", "remedy"}`. A request no job could run is refused before anything is queued:
