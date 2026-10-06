@@ -229,7 +229,8 @@ Hosted backends run against a fake client by default, so a key in `.env` never t
 To measure whether a change improves transcription quality, run the evaluation harness against
 the Spanish-English reference corpus, or against a ground truth you write for your own recordings
 (by running a backend, or by scoring a transcript the pipeline already made) — see
-[`docs/evaluation.md`](docs/evaluation.md).
+[`docs/evaluation.md`](docs/evaluation.md). `--table` puts every report side by side, model by
+model and recording by recording, and `--metrics` explains each metric.
 
 ## Adding a backend
 

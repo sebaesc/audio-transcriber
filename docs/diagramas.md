@@ -279,6 +279,8 @@ flowchart LR
     end
     subgraph evaluation [audio_transcriber.evaluation]
         eval_main[__main__] --> runner
+        eval_main --> table
+        table --> runner
         runner --> corpus
         runner --> scoring
         runner --> talkbank
@@ -365,7 +367,7 @@ flowchart LR
 | ----- | ------------ | ---------------- |
 | Usuario | Transcribir, listar backends, revisar resultados, scripts standalone | `python -m audio_transcriber`, `standalone/*.py` |
 | Desarrollador | Implementar un `TranscriptionBackend`, pasar la conformidad | `registry.register`, `pytest -k conformance` |
-| Evaluador | Medir WER/retención/mezcla de idiomas, comparar configuraciones | `python -m audio_transcriber.evaluation` |
+| Evaluador | Medir WER/retención/mezcla de idiomas, comparar configuraciones, tabular todos los modelos (`--table`), consultar qué significa cada métrica (`--metrics`) | `python -m audio_transcriber.evaluation` |
 
 ## 4. Diagrama de secuencia — transcribir un lote
 
@@ -450,12 +452,23 @@ sequenceDiagram
 El harness de `python -m audio_transcriber.evaluation` transcribe el corpus Bangor Miami
 (subconjunto `mixed`: cinco grabaciones en inglés/español, unas 2.5 h) y compara cada hipótesis
 con su transcripción de referencia. Con `--talkbank` también puntúa hablantes e idioma por
-segmento contra las anotaciones originales de TalkBank. Detalle de las métricas en
-[`evaluation.md`](evaluation.md).
+segmento contra las anotaciones originales de TalkBank. `--table` pone todos los reportes lado
+a lado sin correr ningún backend, y `--metrics` imprime qué significa cada métrica. Detalle de
+las métricas en [`evaluation.md`](evaluation.md).
 
 ```mermaid
 flowchart TD
-    A(["python -m audio_transcriber.evaluation"]) --> B{"¿--compare BASE CANDIDATO?"}
+    A(["python -m audio_transcriber.evaluation"]) --> MT{"¿--metrics?"}
+    MT -- Sí --> MT1(["Imprimir definición, dirección y campo<br/>de cada métrica, exit 0"])
+    MT -- No --> TB{"¿--table [REPORTES]?"}
+    TB -- No --> B{"¿--compare BASE CANDIDATO?"}
+
+    %% ── Tabla comparativa de reportes ──
+    TB -- Sí --> TB1["Sin REPORTES: eval/*.json y eval/custom/*.json,<br/>sin los *.local.json"]
+    TB1 --> TB2{"¿Hay reportes válidos?"}
+    TB2 -- No --> Z3
+    TB2 -- Sí --> TB3["Una sección por fuente (corpus, custom):<br/>fila por grabación × modelo, con su backend;<br/>medias por modelo; modelos; leyenda"]
+    TB3 --> TB4(["Imprimir y escribir eval/comparison.md, exit 0"])
 
     %% ── Evaluar una configuración ──
     B -- No --> C{"¿--backend y --label?"}
