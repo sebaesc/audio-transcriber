@@ -2,9 +2,9 @@
   "id": "http-api_20261005",
   "title": "HTTP API Service",
   "type": "feature",
-  "status": "in_progress",
+  "status": "complete",
   "created": "2026-10-05T16:12:18Z",
-  "updated": "2026-10-05T19:30:00Z",
+  "updated": "2026-10-06T09:00:00Z",
   "phases": {
     "total": 5,
     "completed": 5
@@ -14,7 +14,7 @@
     "completed": 22
   },
   "current_phase": 5,
-  "current_task": "final-verification",
+  "current_task": null,
   "commits": [
     "2945b39: build(api): add the api extra with FastAPI, uvicorn and python-multipart [http-api_20261005]",
     "ba2b9dd: test(api): keep server libraries out of the core imports [http-api_20261005]",
@@ -32,5 +32,6 @@
     "307bbe9: build(docker): add a Dockerfile and compose file for the HTTP API [http-api_20261005]",
     "a4c0fa0: docs(api): document the HTTP API and the Docker image in the README [http-api_20261005]",
     "a5e63bf: docs(conductor): record the HTTP API and Docker image in tech-stack and diagrams [http-api_20261005]"
-  ]
+  ],
+  "completed": "2026-10-06"
 }

@@ -3,7 +3,7 @@
 **Track ID:** http-api_20261005
 **Spec:** [spec.md](./spec.md)
 **Created:** 2026-10-05
-**Status:** [~] In Progress
+**Status:** [x] Complete
 
 ## Overview
 
@@ -186,7 +186,7 @@ Make the service runnable locally and in a container.
 - [x] Tests passing (`pytest`), `ruff format` / `ruff check` clean
 - [x] No test or smoke run spent ElevenLabs credits
 - [x] Documentation updated
-- [ ] Ready for review — awaiting manual sign-off
+- [x] Ready for review — signed off by the user on 2026-10-06
 
 Recorded 2026-10-05:
 

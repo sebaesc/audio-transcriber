@@ -3,7 +3,7 @@
 **Track ID:** http-api_20261005
 **Type:** Feature
 **Created:** 2026-10-05
-**Status:** Draft
+**Status:** Complete
 
 ## Summary
 
@@ -27,22 +27,22 @@ without shelling out to the CLI or installing every engine locally.
 
 ## Acceptance Criteria
 
-- [ ] `POST /transcriptions` accepts an audio upload plus a backend name and options, and returns
+- [x] `POST /transcriptions` accepts an audio upload plus a backend name and options, and returns
       **202 with a job ID** immediately; the job runs the existing pipeline in the background.
-- [ ] `GET /transcriptions/{id}` returns the job status (`queued`/`running`/`succeeded`/`failed`);
+- [x] `GET /transcriptions/{id}` returns the job status (`queued`/`running`/`succeeded`/`failed`);
       on success it includes the transcript in the same JSON the CLI writes, on failure a
       structured error.
-- [ ] `POST /transcriptions/{id}/evaluation` takes a ground-truth file and scores that job's
+- [x] `POST /transcriptions/{id}/evaluation` takes a ground-truth file and scores that job's
       transcript against it (WER and the other `Report` metrics), reusing the
       `score_transcripts` path — it never re-transcribes or spends backend credits.
-- [ ] `GET /backends` lists installed backends and why the others are unavailable.
-- [ ] Errors map to HTTP statuses with a JSON body: request-time errors (unknown backend → 400,
+- [x] `GET /backends` lists installed backends and why the others are unavailable.
+- [x] Errors map to HTTP statuses with a JSON body: request-time errors (unknown backend → 400,
       bad ground truth → 422, unknown job → 404); in-job failures (decode, missing credentials,
       transcription) are reported on the job resource.
-- [ ] `GET /health` returns OK; `audio-transcriber serve` starts the server; server dependencies
+- [x] `GET /health` returns OK; `audio-transcriber serve` starts the server; server dependencies
       install as an optional `api` extra.
-- [ ] A Dockerfile and `docker-compose.yml` build and run the service, ffmpeg included.
-- [ ] Tests use a stub backend, never a live paid one; the README documents setup, Docker usage,
+- [x] A Dockerfile and `docker-compose.yml` build and run the service, ffmpeg included.
+- [x] Tests use a stub backend, never a live paid one; the README documents setup, Docker usage,
       and example requests.
 
 ## Dependencies
