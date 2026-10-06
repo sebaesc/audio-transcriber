@@ -1,0 +1,290 @@
+{
+  "info": {
+    "name": "Audio Transcriber",
+    "description": "Requests for the Audio Transcriber HTTP API. Start the server with `audio-transcriber serve` or `docker compose up`, then run the requests in order: submit a transcription, poll it until it finishes, and optionally score it.\n\n`Submit transcription` saves the new job's id in the `jobId` collection variable, so the requests after it use that job. Pick the audio file (and the ground truth for `Evaluate transcription`) in each request's Body tab, since file paths are local to your machine.\n\nEvery error has the same shape: `{\"error\": {\"type\", \"message\", \"remedy\"}}`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000", "type": "string" },
+    { "key": "backend", "value": "faster-whisper", "type": "string" },
+    { "key": "options", "value": "{\"model\": \"tiny\"}", "type": "string" },
+    { "key": "jobId", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Service",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health",
+            "description": "Reports that the service is up: `{\"status\": \"ok\"}`."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('service is up', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json().status).to.eql('ok');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List backends",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/backends",
+            "description": "The installed backends under `available`, and under `unavailable` why the others cannot run (usually a missing extra)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('lists backends', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(pm.response.json()).to.have.keys('available', 'unavailable');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Transcriptions",
+      "item": [
+        {
+          "name": "Submit transcription",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/transcriptions",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "The audio or video to transcribe. Select a file here."
+                },
+                {
+                  "key": "backend",
+                  "type": "text",
+                  "value": "{{backend}}",
+                  "description": "faster-whisper or elevenlabs-scribe; see List backends."
+                },
+                {
+                  "key": "options",
+                  "type": "text",
+                  "value": "{{options}}",
+                  "description": "Backend options as a JSON object. Optional; defaults to {}."
+                }
+              ]
+            },
+            "description": "Queues a transcription and answers 202 with the job's id and a `Location` header. The id is saved in `jobId`.\n\nRefused before anything is queued: an unknown or uninstalled backend or bad options (400), an upload over the size limit (413), a missing field (422).\n\nNote: `elevenlabs-scribe` uploads the audio to ElevenLabs and spends credits."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('job is queued', () => {",
+                  "    pm.response.to.have.status(202);",
+                  "    pm.response.to.have.header('Location');",
+                  "});",
+                  "if (pm.response.code === 202) {",
+                  "    pm.collectionVariables.set('jobId', pm.response.json().id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get transcription",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/transcriptions/{{jobId}}",
+            "description": "The job. `status` moves queued → running → succeeded or failed. Once succeeded, `transcript` holds the segments; once failed, `error` says why. Send it again until the job finishes.\n\n404 if there is no such job; jobs are lost when the server restarts."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('job is found', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const job = pm.response.json();",
+                  "if (job.status === 'queued' || job.status === 'running') {",
+                  "    console.log(`job ${job.id} is ${job.status}; send the request again`);",
+                  "}",
+                  "if (job.status === 'failed') {",
+                  "    console.log(job.error);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Evaluate transcription",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/transcriptions/{{jobId}}/evaluation",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "ground_truth",
+                  "type": "file",
+                  "src": [],
+                  "description": "Ground truth: a JSON array of transcript segments (see docs/evaluation.md). Select a file here."
+                }
+              ]
+            },
+            "description": "Scores a succeeded job's transcript against the ground truth and returns the evaluation report (WER, retention, coverage, speakers, languages). It reads the transcript already written, so nothing is transcribed again and no credits are spent.\n\n404 for an unknown job, 409 if the job has not succeeded, 422 for an invalid ground truth, 501 if the server lacks the `eval` extra."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('job is scored', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Errors",
+      "description": "Requests the API refuses, to see the error shape. None of them queue a job.",
+      "item": [
+        {
+          "name": "Unknown backend (400)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/transcriptions",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": [] },
+                { "key": "backend", "type": "text", "value": "no-such-backend" }
+              ]
+            },
+            "description": "Select any file; the backend is checked before the job is queued."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('refused with 400', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().error).to.have.keys('type', 'message', 'remedy');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Options not a JSON object (400)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/transcriptions",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": [] },
+                { "key": "backend", "type": "text", "value": "{{backend}}" },
+                { "key": "options", "type": "text", "value": "[1, 2]" }
+              ]
+            },
+            "description": "Select any file; `options` must be a JSON object."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('refused with 400', () => {",
+                  "    pm.response.to.have.status(400);",
+                  "    pm.expect(pm.response.json().error.type).to.eql('ConfigError');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Missing file (422)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/transcriptions",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "backend", "type": "text", "value": "{{backend}}" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('refused with 422', () => {",
+                  "    pm.response.to.have.status(422);",
+                  "    pm.expect(pm.response.json().error.type).to.eql('RequestValidationError');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown job (404)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/transcriptions/no-such-job"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('not found', () => {",
+                  "    pm.response.to.have.status(404);",
+                  "    pm.expect(pm.response.json().error.type).to.eql('UnknownJobError');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
