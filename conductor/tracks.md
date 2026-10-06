@@ -15,6 +15,7 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
+| [ ] | [gpu-docker_20261006](./tracks/gpu-docker_20261006/index.md) | GPU Docker Image | 2026-10-06 | 2026-10-06 |
 
 <!-- Tracks registered by /conductor:new-track -->
 
