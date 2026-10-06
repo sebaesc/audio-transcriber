@@ -1,7 +1,7 @@
 # Diagramas del repositorio
 
-Cinco vistas de Audio Transcriber: el flujo de una ejecución, el modelo de clases (UML), los casos
-de uso, la secuencia de llamadas y la evaluación contra el ground truth. Los diagramas están en Mermaid, que GitHub y la mayoría de editores renderizan directamente.
+Seis vistas de Audio Transcriber: el flujo de una ejecución, el modelo de clases (UML), los casos
+de uso, la secuencia de llamadas, la evaluación contra el ground truth y la API HTTP. Los diagramas están en Mermaid, que GitHub y la mayoría de editores renderizan directamente.
 
 ## 1. Diagrama de flujo — una ejecución de `audio-transcriber`
 
@@ -285,10 +285,21 @@ flowchart LR
         runner --> annotation
         scoring --> text
     end
+    subgraph api [audio_transcriber.api — extra api]
+        app --> jobs
+        app --> api_runner[runner]
+        app --> api_scoring[scoring]
+        app --> settings
+        api_runner --> jobs
+    end
     registry -. import perezoso por extra .-> faster_whisper
     registry -. import perezoso por extra .-> elevenlabs_scribe
     runner --> registry
     runner --> audio
+    cli -. serve: import perezoso .-> app
+    app --> registry
+    api_runner --> pipeline
+    api_scoring --> runner
 ```
 
 ## 3. Diagrama de casos de uso
@@ -509,4 +520,48 @@ flowchart TD
     Y4 --> Y5{"¿Mejoró en todas las grabaciones?"}
     Y5 -- Sí --> ZC0(["JSON de comparación, exit 0"])
     Y5 -- No --> ZC1(["JSON de comparación, exit 1"])
+```
+
+## 6. Diagrama de secuencia — un trabajo por la API HTTP
+
+`audio-transcriber serve` expone el mismo pipeline. Lo que ninguna ejecución podría correr se
+rechaza antes de encolar (400/413); lo que solo falla al transcribir queda en el trabajo. Evaluar
+lee el transcript ya escrito: nunca vuelve a llamar al backend.
+
+```mermaid
+sequenceDiagram
+    actor C as Cliente
+    participant A as api.app
+    participant R as registry
+    participant S as JobStore (memoria)
+    participant J as JobRunner (hilos)
+    participant P as pipeline.run
+    participant E as score_transcripts
+
+    C->>A: POST /transcriptions (file, backend, options)
+    A->>R: create(backend, **options)
+    alt backend desconocido, sin instalar u opciones inválidas
+        A-->>C: 400 {"error": {type, message, remedy}}
+    end
+    A->>A: guardar el upload (413 si excede el límite)
+    A->>J: submit(job, upload)
+    J->>S: create(job: queued)
+    A-->>C: 202 {id, status: queued} + Location
+    J->>S: update(running)
+    J->>P: run(upload, backend, runs/<id>, run_id=id)
+    P-->>J: RunResult (transcript + manifest.json en disco)
+    J->>J: borrar el upload
+    J->>S: update(succeeded + transcript | failed + error)
+    loop hasta succeeded o failed
+        C->>A: GET /transcriptions/{id}
+        A->>S: get(id)
+        A-->>C: 200 {status, transcript | error} (404 si no existe)
+    end
+    C->>A: POST /transcriptions/{id}/evaluation (ground_truth)
+    alt el trabajo no terminó o falló
+        A-->>C: 409
+    end
+    A->>E: score_transcripts([Pair(transcript, ground truth)])
+    E-->>A: Report (backend y modelo leídos del manifest)
+    A-->>C: 200 reporte (422 si el ground truth es inválido)
 ```

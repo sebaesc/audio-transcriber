@@ -1,0 +1,30 @@
+# The HTTP API service. `docker compose up --build`, then http://localhost:8000.
+#
+# Credentials come from .env beside this file (see .env.example):
+# ELEVENLABS_API_KEY for the elevenlabs-scribe backend, HF_TOKEN for diarization.
+# They are passed to the container at run time and never baked into the image.
+
+services:
+  api:
+    build:
+      context: .
+      args:
+        EXTRAS: ${EXTRAS:-api,eval,faster-whisper,elevenlabs}
+    image: audio-transcriber:latest
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Jobs run at once. Keep 1 for local models on a CPU; hosted backends
+      # can take more.
+      AUDIO_TRANSCRIBER_CONCURRENCY: ${AUDIO_TRANSCRIBER_CONCURRENCY:-1}
+      AUDIO_TRANSCRIBER_MAX_UPLOAD_MB: ${AUDIO_TRANSCRIBER_MAX_UPLOAD_MB:-1024}
+    volumes:
+      # Whisper and pyannote weights, downloaded once and kept across restarts.
+      - model-cache:/home/app/.cache/huggingface
+    restart: unless-stopped
+
+volumes:
+  model-cache:

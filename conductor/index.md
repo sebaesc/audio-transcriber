@@ -35,6 +35,7 @@ A modular audio transcription pipeline with swappable model backends.
 
 | Track | Status | Priority | Spec | Plan |
 | ----- | ------ | -------- | ---- | ---- |
+| [HTTP API Service](./tracks/http-api_20261005/index.md) | Complete | Medium | [spec](./tracks/http-api_20261005/spec.md) | [plan](./tracks/http-api_20261005/plan.md) |
 | [Core Pipeline and Backend Interface](./tracks/_archive/core-pipeline_20260922/index.md) | Complete | Critical | [spec](./tracks/_archive/core-pipeline_20260922/spec.md) | [plan](./tracks/_archive/core-pipeline_20260922/plan.md) |
 | [Code-Switching Language Detection and Speaker Diarization](./tracks/_archive/codeswitch-diarization_20260922/index.md) | Complete | High | [spec](./tracks/_archive/codeswitch-diarization_20260922/spec.md) | [plan](./tracks/_archive/codeswitch-diarization_20260922/plan.md) |
 | [Default Whisper Model to large-v3](./tracks/_archive/default-large-v3_20260923/index.md) | Complete | Low | [spec](./tracks/_archive/default-large-v3_20260923/spec.md) | [plan](./tracks/_archive/default-large-v3_20260923/plan.md) |
@@ -63,6 +64,8 @@ A modular audio transcription pipeline with swappable model backends.
 | 2026-09-25 | standalone-snapshot_20260925 | Track complete (4 phases, 18 tasks, all gates passed); merged into `main` |
 | 2026-10-02 | custom-ground-truth_20261002 | Track created (4 phases, 19 tasks) |
 | 2026-10-02 | custom-ground-truth_20261002 | Track complete (4 phases, 19 tasks, all gates passed); merged into `main` |
+| 2026-10-05 | http-api_20261005 | Track created (5 phases, 22 tasks) |
+| 2026-10-06 | http-api_20261005 | Track complete (5 phases, 22 tasks, all gates passed); merged into `main` |
 
 ## Project Status
 

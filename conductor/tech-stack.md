@@ -2,7 +2,8 @@
 
 ## Frontend
 
-Not applicable — CLI only. No frontend framework, state management, or styling layer.
+Not applicable — a CLI and an HTTP API. No frontend framework, state management, or styling
+layer; FastAPI's generated `/docs` page is the only browser view.
 
 If a UI is ever added, it is a separate consumer of the library and does not change the
 pipeline contract.
@@ -20,12 +21,15 @@ A venv already exists at `.venv` with Python 3.12.3.
 
 ### Framework
 
-**Choice:** None — Python library with a CLI entry point
-**Version:** n/a
+**Choice:** Python library with a CLI entry point; FastAPI + uvicorn for the optional HTTP API
+**Version:** see the `api` extra below
 
 **Rationale:**
-The deliverable is a pipeline, not a service. A library plus CLI keeps the core importable
-and testable; an HTTP layer can be added later as a consumer without changing the pipeline.
+The deliverable is a pipeline. A library plus CLI keeps the core importable and testable. The
+HTTP API (`http-api_20261005`) is a consumer of it, in `audio_transcriber.api`, installed as the
+`api` extra: the core install never imports FastAPI or uvicorn (a test guards this). Jobs run the
+pipeline on a thread pool, because backends block, and are kept in an in-memory `JobStore`; the
+store is a protocol, so persistent storage can replace it (backlog).
 
 ### Database
 
@@ -62,12 +66,13 @@ Pinned by the `core-pipeline_20260922` track; extended by `codeswitch-diarizatio
 | ------- | ------------------ | --------------- |
 | pytest  | Test runner        | `>=8.0,<9.0`    |
 | Ruff    | Lint and format    | `>=0.6,<0.15`   |
+| httpx2  | FastAPI's `TestClient` (Starlette 1.7 deprecates plain httpx) | `>=2.0,<3.0` |
 
 **Backend extras** — one per backend, installed individually:
 
 | Extra            | Library          | Version        |
 | ---------------- | ---------------- | -------------- |
-| `faster-whisper` | faster-whisper   | `>=1.0,<2.0`   |
+| `faster-whisper` | faster-whisper, PyAV | `>=1.0,<2.0`; PyAV `>=11,<19` (faster-whisper 1.2.1 breaks on PyAV 19) |
 | `elevenlabs`     | elevenlabs (official SDK; brings httpx) | `>=2.0,<3.0` |
 | `diarization`    | pyannote.audio (brings torch), pyannote.metrics | `>=4.0,<5.0` each |
 
@@ -77,6 +82,14 @@ Pinned by the `core-pipeline_20260922` track; extended by `codeswitch-diarizatio
 | ------ | ---------------- | ----------------------------------------- | ------------ |
 | `eval` | jiwer            | Word error rate                           | `>=3.0,<5.0` |
 | `eval` | pyarrow          | Reading the Hugging Face reference corpus | `>=15.0`     |
+
+**Service extra** — the HTTP API (`http-api_20261005`), a consumer of the pipeline:
+
+| Extra | Library          | Purpose                     | Version          | Installed |
+| ----- | ---------------- | --------------------------- | ---------------- | --------- |
+| `api` | FastAPI          | HTTP routes and validation  | `>=0.115,<1.0`   | 0.142.2 (Starlette 1.7.0) |
+| `api` | uvicorn[standard] | ASGI server                | `>=0.30,<1.0`    | 0.54.0    |
+| `api` | python-multipart | Multipart upload parsing    | `>=0.0.9,<1.0`   | 0.0.32    |
 
 Scoring speakers against TalkBank (`evaluation --talkbank`) also needs the `diarization` extra,
 for `pyannote.metrics`.
@@ -105,8 +118,13 @@ GPU inference needs the CUDA runtime libraries, installed as wheels
 
 **Services Used:**
 
-- Docker image containing the pipeline and its system dependencies (ffmpeg)
-- Optional GPU host for local model backends (CUDA base image variant)
+- Docker image containing the pipeline and its system dependencies (ffmpeg): `Dockerfile` on
+  `python:3.12-slim`, extras chosen by the `EXTRAS` build arg
+  (`api,eval,faster-whisper,elevenlabs` by default), non-root `app` user, port 8000, a
+  `HEALTHCHECK` on `/health`, about 1.3 GB with the defaults. CPU only
+- `docker-compose.yml`: passes `.env` at run time, and keeps model weights in the
+  `model-cache` named volume (`HF_HOME`)
+- Optional GPU host for local model backends (CUDA base image variant — not built yet)
 - Host filesystem / mounted volumes for audio input and transcript output
 
 ### CI/CD
@@ -122,8 +140,10 @@ GPU inference needs the CUDA runtime libraries, installed as wheels
 
 ### Monitoring
 
-**APM:** None — batch CLI tool
-**Logging:** Python `logging` to stderr; per-run manifest and `errors.json` on disk
+**APM:** None — batch CLI tool and an internal service
+**Logging:** Python `logging` to stderr (uvicorn's access log for the API); per-run manifest
+and `errors.json` on disk
+**Health:** `GET /health`, used by the Docker `HEALTHCHECK`
 **Alerting:** None
 
 ### Additional Infrastructure

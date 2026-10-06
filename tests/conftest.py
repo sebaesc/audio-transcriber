@@ -13,6 +13,8 @@ import pytest
 
 from audio_transcriber.backend import TARGET_SAMPLE_RATE
 
+pytest_plugins = ["tests.api_fixtures"]
+
 
 def write_wav(path: Path, seconds: float = 1.0, frequency: float = 440.0) -> Path:
     """Write a mono 16-bit PCM WAV tone at the pipeline's target sample rate.

@@ -1,0 +1,31 @@
+# Only pyproject.toml, README.md and src/ go into the image.
+.git
+.gitignore
+.venv
+venv
+env
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Credentials reach the container through compose's env_file, never the image.
+.env
+.env.*
+
+# Audio, outputs, evaluation data and models are not the service's code.
+audio
+out
+eval
+models
+
+# Not needed to run the service.
+tests
+docs
+conductor
+standalone
+uv.lock
+Dockerfile
+docker-compose.yml
+.dockerignore

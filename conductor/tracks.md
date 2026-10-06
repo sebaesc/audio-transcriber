@@ -24,8 +24,19 @@ represents a distinct body of work with its own spec and implementation plan.
 
 | Status | Track ID | Title | Created | Completed |
 | ------ | -------- | ----- | ------- | --------- |
+| [x] | [http-api_20261005](./tracks/http-api_20261005/index.md) | HTTP API Service | 2026-10-05 | 2026-10-06 |
 
 <!-- Move completed tracks here -->
+
+---
+
+## Backlog
+
+Ideas deferred from tracks; promote one with `/conductor:new-track`.
+
+| Item | Source Track | Added | Notes |
+| ---- | ------------ | ----- | ----- |
+| Persistent job storage for the HTTP API | http-api_20261005 | 2026-10-05 | Jobs are in-memory and lost on restart; implement the `JobStore` protocol over SQLite or similar |
 
 ---
 
