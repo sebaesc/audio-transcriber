@@ -56,6 +56,12 @@ language marks. TalkBank's original annotations keep both; see
 
 # Compare two existing reports, recording by recording
 .venv/bin/python -m audio_transcriber.evaluation --compare eval/baseline.json eval/chunked.json
+
+# Every model side by side, recording by recording, in one table
+.venv/bin/python -m audio_transcriber.evaluation --table
+
+# What each metric in that table means
+.venv/bin/python -m audio_transcriber.evaluation --metrics
 ```
 
 `--option` values are parsed as JSON where they parse, and kept as strings otherwise, so
@@ -70,6 +76,7 @@ Output:
 | `eval/<label>.local.json` | A report you do not intend to keep | No, gitignored |
 | `eval/transcripts/<recording>.<label>.txt` | The normalized hypothesis that was scored | No |
 | `eval/transcripts/<recording>.<label>.json` | The hypothesis as segments, with timings | No |
+| `eval/comparison.md` | The side-by-side table `--table` writes | No, regenerated from the reports |
 
 Use a `.local` label for exploratory runs so they cannot be committed by accident.
 
@@ -136,6 +143,72 @@ recordings the same way, and never tune the seed.
 
 **Compare like with like.** The model, device and every backend option are in the report's
 `config`. Two reports with different `model_version` or `config.device` are not comparable.
+
+### Every model side by side: `--table`
+
+`--compare` judges two reports. `--table` lays out any number of them, corpus and custom alike,
+model by model and recording by recording. It reads reports only: no backend runs, so nothing is
+spent.
+
+```bash
+# Every kept report: eval/*.json and eval/custom/*.json, without the *.local.json ones
+.venv/bin/python -m audio_transcriber.evaluation --table
+
+# Only these reports, local ones included
+.venv/bin/python -m audio_transcriber.evaluation --table eval/chunked.json eval/scribe.json \
+    eval/custom/*.json
+```
+
+The table is printed and written to `<out>/comparison.md` (gitignored; regenerate it). It has:
+
+| Section | Contents |
+| ------- | -------- |
+| `Corpus`, `Custom ground truth` | One per source with reports. A block of rows per recording, one row per report |
+| `Means over each model's scored recordings` | Under each source: one row per report, with how many recordings it scored |
+| `Models` | Each report's source, backend, full model version, and whether it diarized |
+| `Metrics` | A one-line legend; `--metrics` has the full definitions |
+
+Every row names the report (`Model`, its label) and the backend and model that produced its
+scores (`Backend`, such as `faster-whisper large-v3` or `elevenlabs-scribe scribe_v2`; `unknown`
+for transcripts scored without a run manifest). The metric columns are:
+
+| Column | Report field | Better |
+| ------ | ------------ | ------ |
+| `WER` | `score.wer` | Lower |
+| `Retained` | `score.retained` | Higher |
+| `Coverage` | `score.coverage` | Nearest 1.0 |
+| `Lang mix err` | `score.language_mix_error` | Lower |
+| `DER`, `Missed`, `False alarm`, `Spk conf` | `<talkbank\|ground_truth>.diarization.der`, `.missed`, `.false_alarm`, `.confusion` | Lower |
+| `Lang acc` | `<talkbank\|ground_truth>.language.accuracy` | Higher |
+| `Mixed` | `<talkbank\|ground_truth>.language.mixed_share` | Neither: a property of the recording |
+| `RTF` | `realtime_factor` | Higher |
+
+The headers carry the direction, `↓` lower is better and `↑` higher is better. Columns are padded
+so the table lines up as plain text too, in a terminal or an editor, and still renders as
+Markdown. Metrics show three decimals, the real-time factor one.
+
+- A `–` is a metric that was not measured: no diarization, a corpus run without `--talkbank`, or
+  no timing for a re-scored transcript. A recording the backend failed on reads `error`.
+- Means cover only the recordings each report scored — the `Scored` column — so compare them
+  only where those counts match. Judge per recording, as above.
+- Two reports from the same source with the same label are told apart by file name.
+- To put a model's transcripts of your recordings in the table, score them first with
+  `--transcripts` (see
+  [Scoring a transcript you already have](#scoring-a-transcript-you-already-have)), once per run
+  folder.
+- `--table` takes no run flags (`--backend`, `--label`, `--option`, `--only`, `--talkbank`, the
+  custom inputs or `--compare`): misuse exits 2. No reports, or a file that is not a report,
+  exits 3.
+
+### What each metric means: `--metrics`
+
+```bash
+.venv/bin/python -m audio_transcriber.evaluation --metrics
+```
+
+Prints, for every column of the table, its definition, which value is better and the report field
+it is read from. It takes no other mode and exits 0; combined with one, it exits 2. The
+definitions live beside the columns in `evaluation/table.py`, so the two cannot drift apart.
 
 ### Known biases
 

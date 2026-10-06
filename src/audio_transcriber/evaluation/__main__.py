@@ -3,14 +3,17 @@
 Kept separate from the pipeline CLI: evaluation is a development tool, not part
 of transcribing audio.
 
-Four mutually exclusive modes:
+Six mutually exclusive modes:
 
 - **corpus** (the default): run a backend over the reference corpus;
 - **custom**: run a backend over the user's recordings, `--audio FILE
   --reference FILE` or `--references DIR`, scoring each against its ground truth;
 - **existing**: score transcripts the pipeline already wrote, `--transcript FILE
   --reference FILE` or `--transcripts DIR --references DIR`, with no backend run;
-- **compare**: compare two existing reports.
+- **compare**: compare two existing reports;
+- **metrics**: print what each metric in the table means;
+- **table**: tabulate any number of existing reports, corpus and custom, model
+  by model and recording by recording, into `<out>/comparison.md`.
 
 Custom and existing reports go under `<out>/custom/`, apart from the corpus's.
 """
@@ -35,6 +38,12 @@ from audio_transcriber.evaluation.runner import (
     evaluate,
     evaluate_custom,
     score_transcripts,
+)
+from audio_transcriber.evaluation.table import (
+    TABLE_FILENAME,
+    comparison_table,
+    discover_reports,
+    metric_definitions,
 )
 
 #: The subdirectory of `--out` holding reports scored against a custom ground truth.
@@ -116,9 +125,34 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="Compare two existing reports instead of running one.",
     )
+    parser.add_argument(
+        "--table",
+        nargs="*",
+        metavar="REPORT",
+        type=Path,
+        help="Tabulate existing reports side by side, recording by recording, "
+        "into <out>/comparison.md. With no REPORT, every report in --out and "
+        "--out/custom.",
+    )
+    parser.add_argument(
+        "--metrics",
+        action="store_true",
+        help="Print what each metric in --table means, and exit.",
+    )
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
+
+    if args.metrics:
+        others = (
+            args.backend, args.label, args.option, args.only, args.talkbank,
+            args.audio, args.reference, args.references, args.transcript,
+            args.transcripts, args.compare, args.table is not None,
+        )  # fmt: skip
+        if any(others):
+            parser.error("--metrics only prints the definitions; it takes no mode")
+        print(metric_definitions(), end="")
+        return 0
 
     mode = _mode(args, parser)
     if mode == "compare":
@@ -126,6 +160,20 @@ def main(argv: list[str] | None = None) -> int:
         result = compare(baseline, candidate)
         print(json.dumps(result, indent=2))
         return 0 if result["improved_everywhere"] else 1
+
+    if mode == "table":
+        paths = args.table or discover_reports(args.out)
+        try:
+            table = comparison_table(paths)
+        except AudioTranscriberError as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 3
+        path = args.out / TABLE_FILENAME
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(table, encoding="utf-8")
+        print(table, end="")
+        print(f"table written to {path}", file=sys.stderr)
+        return 0
 
     out = args.out if mode == "corpus" else args.out / CUSTOM_SUBDIRECTORY
     config = dict(_parse_option(item) for item in args.option or [])
@@ -175,7 +223,7 @@ def _mode(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
     """Work out which mode the flags ask for, rejecting any misuse.
 
     Returns:
-        `compare`, `corpus`, `custom` or `existing`.
+        `compare`, `table`, `corpus`, `custom` or `existing`.
     """
     inputs = {
         "--audio": args.audio,
@@ -184,6 +232,20 @@ def _mode(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
         "--transcript": args.transcript,
         "--transcripts": args.transcripts,
     }
+    if args.table is not None:
+        used = [flag for flag, value in inputs.items() if value]
+        if args.compare:
+            used.append("--compare")
+        for flag, value in (("--backend", args.backend), ("--label", args.label)):
+            if value:
+                used.append(flag)
+        if args.option or args.only or args.talkbank:
+            used.append("--option/--only/--talkbank")
+        if used:
+            parser.error(
+                f"--table reads existing reports; it takes no {', '.join(used)}"
+            )
+        return "table"
     if args.compare:
         used = [flag for flag, value in inputs.items() if value]
         if used:
