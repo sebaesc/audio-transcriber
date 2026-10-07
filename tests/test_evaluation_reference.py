@@ -11,10 +11,12 @@ import pytest
 
 from audio_transcriber.errors import ConfigError
 from audio_transcriber.evaluation.reference import (
+    MAX_OUTSIDE_SHARE,
     discover_pairs,
     load_reference,
     single_pair,
 )
+from audio_transcriber.evaluation.text import normalize
 
 _SEGMENTS = [
     {
@@ -63,7 +65,10 @@ def test_overlapping_speech_is_accepted(tmp_path: Path):
     ("content", "problem"),
     [
         ("{not json", "not valid JSON"),
-        ({"segments": _SEGMENTS}, "JSON array"),
+        ({"text": "hi"}, "JSON array"),
+        ({"clipstart": 5, "segments": _SEGMENTS}, "clipstart"),
+        ({"clip_start": "later", "segments": _SEGMENTS}, "clip_start"),
+        ({"clip_start": -1, "segments": _SEGMENTS}, "clip_start"),
         ([], "empty"),
         (["hello"], "segment 0"),
         ([_SEGMENTS[0], {"start_time": 1.0, "end_time": 2.0}], "segment 1"),
@@ -137,6 +142,140 @@ def test_end_before_start_is_explained(tmp_path: Path):
 def test_a_missing_file_is_a_config_error(tmp_path: Path):
     with pytest.raises(ConfigError, match="nowhere.json"):
         load_reference(tmp_path / "nowhere.json")
+
+
+# --- Clips: a ground truth written against the longer video ---
+
+
+def _clip(clip_start, segments=_SEGMENTS) -> dict:
+    """A clip's ground truth, its segments written in the video's times."""
+    shifted = [
+        {
+            **segment,
+            "start_time": segment["start_time"] + 100,
+            "end_time": segment["end_time"] + 100,
+        }
+        for segment in segments
+    ]
+    return {"clip_start": clip_start, "segments": shifted}
+
+
+@pytest.mark.parametrize("clip_start", [100, 100.0, "1:40", "01:40.0"])
+def test_clip_start_moves_every_time_back(tmp_path: Path, clip_start):
+    bare = load_reference(_write(tmp_path / "bare.json", _SEGMENTS))
+    clip = load_reference(_write(tmp_path / "clip.json", _clip(clip_start)))
+
+    assert clip.segments == bare.segments
+    assert clip.clip_start == 100.0
+    assert clip.text == bare.text
+
+
+def test_a_bare_array_starts_at_zero(tmp_path: Path):
+    reference = load_reference(_write(tmp_path / "talk.json", _SEGMENTS))
+
+    assert reference.clip_start == 0.0
+    assert reference.outside_s == 0.0
+    assert set(reference.traced) == {"file", "checksum"}
+
+
+def test_an_object_without_clip_start_starts_at_zero(tmp_path: Path):
+    reference = load_reference(_write(tmp_path / "talk.json", {"segments": _SEGMENTS}))
+
+    assert [s.start_time for s in reference.segments] == [0.0, 4.0]
+
+
+def test_speech_before_the_clip_is_cut(tmp_path: Path):
+    """Bob speaks 100–104.2 s; a clip from 101 s keeps 3.2 s of him."""
+    reference = load_reference(_write(tmp_path / "clip.json", _clip(101)))
+
+    assert [(s.start_time, s.end_time) for s in reference.segments] == [
+        (0.0, pytest.approx(3.2)),
+        (3.0, 5.5),
+    ]
+    assert reference.outside_s == pytest.approx(1.0)
+    assert reference.speech_s == pytest.approx(6.7)
+
+
+def test_speech_ending_before_the_clip_is_dropped(tmp_path: Path):
+    reference = load_reference(_write(tmp_path / "clip.json", _clip(104.2)))
+
+    assert [s.speaker for s in reference.segments] == ["Ana"]
+    assert reference.text == normalize("¿Y tú qué piensas?")
+
+
+def test_a_clip_start_after_all_the_speech_is_an_error(tmp_path: Path):
+    with pytest.raises(ConfigError, match="before clip_start"):
+        load_reference(_write(tmp_path / "clip.json", _clip(200)))
+
+
+def test_errors_name_times_as_written(tmp_path: Path):
+    """A bad segment is reported in the file's times, which the user can find."""
+    content = {
+        "clip_start": 100,
+        "segments": [{"start_time": 130, "end_time": 120, "text": "x"}],
+    }
+
+    with pytest.raises(
+        ConfigError, match=r"\(120.0\) is before its start_time \(130.0\)"
+    ):
+        load_reference(_write(tmp_path / "clip.json", content))
+
+
+def test_fit_cuts_speech_after_the_recording(tmp_path: Path):
+    reference = load_reference(_write(tmp_path / "talk.json", _SEGMENTS))
+
+    fitted = reference.fit(6.0)
+
+    assert fitted.end_time == 6.0
+    assert fitted.outside_s == pytest.approx(0.5)
+    assert fitted.traced["outside_s"] == 0.5
+
+
+def test_fit_drops_speech_that_starts_after_the_recording(tmp_path: Path):
+    long = [*_SEGMENTS, {"start_time": 30.0, "end_time": 30.5, "text": "bye"}]
+    reference = load_reference(_write(tmp_path / "talk.json", long))
+
+    fitted = reference.fit(10.0)
+
+    assert len(fitted.segments) == 2
+    assert "bye" not in fitted.text
+
+
+def test_fit_without_trimming_only_checks(tmp_path: Path):
+    reference = load_reference(_write(tmp_path / "talk.json", _SEGMENTS))
+
+    assert reference.fit(6.0, trim=False) is reference
+
+
+def test_a_forgotten_clip_start_is_refused(tmp_path: Path):
+    """The video's times against a clip: nearly all speech is past its end."""
+    content = _clip(100)
+    del content["clip_start"]
+    reference = load_reference(_write(tmp_path / "clip.json", content))
+
+    with pytest.raises(ConfigError) as caught:
+        reference.fit(20.0)
+
+    message = str(caught.value)
+    assert "clip.json" in message
+    assert "100% of its speech falls outside the audio (0–20 s)" in message
+    assert "with no clip_start" in message
+    assert "written for 100–106 s" in message
+
+
+def test_a_wrong_clip_start_is_refused(tmp_path: Path):
+    reference = load_reference(_write(tmp_path / "clip.json", _clip(50)))
+
+    with pytest.raises(ConfigError, match=r"clip_start \(50 s\)"):
+        reference.fit(20.0)
+
+
+def test_a_little_speech_outside_is_tolerated(tmp_path: Path):
+    """A clip cut a moment off from its ground truth is not an error."""
+    assert MAX_OUTSIDE_SHARE >= 0.5 / 6.7
+    reference = load_reference(_write(tmp_path / "talk.json", _SEGMENTS))
+
+    reference.fit(6.0)
 
 
 # --- Utterances, labels and text ---

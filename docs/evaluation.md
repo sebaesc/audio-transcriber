@@ -363,9 +363,64 @@ recording, named after it (`standup.mp4` → `standup.json`).
 - **Keep the files out of the repo.** Recordings and ground truths are the team's data. Reports,
   which hold scores and each ground truth's checksum, may be committed.
 
-A ground truth is checked before anything is transcribed. A file that is not a JSON array, is
-empty, or has a segment with a missing key or its end before its start stops the run, with the
-file, the segment's index and the problem:
+### A clip cut from a longer video
+
+Recordings to evaluate are usually a clip, about 20 minutes, cut from a longer class video, and
+each clip starts somewhere else in its video. Write the ground truth with the times you see in the
+**full video**, and say where the clip starts with `clip_start`. The file is then an object instead
+of a bare array:
+
+```json
+{
+  "clip_start": "19:53",
+  "segments": [
+    {
+      "start_time": "19:58",
+      "end_time": "20:08",
+      "speaker": "profesor",
+      "spoken_language": "en",
+      "text": "Is it pizza?"
+    }
+  ]
+}
+```
+
+| Key | Required | Notes |
+| --- | -------- | ----- |
+| `segments` | Yes | The segments, exactly as in a bare array, timed against the full video |
+| `clip_start` | No | Where the clip starts in that video: seconds or a clock time, as segment times are. Left out means `0` |
+
+Every time is moved back by `clip_start` when read, so the segment above is scored as `5`–`15` s
+of the clip. Each file carries its own `clip_start`, so a folder of clips that start at different
+points is scored in one run. A bare array is still read as before, as a clip starting at `0`.
+
+**Speech outside the clip is cut.** Speech before `clip_start`, or after the clip's end, is not in
+the recording: neither its words nor its time are scored. A segment that crosses either edge keeps
+the part inside. A clip cut a second off from its ground truth loses a word or two this way.
+
+**A ground truth for the wrong stretch of time is refused.** If more than 20% of its speech falls
+outside the recording, the run stops before anything is transcribed:
+
+```
+error: ground truth truth/week8.json: 93% of its speech falls outside the audio (0–1216 s) with no
+clip_start. It is written for 1192–2415 s: is clip_start missing or wrong? See docs/evaluation.md.
+```
+
+This is the mistake to guard against: a 20-minute clip scored against a ground truth in the full
+video's times has the same WER, since words carry no times, but its speaker and language scores
+are measured over the seconds where the two happen to overlap. They can look perfect, a speaker
+`confusion` of `0.000`, while measuring nothing.
+
+When [re-scoring a transcript](#scoring-a-transcript-you-already-have), the clip's length is read
+from the run's `manifest.json`. Without one, the ground truth is checked against where the
+transcript's speech ends, and nothing after it is cut.
+
+### Mistakes in a ground truth
+
+A ground truth is checked before anything is transcribed. A file that is not a JSON array (or a
+clip's object), is empty, or has a segment with a missing key or its end before its start stops
+the run, with the file, the segment's index and the problem. A clip's times are reported as
+written, in the full video's times:
 
 ```
 error: ground truth truth/standup.json, segment 12: segment end_time (61.0) is before its start_time (62.5)
@@ -466,6 +521,8 @@ language labels, that score is `null` and `diarization_skipped` or `language_ski
 reason. So does a transcript with no speaker labels, from a run that did not diarize.
 
 **Traceability.** Each recording in the report records its ground truth's `reference.file` and
-`reference.checksum`. Compare only reports scored against the same ground truths: if the checksums
-differ, the reference changed and so did what the scores mean.
+`reference.checksum`, and for a clip its `reference.clip_start`. `reference.outside_s`, when
+present, is the seconds of ground-truth speech cut for falling outside the recording. Compare only
+reports scored against the same ground truths: if the checksums differ, the reference changed and
+so did what the scores mean.
 

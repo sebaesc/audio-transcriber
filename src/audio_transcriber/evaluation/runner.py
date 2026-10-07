@@ -25,7 +25,7 @@ from typing import Any
 
 from audio_transcriber import __version__, audio, pipeline, registry
 from audio_transcriber.backend import TranscriptionBackend
-from audio_transcriber.errors import ConfigError
+from audio_transcriber.errors import AudioDecodeError, ConfigError
 from audio_transcriber.evaluation import corpus, talkbank
 from audio_transcriber.evaluation.annotation import (
     Utterance,
@@ -326,12 +326,17 @@ def evaluate_custom(
         The report, shaped like a corpus report so `compare` accepts it.
 
     Raises:
-        ConfigError: If a ground truth is invalid. Every one is read before
-            anything is transcribed.
+        ConfigError: If a ground truth is invalid, or does not lie within its
+            recording. Every one is read, and checked against its recording's
+            length, before anything is transcribed.
         BackendRequirementError: If the backend is not ready to run.
     """
     references = {pair.name: load_reference(pair.reference) for pair in pairs}
     backend = _ready_backend(backend_name, backend_config)
+    for pair in pairs:
+        duration = _media_seconds(pair.media)
+        if duration is not None:
+            references[pair.name] = references[pair.name].fit(duration)
     report = _report_for(backend, label)
     report.ground_truth = True
 
@@ -360,9 +365,11 @@ def score_transcripts(
 
     The backend, model version and config come from the run's `manifest.json`
     beside the transcripts, when there is one, and are `unknown` otherwise. No
-    audio is read, so a recording's duration is taken as the later of the last
-    reference and transcript speech, which scores the same: nothing after it
-    is speech on either side.
+    audio is read. A recording's duration is the one the manifest records;
+    without it, it is taken as the later of the last reference and transcript
+    speech, which scores the same: nothing after it is speech on either side.
+    The ground truth is checked against that duration, or, without one, against
+    where the transcript's speech ends.
 
     Args:
         label: A name for this scoring.
@@ -374,12 +381,24 @@ def score_transcripts(
         The report, shaped like any other so `compare` accepts it.
 
     Raises:
-        ConfigError: If a transcript, ground truth or manifest is invalid.
-            Everything is read before anything is scored.
+        ConfigError: If a transcript, ground truth or manifest is invalid, or
+            a ground truth does not lie within its recording. Everything is
+            read before anything is scored.
     """
     references = {pair.name: load_reference(pair.reference) for pair in pairs}
     transcripts = {pair.name: _load_transcript(pair.media) for pair in pairs}
     manifest = _find_manifest(pairs)
+    durations = _recorded_durations(manifest)
+    for pair in pairs:
+        duration = durations.get(pair.media.name)
+        if duration is not None:
+            references[pair.name] = references[pair.name].fit(duration)
+            continue
+        last_speech = _last_speech(transcripts[pair.name])
+        if last_speech:
+            references[pair.name].fit(
+                last_speech, trim=False, bound="the transcript's speech"
+            )
 
     report = Report(
         label=label,
@@ -390,15 +409,29 @@ def score_transcripts(
     )
     for pair in pairs:
         transcript, reference = transcripts[pair.name], references[pair.name]
-        last_speech = max(
-            (segment.end_time for segment in transcript.segments), default=0.0
-        )
-        result = RecordingResult(
-            name=pair.name, duration_s=max(reference.end_time, last_speech)
-        )
+        duration = durations.get(pair.media.name)
+        if duration is None:
+            duration = max(reference.end_time, _last_speech(transcript))
+        result = RecordingResult(name=pair.name, duration_s=duration)
         report.results.append(result)
         _score_against(result, transcript, reference, label, transcript_dir)
     return report
+
+
+def _last_speech(transcript: Transcript) -> float:
+    """When a transcript's last speech ends, or 0 if it has none."""
+    return max((segment.end_time for segment in transcript.segments), default=0.0)
+
+
+def _recorded_durations(manifest: Manifest | None) -> dict[str, float]:
+    """Each transcript's audio duration as the run recorded it, by file name."""
+    if manifest is None:
+        return {}
+    return {
+        Path(record.transcript).name: record.duration
+        for record in manifest.inputs
+        if record.transcript and record.duration
+    }
 
 
 def _load_transcript(path: Path) -> Transcript:
@@ -490,6 +523,21 @@ def _transcribe(
     return transcript
 
 
+def _media_seconds(media: Path) -> float | None:
+    """Return a recording's length, or None if it cannot be decoded.
+
+    Decoded once more when transcribed: decoding takes seconds, and checking
+    every ground truth against its recording first means a wrong one stops the
+    run before any transcription is paid for. A recording that will not decode
+    is left for `_transcribe` to record as failed.
+    """
+    try:
+        with audio.decoded(media) as decoded:
+            return _wav_seconds(decoded)
+    except AudioDecodeError:
+        return None
+
+
 def _wav_seconds(path: Path) -> float:
     """Return the length of a decoded WAV."""
     with wave.open(str(path), "rb") as handle:
@@ -517,7 +565,7 @@ def _score_against(
     result.annotation = _ground_truth_scores(
         reference, list(transcript.segments), result.duration_s
     )
-    result.reference = {"file": reference.path.name, "checksum": reference.checksum}
+    result.reference = reference.traced
     if transcript_dir is not None:
         _write_hypothesis(transcript_dir, result.name, label, transcript)
         (transcript_dir / f"{result.name}.reference.txt").write_text(

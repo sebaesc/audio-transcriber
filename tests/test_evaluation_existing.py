@@ -184,3 +184,81 @@ def test_scores_match_the_run_that_produced_the_transcript(tmp_path: Path):
     assert after.score == before.score
     assert after.annotation == before.annotation
     assert after.reference == before.reference
+
+
+# --- Clips ---
+
+
+def _clip_ground_truth(clip_start: float | None) -> dict | list:
+    """`GROUND_TRUTH` written against a video, starting 600 s in."""
+    segments = [
+        {**s, "start_time": s["start_time"] + 600, "end_time": s["end_time"] + 600}
+        for s in GROUND_TRUTH
+    ]
+    if clip_start is None:
+        return segments
+    return {"clip_start": clip_start, "segments": segments}
+
+
+def _run_with_duration(run: Path, duration: float) -> None:
+    manifest = Manifest(
+        run_id=run.name,
+        backend="scripted",
+        model_version="scripted-1.0",
+        config={},
+        inputs=[
+            InputRecord(
+                path="audio/talk.mp4",
+                checksum="sha256:00",
+                size_bytes=1,
+                transcript="talk.json",
+                duration=duration,
+            )
+        ],
+    )
+    (run / "manifest.json").write_text(json.dumps(manifest.to_dict()))
+
+
+def test_a_clip_rescored_matches_its_ground_truth_in_its_own_times(tmp_path: Path):
+    plain = Pair(
+        name="talk",
+        media=_transcript(tmp_path / "talk.json"),
+        reference=_reference(tmp_path / "truth" / "talk.json"),
+    )
+    clip = Pair(
+        name="talk",
+        media=plain.media,
+        reference=_reference(tmp_path / "clip" / "talk.json", _clip_ground_truth(600)),
+    )
+
+    (expected,) = score_transcripts(label="plain", pairs=[plain]).results
+    (result,) = score_transcripts(label="clip", pairs=[clip]).results
+
+    assert result.score == expected.score
+    assert result.annotation == expected.annotation
+
+
+def test_the_recorded_duration_bounds_the_ground_truth(tmp_path: Path):
+    run = tmp_path / "run"
+    _transcript(run / "talk.json")
+    _run_with_duration(run, 6.0)
+    pairs = transcript_pairs(run, _reference(tmp_path / "truth" / "talk.json").parent)
+
+    (result,) = score_transcripts(label="again", pairs=pairs).results
+
+    assert result.duration_s == 6.0
+    assert result.reference["outside_s"] == 1.0
+
+
+@pytest.mark.parametrize("with_manifest", [True, False], ids=["manifest", "bare"])
+def test_a_forgotten_clip_start_is_refused_when_rescoring(
+    tmp_path: Path, with_manifest
+):
+    run = tmp_path / "run"
+    _transcript(run / "talk.json")
+    if with_manifest:
+        _run_with_duration(run, 8.0)
+    truth = _reference(tmp_path / "truth" / "talk.json", _clip_ground_truth(None))
+
+    with pytest.raises(ConfigError, match="is clip_start missing or wrong"):
+        score_transcripts(label="again", pairs=transcript_pairs(run, truth.parent))

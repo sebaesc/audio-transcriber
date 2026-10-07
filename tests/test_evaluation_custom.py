@@ -235,3 +235,57 @@ def test_a_reloaded_custom_report_keeps_its_shape(tmp_path: Path):
 
     reloaded = _load(path).to_dict()["recordings"]
     assert untimed(reloaded) == untimed(json.loads(path.read_text())["recordings"])
+
+
+# --- Clips: a ground truth written against the longer video ---
+
+
+def _in_video_times(ground_truth=GROUND_TRUTH, clip_start: float = 600.0) -> list:
+    """The ground truth as written against a video the 8 s clip was cut from."""
+    return [
+        {
+            **segment,
+            "start_time": segment["start_time"] + clip_start,
+            "end_time": segment["end_time"] + clip_start,
+        }
+        for segment in ground_truth
+    ]
+
+
+def test_a_clip_scores_as_its_ground_truth_in_the_clips_own_times(tmp_path: Path):
+    plain = _run([_pair(tmp_path, "plain")]).results[0]
+    clip = _run(
+        [
+            _pair(
+                tmp_path,
+                "clip",
+                ground_truth={"clip_start": "10:00", "segments": _in_video_times()},
+            )
+        ]
+    ).results[0]
+
+    assert clip.score == plain.score
+    assert clip.annotation == plain.annotation
+    assert clip.reference["clip_start"] == 600.0
+
+
+def test_a_forgotten_clip_start_stops_the_run_before_transcribing(tmp_path: Path):
+    """Scored anyway, speaker confusion would read a perfect 0."""
+    pair = _pair(tmp_path, ground_truth=_in_video_times())
+
+    with pytest.raises(ConfigError, match="is clip_start missing or wrong"):
+        _run([_pair(tmp_path, "fine"), pair])
+
+    assert _ScriptedBackend.calls == []
+
+
+def test_speech_past_the_end_of_the_recording_is_not_scored(tmp_path: Path):
+    extra = [
+        *GROUND_TRUTH,
+        {"start_time": 8.5, "end_time": 9.0, "text": "and one more thing"},
+    ]
+
+    (result,) = _run([_pair(tmp_path, ground_truth=extra)]).results
+
+    assert result.score.wer == pytest.approx(0.1)
+    assert result.reference["outside_s"] == 0.5

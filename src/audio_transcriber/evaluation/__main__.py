@@ -88,7 +88,9 @@ def main(argv: list[str] | None = None) -> int:
     custom = parser.add_argument_group(
         "your own recordings",
         "Score against a ground truth you wrote: a JSON array of transcript "
-        "segments. See docs/evaluation.md.",
+        "segments, or for a clip cut from a longer video, an object holding "
+        "them, timed against that video, beside the clip's clip_start. See "
+        "docs/evaluation.md.",
     )
     custom.add_argument(
         "--audio", type=Path, metavar="FILE", help="A recording (audio or video)."
