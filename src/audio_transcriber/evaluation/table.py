@@ -207,7 +207,7 @@ class _Report:
 
     @property
     def engine(self) -> str:
-        """The backend and its model, short: `faster-whisper large-v3`."""
+        """The backend and its model, short: `<backend> <model>`."""
         model = self.model_version.rpartition("/")[2]
         if self.backend == model or model == "unknown":
             return self.backend
