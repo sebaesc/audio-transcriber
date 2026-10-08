@@ -1,0 +1,473 @@
+{
+  "label": "large-v3",
+  "created_at": "2026-10-08T04:13:46.429609+00:00",
+  "tool_version": "0.1.0",
+  "backend": "faster-whisper",
+  "model_version": "faster-whisper-1.2.1/large-v3",
+  "config": {
+    "model": "large-v3",
+    "device": "cuda",
+    "compute_type": "default",
+    "language": null,
+    "beam_size": 5,
+    "vad_filter": true,
+    "temperature": "[0.0, 0.2, 0.4, 0.6, 0.8, 1.0]",
+    "seed": 0,
+    "language_detection": "chunked",
+    "languages": "['en', 'es']",
+    "language_threshold": 0.5,
+    "chunk_seconds": 15.0,
+    "diarization": true,
+    "diarization_model": "pyannote/speaker-diarization-community-1",
+    "hf_token": null,
+    "num_speakers": null,
+    "min_speakers": null,
+    "max_speakers": null,
+    "speaker_assignment": "word",
+    "condition_on_previous_text": true,
+    "repetition_penalty": 1.0,
+    "no_repeat_ngram_size": 0,
+    "best_of": 5,
+    "patience": 1.0,
+    "length_penalty": 1.0,
+    "compression_ratio_threshold": 2.4,
+    "log_prob_threshold": -1.0,
+    "no_speech_threshold": 0.6,
+    "diarization_version": "pyannote.audio-4.0.7"
+  },
+  "corpus": {
+    "dataset": "custom ground truth"
+  },
+  "summary": {
+    "recordings": 7,
+    "scored": 7,
+    "mean_wer": 0.3366,
+    "mean_retained": 0.8824,
+    "mean_coverage": 0.9638,
+    "mean_language_mix_error": 0.1018,
+    "ground_truth": {
+      "mean_der": 0.5493,
+      "mean_speaker_confusion": 0.0917,
+      "mean_language_accuracy": 0.8733,
+      "mean_mixed_share": 0.0
+    }
+  },
+  "recordings": [
+    {
+      "name": "1930 6to 1101155 Week 1 (06.39-26.39)",
+      "duration_s": 1200.0,
+      "elapsed_s": 0.0,
+      "realtime_factor": null,
+      "segments": 235,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.4676,
+        "retained": 0.8635,
+        "coverage": 0.9217,
+        "language_mix_error": 0.2578,
+        "reference_spanish_share": 0.2565,
+        "hypothesis_spanish_share": 0.5143,
+        "substitutions": 244,
+        "deletions": 122,
+        "insertions": 52,
+        "hits": 528,
+        "reference_words": 894,
+        "hypothesis_words": 824
+      },
+      "ground_truth": {
+        "diarization": {
+          "der": 0.704,
+          "missed": 0.5628,
+          "false_alarm": 0.0051,
+          "confusion": 0.136,
+          "reference_seconds": 1112.5
+        },
+        "language": {
+          "accuracy": 0.721,
+          "recall": {
+            "en": 0.6902,
+            "es": 0.9566
+          },
+          "mixed_share": 0.0,
+          "scored_seconds": 529.588,
+          "confusion": {
+            "en": {
+              "es": 145.128,
+              "en": 323.284
+            },
+            "es": {
+              "es": 58.524,
+              "en": 2.652
+            },
+            "mixed": {}
+          }
+        }
+      },
+      "reference": {
+        "file": "1930 6to 1101155 Week 1 (06.39-26.39).json",
+        "checksum": "sha256:6901d3a0472523d396e04aa080d920839b1a859198bf6b8e9e96116b7b3630ea",
+        "clip_start": 399.0
+      },
+      "error": null
+    },
+    {
+      "name": "1930 6to 1108028 Week 3 (04.30-24.33)",
+      "duration_s": 1203.0,
+      "elapsed_s": 0.0,
+      "realtime_factor": null,
+      "segments": 240,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.2463,
+        "retained": 0.843,
+        "coverage": 0.8915,
+        "language_mix_error": 0.0197,
+        "reference_spanish_share": 0.0265,
+        "hypothesis_spanish_share": 0.0462,
+        "substitutions": 57,
+        "deletions": 220,
+        "insertions": 68,
+        "hits": 1124,
+        "reference_words": 1401,
+        "hypothesis_words": 1249
+      },
+      "ground_truth": {
+        "diarization": {
+          "der": 0.427,
+          "missed": 0.3823,
+          "false_alarm": 0.0,
+          "confusion": 0.0448,
+          "reference_seconds": 1181.5
+        },
+        "language": {
+          "accuracy": 0.985,
+          "recall": {
+            "en": 0.9854,
+            "es": 0.9433
+          },
+          "mixed_share": 0.0,
+          "scored_seconds": 760.0,
+          "confusion": {
+            "es": {
+              "es": 6.388,
+              "en": 0.384
+            },
+            "en": {
+              "es": 10.992,
+              "en": 742.236
+            },
+            "mixed": {}
+          }
+        }
+      },
+      "reference": {
+        "file": "1930 6to 1108028 Week 3 (04.30-24.33).json",
+        "checksum": "sha256:d45ed444a75eb738ecba23866349f616b629e73c9d36416c57730331a44075b2",
+        "clip_start": 270.0
+      },
+      "error": null
+    },
+    {
+      "name": "Level 1 1101055 Week 15 (00.00-20.01)",
+      "duration_s": 1201.0,
+      "elapsed_s": 0.0,
+      "realtime_factor": null,
+      "segments": 232,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.2562,
+        "retained": 0.8791,
+        "coverage": 0.9152,
+        "language_mix_error": 0.0708,
+        "reference_spanish_share": 0.1127,
+        "hypothesis_spanish_share": 0.1836,
+        "substitutions": 159,
+        "deletions": 194,
+        "insertions": 58,
+        "hits": 1251,
+        "reference_words": 1604,
+        "hypothesis_words": 1468
+      },
+      "ground_truth": {
+        "diarization": {
+          "der": 0.3668,
+          "missed": 0.2662,
+          "false_alarm": 0.014,
+          "confusion": 0.0866,
+          "reference_seconds": 1078.5
+        },
+        "language": {
+          "accuracy": 0.8526,
+          "recall": {
+            "en": 0.8519,
+            "es": 0.8858
+          },
+          "mixed_share": 0.0,
+          "scored_seconds": 860.104,
+          "confusion": {
+            "en": {
+              "es": 124.804,
+              "en": 717.788
+            },
+            "es": {
+              "es": 15.512,
+              "en": 2.0
+            },
+            "mixed": {}
+          }
+        }
+      },
+      "reference": {
+        "file": "Level 1 1101055 Week 15 (00.00-20.01).json",
+        "checksum": "sha256:3526387bd27d4e9fd142ff30f32a6ba45010f45e57e3cad93e6731bb976685c8"
+      },
+      "error": null
+    },
+    {
+      "name": "Level 1 1101251 Week 8 (11.04-31.04)",
+      "duration_s": 1200.0,
+      "elapsed_s": 0.0,
+      "realtime_factor": null,
+      "segments": 317,
+      "detected_languages": [
+        "en"
+      ],
+      "score": {
+        "wer": 0.4186,
+        "retained": 0.8912,
+        "coverage": 1.0861,
+        "language_mix_error": 0.0361,
+        "reference_spanish_share": 0.1372,
+        "hypothesis_spanish_share": 0.1011,
+        "substitutions": 172,
+        "deletions": 163,
+        "insertions": 292,
+        "hits": 1163,
+        "reference_words": 1498,
+        "hypothesis_words": 1627
+      },
+      "ground_truth": {
+        "diarization": {
+          "der": 0.4684,
+          "missed": 0.3287,
+          "false_alarm": 0.0097,
+          "confusion": 0.13,
+          "reference_seconds": 1224.5
+        },
+        "language": {
+          "accuracy": 0.9882,
+          "recall": {
+            "en": 1.0,
+            "es": 0.0
+          },
+          "mixed_share": 0.0,
+          "scored_seconds": 1020.368,
+          "confusion": {
+            "en": {
+              "en": 1008.364
+            },
+            "es": {
+              "en": 12.004,
+              "es": 0.0
+            },
+            "mixed": {}
+          }
+        }
+      },
+      "reference": {
+        "file": "Level 1 1101251 Week 8 (11.04-31.04).json",
+        "checksum": "sha256:12d61697ae443af88a0b86ca2a08d371a545a8a001e720b38e29847187331baa",
+        "clip_start": 664.0
+      },
+      "error": null
+    },
+    {
+      "name": "Level 2 1101058 Week 7 (00.04-19.48)",
+      "duration_s": 1184.0,
+      "elapsed_s": 0.0,
+      "realtime_factor": null,
+      "segments": 387,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.4912,
+        "retained": 0.8747,
+        "coverage": 1.0154,
+        "language_mix_error": 0.1592,
+        "reference_spanish_share": 0.503,
+        "hypothesis_spanish_share": 0.6622,
+        "substitutions": 293,
+        "deletions": 163,
+        "insertions": 183,
+        "hits": 845,
+        "reference_words": 1301,
+        "hypothesis_words": 1321
+      },
+      "ground_truth": {
+        "diarization": {
+          "der": 0.7641,
+          "missed": 0.4402,
+          "false_alarm": 0.1429,
+          "confusion": 0.181,
+          "reference_seconds": 709.0
+        },
+        "language": {
+          "accuracy": 0.8054,
+          "recall": {
+            "en": 0.7513,
+            "es": 0.9601
+          },
+          "mixed_share": 0.0,
+          "scored_seconds": 492.916,
+          "confusion": {
+            "en": {
+              "es": 90.836,
+              "en": 274.392
+            },
+            "es": {
+              "es": 122.588,
+              "en": 5.1
+            },
+            "mixed": {}
+          }
+        }
+      },
+      "reference": {
+        "file": "Level 2 1101058 Week 7 (00.04-19.48).json",
+        "checksum": "sha256:1bd23a1dd4d86f1b3425b41f8b9391047fc69f9624d572b34216fe02f7bf4284",
+        "clip_start": 4.0
+      },
+      "error": null
+    },
+    {
+      "name": "Level 2 1103119 Week 14 (00.40-20.40)",
+      "duration_s": 1200.0,
+      "elapsed_s": 0.0,
+      "realtime_factor": null,
+      "segments": 228,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.1729,
+        "retained": 0.9234,
+        "coverage": 0.9604,
+        "language_mix_error": 0.0358,
+        "reference_spanish_share": 0.1696,
+        "hypothesis_spanish_share": 0.2054,
+        "substitutions": 93,
+        "deletions": 120,
+        "insertions": 58,
+        "hits": 1354,
+        "reference_words": 1567,
+        "hypothesis_words": 1505
+      },
+      "ground_truth": {
+        "diarization": {
+          "der": 0.5339,
+          "missed": 0.4995,
+          "false_alarm": 0.0127,
+          "confusion": 0.0218,
+          "reference_seconds": 1444.5
+        },
+        "language": {
+          "accuracy": 0.8528,
+          "recall": {
+            "en": 0.8526,
+            "es": 0.8597
+          },
+          "mixed_share": 0.0,
+          "scored_seconds": 1017.424,
+          "confusion": {
+            "en": {
+              "en": 835.952,
+              "es": 144.556
+            },
+            "es": {
+              "es": 31.736,
+              "en": 5.18
+            },
+            "mixed": {}
+          }
+        }
+      },
+      "reference": {
+        "file": "Level 2 1103119 Week 14 (00.40-20.40).json",
+        "checksum": "sha256:a8509d8757af489719fb5184e8278a8a0d613552b3f5f7f671f04dd2f42e4c15",
+        "clip_start": 40.0
+      },
+      "error": null
+    },
+    {
+      "name": "Level 3 1103119 Week 3 (19.59-42.32)",
+      "duration_s": 1353.0,
+      "elapsed_s": 0.0,
+      "realtime_factor": null,
+      "segments": 190,
+      "detected_languages": [
+        "en",
+        "es"
+      ],
+      "score": {
+        "wer": 0.3038,
+        "retained": 0.9021,
+        "coverage": 0.956,
+        "language_mix_error": 0.1335,
+        "reference_spanish_share": 0.0447,
+        "hypothesis_spanish_share": 0.1781,
+        "substitutions": 214,
+        "deletions": 138,
+        "insertions": 76,
+        "hits": 1057,
+        "reference_words": 1409,
+        "hypothesis_words": 1347
+      },
+      "ground_truth": {
+        "diarization": {
+          "der": 0.5807,
+          "missed": 0.4762,
+          "false_alarm": 0.0628,
+          "confusion": 0.0417,
+          "reference_seconds": 1189.5
+        },
+        "language": {
+          "accuracy": 0.9078,
+          "recall": {
+            "en": 0.9078,
+            "es": null
+          },
+          "mixed_share": 0.0,
+          "scored_seconds": 856.824,
+          "confusion": {
+            "en": {
+              "en": 777.864,
+              "es": 78.96
+            },
+            "es": {
+              "es": 0.0
+            },
+            "mixed": {}
+          }
+        }
+      },
+      "reference": {
+        "file": "Level 3 1103119 Week 3 (19.59-42.32).json",
+        "checksum": "sha256:c574168949f6477ee1da6aec8e2fc83adcd5f96d2dcaec13de1dc25804a70cee",
+        "clip_start": 1199.0
+      },
+      "error": null
+    }
+  ]
+}
