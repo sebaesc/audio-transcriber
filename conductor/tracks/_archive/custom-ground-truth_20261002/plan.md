@@ -120,7 +120,7 @@ Expose the modes on the command line, document them, and measure real audio.
 > scratch copy outside the repo. faster-whisper `large-v3`, chunked language, diarized: WER 0.266,
 > retained 0.958, speaker confusion 0.140, language accuracy 0.998, 4.2x realtime. Re-scoring the
 > written transcript in existing-transcript mode gave identical scores. Report:
-> `eval/custom/week8-clip-large-v3.json`.
+> `eval/custom/week8-clip-large-v3.local.json`.
 >
 > **Deviation:** the team's ground truths write times as `"MM:SS"` strings. By the user's decision
 > the loader now also accepts `MM:SS`/`HH:MM:SS` (spec Technical Notes updated).
