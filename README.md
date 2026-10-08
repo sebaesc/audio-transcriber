@@ -238,6 +238,25 @@ the Spanish-English reference corpus, or against a ground truth you write for yo
 [`docs/evaluation.md`](docs/evaluation.md). `--table` puts every report side by side, model by
 model and recording by recording, and `--metrics` explains each metric.
 
+### Evaluation data
+
+The reference corpus is the Bangor Miami Spanish-English corpus (Deuchar & Parafita Couto, 2011):
+naturalistic English-Spanish conversations. It comes from two places:
+
+- **Audio and reference transcripts: Hugging Face.**
+  [`BrunoHays/Bangor-Miami-Spanish-English-Corpus`](https://huggingface.co/datasets/BrunoHays/Bangor-Miami-Spanish-English-Corpus)
+  (CC BY-SA 3.0). Nothing to do by hand: the 116 MB parquet downloads on first use into
+  `~/.cache/audio-transcriber/bangor-miami` (override with `AUDIO_TRANSCRIBER_EVAL_CACHE`).
+- **Speaker and per-segment language annotations: TalkBank.** Only needed for
+  `evaluation --talkbank`, and it cannot be automated. Create a free account at
+  <https://talkbank.org/biling/>, then while logged in download
+  <https://talkbank.org/data/biling/Bangor/Miami?f=zip> and save it as
+  `~/.cache/audio-transcriber/talkbank/Miami.zip` (or set `AUDIO_TRANSCRIBER_TALKBANK_ARCHIVE`).
+  The data is CC BY-NC-SA 3.0 and must stay on your machine, so never commit it.
+
+Neither is ever committed to the repo. Details and the required citation are in
+[`docs/evaluation.md`](docs/evaluation.md).
+
 ## Adding a backend
 
 Implement one interface, register it by name, and write its doc page. See
